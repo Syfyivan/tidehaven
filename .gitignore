@@ -1,0 +1,24 @@
+.godot/
+artifacts/
+build/
+*.tmp
+*.log
+.DS_Store
+
+# Local configuration, credentials and player data
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+/world*.json
+/world*.json.bak
+
+# Generated Godot import metadata
+*.import
+
+# PIPOYA prohibits redistribution of raw assets; restore locally from its pack.
+/assets/vendor/pipoya/*.png
+/assets/vendor/**/*.zip
+/assets/vendor/**/*.7z
+
