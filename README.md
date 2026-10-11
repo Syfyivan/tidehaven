@@ -138,7 +138,7 @@ v5及更早旧档导入后保持停泊，防止原来水下的角色被迫追船
 
 ## 获取源码
 
-仓库：[Syfyivan/tidehaven](https://github.com/Syfyivan/tidehaven)，当前为私有仓库，需要仓库访问权限。
+仓库：[Syfyivan/tidehaven](https://github.com/Syfyivan/tidehaven)，公开可访问和克隆。
 
 ```powershell
 git clone https://github.com/Syfyivan/tidehaven.git
