@@ -30,7 +30,7 @@ func _world(two_players := false):
 	# Existing mechanics are checked in a migrated old world; new survival starts have their own suite.
 	var old: Dictionary = world.snapshot()
 	old.version = 2
-	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old.erase(v14_key)
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories","chronicles"]:old.erase(v14_key)
 	for v14_player in old.players.values():v14_player.erase("room")
 	old.entities = world._new_entities(false)
 	for key in ["deck_tiles", "structures", "drift", "navigation", "chart", "island", "threats"]:

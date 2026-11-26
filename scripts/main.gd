@@ -14,6 +14,7 @@ const IslandTown = preload("res://scripts/island_town.gd")
 const ContextActions = preload("res://scripts/context_actions.gd")
 const Recipes = preload("res://scripts/recipes.gd")
 const UI = preload("res://scripts/ui_style.gd")
+const GameAudio = preload("res://scripts/game_audio.gd")
 const PORT := 24872
 const INK := Color("193c48")
 const PAPER := Color("f0e6cd")
@@ -63,6 +64,8 @@ var new_game_button: Button
 var continue_button: Button
 var return_title_button: Button
 var room_pause_button: Button
+var mute_button: Button
+var audio: Node
 var menu_panel: Panel
 var pause_panel: Panel
 var menu_actions: Control
@@ -71,7 +74,7 @@ var pause_note: Label
 var font: SystemFont
 var pause_open := false
 var room_paused := false
-var save_path := "user://world_v16.json"
+var save_path := "user://world_v17.json"
 var net_clock := 0.0
 var hud_clock := 0.0
 var input_clock := 0.0
@@ -106,6 +109,9 @@ func _ready() -> void:
 	font.font_names = PackedStringArray(["Microsoft YaHei UI", "Microsoft YaHei", "Noto Sans CJK SC"])
 	view = WorldView.new()
 	add_child(view)
+	audio = GameAudio.new()
+	audio.persist_settings = not automated and not cli.has("capture")
+	add_child(audio)
 	_build_ui()
 	get_viewport().size_changed.connect(_layout_viewport)
 	_layout_viewport()
@@ -357,9 +363,13 @@ func _build_pause_menu() -> void:
 	pause_overlay.hide()
 	pause_panel = UI.panel(pause_overlay, Rect2(446, 218, 388, 364))
 	var panel := pause_panel
-	UI.icon(panel, UI.symbol("gear"), Rect2(30, 32, 30, 30))
-	UI.label(panel, "游戏菜单", Rect2(75, 26, 170, 43), 28)
-	UI.button(panel,"换装",Rect2(264,33,91,37),func():appearance_ui.present(current_state().get("wardrobe",{}).get(local_slot,WorldState.Appearance.default_for(local_slot))))
+	UI.icon(panel, UI.symbol("gear"), Rect2(26, 32, 30, 30))
+	UI.label(panel, "游戏菜单", Rect2(62, 26, 128, 43), 26)
+	mute_button = UI.button(panel, "开音" if audio != null and audio.muted else "静音", Rect2(194, 33, 76, 37), func():
+		var now_muted: bool = audio.toggle_muted()
+		mute_button.text = "开音" if now_muted else "静音"
+		_toast("已关闭游戏音效。" if now_muted else "已开启游戏音效。"))
+	UI.button(panel,"换装",Rect2(276,33,84,37),func():appearance_ui.present(current_state().get("wardrobe",{}).get(local_slot,WorldState.Appearance.default_for(local_slot))))
 	pause_note = UI.label(panel, "", Rect2(30, 89, 328, 50), 16, UI.MUTED)
 	pause_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	UI.button(panel, "继续游戏", Rect2(28, 153, 332, 49), _toggle_pause, true)
@@ -602,7 +612,8 @@ func action_request(verb: String, args: Dictionary = {},conversation_id:int=0) -
 			return
 	last_action_ms[sender] = now
 	var message: String = _world_action("guest", verb.left(32), args)
-	action_feedback.rpc_id(sender, message, world.snapshot(), str(args.get("id", "")) if _conversation_verb(verb) else "",args if verb.ends_with("_personal_open") else {},conversation_id)
+	var open_args: Dictionary = args if (verb.ends_with("_personal_open") or verb == "town_chronicle_open") else {}
+	action_feedback.rpc_id(sender, message, world.snapshot(), str(args.get("id", "")) if _conversation_verb(verb) else "",open_args,conversation_id)
 	_send_snapshot()
 
 @rpc("authority", "call_remote", "reliable")
@@ -649,22 +660,26 @@ func perform(verb: String, args: Dictionary = {}) -> void:
 	if mode == "client":
 		action_request.rpc_id(1, verb, args,pending_conversation)
 	elif mode in ["solo", "host"]:
-		_action_message(_world_action("host", verb, args), pending_talk,args if verb.ends_with("_personal_open") else {},pending_conversation)
+		var open_args: Dictionary = args if (verb.ends_with("_personal_open") or verb == "town_chronicle_open") else {}
+		_action_message(_world_action("host", verb, args), pending_talk,open_args,pending_conversation)
 		_send_snapshot()
 	options_signature = ""
 	_update_hud()
 
 func _conversation_verb(verb:String)->bool:
-	return verb in ["town_talk","town_rent","town_claim","town_shop","ocean_talk","town_personal_open","town_personal_reply","ocean_personal_open","ocean_personal_reply"]
+	return verb in ["town_talk","town_rent","town_claim","town_shop","ocean_talk","town_personal_open","town_personal_reply","ocean_personal_open","ocean_personal_reply","town_chronicle_open","town_chronicle_reply"]
 
 func _conversation_choices(talk_id:String,story_args:Dictionary)->Array:
 	var data:=current_state()
 	var ocean:=WorldState.OceanResidents.NPCS.has(talk_id)
 	if ocean and WorldState.OceanResidents.NPCS[talk_id].magic and not data.journal.tide_speech:return []
 	var choices:Array=[]
-	if not story_args.is_empty():choices=WorldState.ResidentStories.replies(data,local_slot,story_args)
+	if str(story_args.get("arc",""))=="hou_chao_yuan":choices=WorldState.LongStories.replies(data,story_args)
+	elif not story_args.is_empty():choices=WorldState.ResidentStories.replies(data,local_slot,story_args)
 	else:
-		if not ocean:choices=IslandTown.homestead_choices(data,local_slot,talk_id)
+		if not ocean:
+			choices=IslandTown.homestead_choices(data,local_slot,talk_id)
+			choices.append_array(WorldState.LongStories.entries(data,talk_id))
 		choices.append_array(WorldState.ResidentStories.entries(data,local_slot,talk_id))
 	if ocean:
 		for choice:Dictionary in choices:choice.action=str(choice.action).replace("town_","ocean_")
@@ -675,8 +690,10 @@ func _action_message(message: String, talk_id: String = "",story_args:Dictionary
 	var available := mode in ["solo", "host", "client"] and not (pause_open or inventory_ui.visible or crafting_ui.visible or chart_ui.visible or room_atlas.visible or restaurant_ui.visible or island_atlas.visible or context_ui.visible or journal_ui.visible or appearance_ui.visible)
 	if available and talk_id == pending_talk and IslandTown.NPCS.has(talk_id) and message.begins_with(str(IslandTown.NPCS[talk_id].name) + "："):
 		dialogue_ui.present(IslandTown.NPCS[talk_id], message, _conversation_choices(talk_id,story_args),talk_id)
+		if is_instance_valid(audio):audio.play("dialogue_open")
 	elif available and talk_id==pending_talk and WorldState.OceanResidents.NPCS.has(talk_id) and message.begins_with(str(WorldState.OceanResidents.NPCS[talk_id].name)+"："):
 		dialogue_ui.present(WorldState.OceanResidents.NPCS[talk_id],message,_conversation_choices(talk_id,story_args),talk_id)
+		if is_instance_valid(audio):audio.play("dialogue_open")
 	else:
 		_toast(message)
 	if talk_id == pending_talk:
@@ -736,6 +753,8 @@ func _process(delta: float) -> void:
 	view.state = current_state()
 	view.local_slot = local_slot
 	view.feedback.update(view.state if mode in ["solo", "host", "client"] else {}, local_slot, delta, not _modal_open())
+	if is_instance_valid(audio):
+		audio.observe(view.state, local_slot, view.feedback.effects, mode in ["solo", "host", "client"] and not overlay.visible)
 	view.open_chest_id = inventory_ui.chest_id if inventory_ui.visible else ""
 	_update_pointer()
 	view.queue_redraw()
@@ -1025,6 +1044,8 @@ func _clicked_interaction(keyboard: bool) -> bool:
 				target = spots.CAMP
 			elif str(option.action) == "board_raft":
 				target = spots.DOCK
+			elif str(option.action) in ["yard_inspect", "yard_style"]:
+				target = IslandMap.YARD_GATE
 		if verb == "town_talk": target = IslandTown.position(id,float(data.minute),data)
 		if option.has("target_x"): target = Vector2(option.target_x,option.target_y)
 		var gap := local_mouse.distance_to(target)
@@ -1226,6 +1247,7 @@ func _equip_index(index: int) -> void:
 		placement_recipe = item
 	if not player.get("activity", {}).is_empty():
 		perform("cancel_activity")
+	if is_instance_valid(audio):audio.play("ui_click")
 	_update_hud()
 
 
@@ -1233,6 +1255,7 @@ func _toggle_pause() -> void:
 	if mode not in ["solo", "host", "client"]:
 		return
 	pause_open = not pause_open
+	if is_instance_valid(audio):audio.play("ui_click")
 	restaurant_ui.hide()
 	room_atlas.hide()
 	chart_ui.hide()
@@ -1362,7 +1385,7 @@ func _persist() -> bool:
 	if file == null:
 		save_error = "无法写入存档"
 		return false
-	file.store_string(JSON.stringify({"format": "tidehaven", "version": 16, "state": world.snapshot()}, "", false, true))
+	file.store_string(JSON.stringify({"format": "tidehaven", "version": 17, "state": world.snapshot()}, "", false, true))
 	file.flush()
 	var write_error := file.get_error()
 	file.close()
@@ -1380,8 +1403,8 @@ func _persist() -> bool:
 	return true
 
 func _save_candidates() -> Array:
-	if save_path == "user://world_v16.json" and not FileAccess.file_exists(save_path) and not FileAccess.file_exists(save_path + ".bak"):
-		for previous in ["user://world_v15.json","user://world_v14.json","user://world_v13.json", "user://world_v12.json", "user://world_v11.json", "user://world_v10.json", "user://world_v9.json", "user://world_v8.json", "user://world_v7.json", "user://world_v6.json", "user://world_v5.json", "user://world_v4.json", "user://world_v3.json", "user://world_v2.json", "user://world_v1.json"]:
+	if save_path == "user://world_v17.json" and not FileAccess.file_exists(save_path) and not FileAccess.file_exists(save_path + ".bak"):
+		for previous in ["user://world_v16.json","user://world_v15.json","user://world_v14.json","user://world_v13.json", "user://world_v12.json", "user://world_v11.json", "user://world_v10.json", "user://world_v9.json", "user://world_v8.json", "user://world_v7.json", "user://world_v6.json", "user://world_v5.json", "user://world_v4.json", "user://world_v3.json", "user://world_v2.json", "user://world_v1.json"]:
 			if FileAccess.file_exists(previous) or FileAccess.file_exists(previous + ".bak"):
 				return [previous, previous + ".bak"]
 	return [save_path, save_path + ".bak"]
@@ -1406,7 +1429,7 @@ func _load_saved() -> bool:
 		if typeof(version_value) not in [TYPE_INT, TYPE_FLOAT]:
 			continue
 		# JSON reads integer-looking values as floats; validate before converting.
-		if float(version_value) not in [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0,15.0,16.0]:
+		if float(version_value) not in [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0]:
 			continue
 		if parsed.get("format", "") == "tidehaven" and parsed.get("state") is Dictionary:
 			if world.restore(parsed.state):

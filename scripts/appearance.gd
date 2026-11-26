@@ -1,9 +1,10 @@
 extends RefCounted
 ## Compact, validated choices shared by menu, host and save reader.
-const HAIR := [0,1,3,5,16,18,26,29]
-const SHIRTS := [11,17,0,7,18,25,34,42]
-const HAIR_COLORS := [Color("9d603a"),Color("3d302c"),Color("c07b44"),Color("d1b765"),Color("a7a3a3"),Color("663b45")]
-const PANTS_COLORS := [Color("547ab4"),Color("796049"),Color("42614e"),Color("454550")]
+## P2-08a: maps existing 2x8x6x8x4x6 indices to Chinese harbor hairstyles, frog-button tops & cloth trousers.
+const HAIR := [0,1,2,3,4,5,6,7]
+const SHIRTS := [0,1,2,3,4,5,6,7]
+const HAIR_COLORS := [Color("232730"),Color("3b2f2c"),Color("2d2524"),Color("694934"),Color("a7acb2"),Color("52383b")]
+const PANTS_COLORS := [Color("304563"),Color("4c443f"),Color("395752"),Color("3d414b")]
 const SKINS := [3,0,7,14,18,21]
 const KEYS := ["body","hair","hair_color","shirt","pants","skin"]
 const LIMITS := [2,8,6,8,4,6]

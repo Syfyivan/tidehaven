@@ -115,10 +115,10 @@ func _test_save_and_invalid() -> void:
 	check(loaded.data.threats.shark.phase=="recover" and loaded.data.threats.shark.target=="","load cancels pending attacks")
 	check(loaded.data.players.host.bag==w.data.players.host.bag,"load preserves exact 999 stack slots")
 	var old:Dictionary=saved.duplicate(true);old.version=12;old.erase("threats")
-	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old.erase(v14_key)
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories","chronicles"]:old.erase(v14_key)
 	for v14_player in old.players.values():v14_player.erase("room")
 	for p in old.players.values():p.erase("dive_status")
-	check(loaded.restore(old) and loaded.data.version==16 and loaded.data.threats.size()==2,"old v12 creates threats without losing world")
+	check(loaded.restore(old) and loaded.data.version==17 and loaded.data.threats.size()==2,"old v12 creates threats without losing world")
 	check(loaded.data.players.host.bag==w.data.players.host.bag and not old.has("threats"),"migration leaves supplied old snapshot unchanged")
 	var baseline:Dictionary=loaded.snapshot()
 	for field in ["x","y","dx","dy","remaining","clock"]:

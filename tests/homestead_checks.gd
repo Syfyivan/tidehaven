@@ -106,7 +106,7 @@ func _run() -> void:
 	check(not restored.restore(malformed), "malformed claim flags reject atomically")
 	var old: Dictionary = world.snapshot()
 	old.version = 10
-	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old.erase(v14_key)
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories","chronicles"]:old.erase(v14_key)
 	for v14_player in old.players.values():
 		v14_player.erase("room");v14_player.area="island";v14_player.x=Map.LANDMARKS.townhall.door.x;v14_player.y=Map.LANDMARKS.townhall.door.y
 	old.erase("threats")
@@ -123,7 +123,7 @@ func _run() -> void:
 
 	var previous: Dictionary = world.snapshot()
 	previous.version=11
-	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:previous.erase(v14_key)
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories","chronicles"]:previous.erase(v14_key)
 	for v14_player in previous.players.values():v14_player.erase("room");v14_player.area="island"
 	previous.erase("threats")
 	for player in previous.players.values(): player.erase("dive_status")

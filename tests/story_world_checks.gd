@@ -50,7 +50,7 @@ func _initialize()->void:
 	var loaded:=World.new()
 	check(loaded.restore(JSON.parse_string(JSON.stringify(w.snapshot()))),"full world accepts all finished stories in JSON")
 	check(loaded.data.stories==d.stories and loaded.data.journal==d.journal,"restore preserves all choices and friend rewards")
-	var old:=w.snapshot();old.version=15;old.erase("stories")
+	var old:=w.snapshot();old.version=15;old.erase("stories");old.erase("chronicles")
 	check(loaded.restore(JSON.parse_string(JSON.stringify(old))),"actual v15 shape migrates")
 	check(loaded.data.stories==Stories.create() and loaded.data.journal==d.journal and loaded.data.wardrobe==d.wardrobe,"v15 creates only missing personal story state")
 	var probe:=World.new();probe.join("host","测试")

@@ -3,9 +3,11 @@ signal chosen(profile:Dictionary)
 const UI=preload("res://scripts/ui_style.gd")
 const Appearance=preload("res://scripts/appearance.gd")
 const Player=preload("res://scripts/player_art.gd")
+const Portraits=preload("res://scripts/portrait_art.gd")
 var profile:Dictionary={}
 var labels:Array[Label]=[]
 var portraits:Array[TextureRect]=[]
+var bust_portrait:TextureRect
 var phase:=0.0
 const NAMES:=["体型","发型","发色","上衣","裤色","肤色"]
 
@@ -14,13 +16,17 @@ func _ready()->void:
 	mouse_filter=Control.MOUSE_FILTER_STOP
 	var shade:=ColorRect.new();shade.color=UI.SHADE;shade.size=size;add_child(shade)
 	UI.panel(self,Rect2(260,110,760,580))
-	UI.label(self,"你的模样",Rect2(300,140,600,42),30)
-	UI.label(self,"随时可在菜单换装，衣着不会影响能力。",Rect2(300,187,640,28),17,UI.MUTED)
-	UI.label(self,"四向行走预览",Rect2(314,400,260,28),18,UI.ACCENT)
-	var hint:=UI.label(self,"用右侧箭头自由搭配。\n确认后只更改你的角色；\n双人伙伴可以各自选择。",Rect2(302,447,276,94),17,UI.MUTED)
-	hint.autowrap_mode=TextServer.AUTOWRAP_WORD_SMART
+	UI.label(self,"你的模样 · 海港行装",Rect2(300,140,600,42),30)
+	UI.label(self,"近代海港劳动衣衫，随时可在菜单换装，衣着不会影响能力。",Rect2(300,187,660,28),17,UI.MUTED)
+	UI.icon(self,UI.atlas("cursors",Rect2(583,411,115,97)),Rect2(345,224,184,155))
+	bust_portrait=UI.icon(self,null,Rect2(386,238,102,102))
+	var scroll_tag:=UI.label(self,"海港旅人",Rect2(355,342,164,28),15,UI.INK)
+	scroll_tag.horizontal_alignment=HORIZONTAL_ALIGNMENT_CENTER
+	scroll_tag.vertical_alignment=VERTICAL_ALIGNMENT_CENTER
+	UI.label(self,"四向行走预览",Rect2(314,386,260,26),17,UI.ACCENT)
+	UI.label(self,"右侧箭头自由搭配；确认后只更改本人，\n双人可各自选择。",Rect2(302,520,285,54),15,UI.MUTED)
 	for i in 4:
-		var portrait:=TextureRect.new();portrait.position=Vector2(308+i*62,278);portrait.size=Vector2(48,96)
+		var portrait:=TextureRect.new();portrait.position=Vector2(308+i*62,414);portrait.size=Vector2(48,96)
 		portrait.texture_filter=CanvasItem.TEXTURE_FILTER_NEAREST;portrait.mouse_filter=Control.MOUSE_FILTER_IGNORE
 		add_child(portrait);portraits.append(portrait)
 	for i in Appearance.KEYS.size():
@@ -41,6 +47,7 @@ func _cycle(index:int,step:int)->void:
 
 func _refresh()->void:
 	Player.configure("preview",profile)
+	if bust_portrait!=null:bust_portrait.texture=Portraits.player_texture(profile)
 	for i in labels.size():labels[i].text="%s   %d / %d"%[NAMES[i],int(profile[Appearance.KEYS[i]])+1,Appearance.LIMITS[i]]
 	_update_portraits()
 

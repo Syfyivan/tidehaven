@@ -114,6 +114,7 @@ func _journal_and_dispatch() -> void:
 	var legacy:Dictionary = world.snapshot()
 	legacy.version = 15
 	legacy.erase("stories")
+	legacy.erase("chronicles")
 	check(restored.restore(legacy) and restored.data.stories.host.is_empty(), "v15 migrates without manufacturing completed stories")
 	check(Journal.talk(restored.data, "host", "chen_yu", introduction) == saved_day, "Old journal already met resident: ordinary dialogue without a reset introduction")
 	var point:Dictionary = Town.location("lin_sui", 600, data)

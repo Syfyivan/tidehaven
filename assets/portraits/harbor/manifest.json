@@ -1,0 +1,40 @@
+{
+  "files": [
+    {
+      "id": "player_male",
+      "file": "player_male.png",
+      "canvas": [
+        64,
+        64
+      ],
+      "sha256": "b2680a0bc38464d0d341b0e9931c778ac768abb70539e6de660a1e8fb9382090"
+    },
+    {
+      "id": "player_female",
+      "file": "player_female.png",
+      "canvas": [
+        64,
+        64
+      ],
+      "sha256": "29e2e9fb68f31db2ac04ec45a5eb49774de866bf93d63bbf2bfd75b47dbd835b"
+    },
+    {
+      "id": "yan_zhen",
+      "file": "yan_zhen.png",
+      "canvas": [
+        64,
+        64
+      ],
+      "sha256": "d81303ce8d2bec7c236253ddf29959229254a11e9b6734771e009941d9c60c87"
+    },
+    {
+      "id": "mu_tong",
+      "file": "mu_tong.png",
+      "canvas": [
+        64,
+        64
+      ],
+      "sha256": "2d1b792d34bf01bef003c118bf5c1dd2b4d573be544bd86a04d2d77169e70771"
+    }
+  ]
+}

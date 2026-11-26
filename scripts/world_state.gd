@@ -19,6 +19,7 @@ const Appearance=preload("res://scripts/appearance.gd")
 const Housing=preload("res://scripts/housing.gd")
 const Journal=preload("res://scripts/journal.gd")
 const ResidentStories=preload("res://scripts/resident_stories.gd")
+const LongStories=preload("res://scripts/long_stories.gd")
 const HomeLife=preload("res://scripts/home_life.gd")
 const OceanResidents=preload("res://scripts/ocean_residents.gd")
 var migration_notice := ""
@@ -64,7 +65,7 @@ func _init() -> void:
 		for gy in range(3, 6):
 			initial_tiles.append(_tile_key(gx, gy))
 	data = {
-		"version": 16, "wardrobe":Appearance.create(), "day": 1, "minute": 360.0, "elapsed": 0.0, "rooms": Rooms.create(), "gardens": Gardens.create(), "restaurant":Restaurant.create(),
+		"version": 17, "wardrobe":Appearance.create(), "day": 1, "minute": 360.0, "elapsed": 0.0, "rooms": Rooms.create(), "gardens": Gardens.create(), "restaurant":Restaurant.create(),
 		"navigation": Navigation.create(), "chart": Archipelago.create(Navigation.create()), "island": IslandState.create(),
 		"money": 0, "chests": {}, "deck_tiles": initial_tiles,
 		"structures": {"bedroll_0": _new_structure("bedroll_0", "bedroll", Vector2(416, 224))},
@@ -77,6 +78,7 @@ func _init() -> void:
 	data.housing=Housing.create(data)
 	data.journal=Journal.create()
 	data.stories=ResidentStories.create()
+	data.chronicles=LongStories.create()
 
 
 func _new_chest(id: String, label: String, point: Vector2, slots: Array, area := "deck") -> Dictionary:
@@ -708,6 +710,10 @@ func action(slot: String, verb: String, args: Dictionary = {}) -> String:
 	if verb.begins_with("ocean_"):return OceanResidents.action(data,player,slot,verb,args)
 	if verb=="spell":return OceanResidents.cast(data,player,slot,args)
 	if verb=="home_pack":return HomeLife.pack(data,player,args)
+	if verb=="yard_inspect":
+		return LongStories.inspect_yard(data) if player.area=="island" and _near(player,IslandMap.YARD_GATE,80.0) else "请走到荒院西侧门口再查看。"
+	if verb=="yard_style":
+		return LongStories.toggle_yard_style(data) if player.area=="island" and _near(player,IslandMap.YARD_GATE,80.0) else "请走到荒院西侧门口再调整门牌。"
 	if verb.begins_with("town_"):
 		return IslandTown.action(data, player, verb, args, slot)
 	if verb.begins_with("room_"):
@@ -1196,6 +1202,12 @@ func interaction_options(slot: String) -> Array:
 		return result
 	if player.area == "island":
 		result.append_array(IslandTown.options(data, player))
+		if _near(player, IslandMap.YARD_GATE, 80.0):
+			var hcy_step := int(LongStories.record(data).get("step", 0))
+			if data.island.homestead.rented and hcy_step == 0:
+				_option(result, "yard_inspect", "查看旧院门框刻痕")
+			elif hcy_step >= 5:
+				_option(result, "yard_style", "切换候潮院门牌（农庄／驿院）")
 		var chest_id := nearby_chest(slot)
 		if not chest_id.is_empty():
 			_option(result, "open_chest", "打开附近木箱", {"id": chest_id})
@@ -1563,7 +1575,7 @@ func restore(saved: Dictionary) -> bool:
 	migration_notice = ""
 	var pending_migration_notice := ""
 	# Build a fresh validated value; a rejected file must leave the live world untouched.
-	if not _integer(saved.get("version"), 1, 16) or not _integer(saved.get("day"), 1, 1000000):
+	if not _integer(saved.get("version"), 1, 17) or not _integer(saved.get("day"), 1, 1000000):
 		return false
 	var legacy := int(saved.version) == 1
 	var survival := int(saved.version) >= 3
@@ -1608,6 +1620,9 @@ func restore(saved: Dictionary) -> bool:
 	var stories:=ResidentStories.restore(saved.get("stories"),int(saved.day)) if int(saved.version)>=16 else ResidentStories.create()
 	if stories.is_empty():return false
 	if int(saved.version)>=16:world_keys.append("stories")
+	var chronicles:=LongStories.restore(saved.get("chronicles"),int(saved.day)) if int(saved.version)>=17 else LongStories.create()
+	if chronicles.is_empty():return false
+	if int(saved.version)>=17:world_keys.append("chronicles")
 	if not legacy and not _keys(saved, world_keys):
 		return false
 	if not _number(saved.get("minute"), 360.0, 1430.0) or not _number(saved.get("elapsed"), 0.0, 1.0e12):
@@ -1816,7 +1831,7 @@ func restore(saved: Dictionary) -> bool:
 	if not walkable:
 		return false
 	var restored_data := {
-		"version": 16, "wardrobe":wardrobe,"housing":housing,"journal":journal,"stories":stories, "rooms": rooms, "gardens": gardens, "restaurant":restaurant, "day": int(saved.day), "minute": float(saved.minute), "elapsed": float(saved.elapsed), "navigation": navigation, "chart": chart, "island": island,
+		"version": 17, "wardrobe":wardrobe,"housing":housing,"journal":journal,"stories":stories,"chronicles":chronicles, "rooms": rooms, "gardens": gardens, "restaurant":restaurant, "day": int(saved.day), "minute": float(saved.minute), "elapsed": float(saved.elapsed), "navigation": navigation, "chart": chart, "island": island,
 		"money": int(saved.money), "chests": chests, "expansion": int(saved.expansion),
 		"crop": {"stage": int(crop.stage), "progress": float(crop.progress), "watered": bool(crop.watered)},
 		"orders_filled": int(saved.get("orders_filled", 0)), "orders_limit": 3, "players": players, "entities": entities, "threats": threats,

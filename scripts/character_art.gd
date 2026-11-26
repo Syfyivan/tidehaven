@@ -5,9 +5,10 @@ const Player=preload("res://scripts/player_art.gd")
 const ROOT := "res://assets/vendor/stardew-island/characters/"
 const HOST: Texture2D = Player.MALE
 const GUEST: Texture2D = Player.FEMALE
+const HARBOR_ROOT := "res://assets/characters/harbor/"
 const NPC_SHEETS := {
 	"lu_zhou":preload(ROOT + "Alex.png"),
-	"mu_tong":preload(ROOT + "Leah.png"),
+	"mu_tong":preload(HARBOR_ROOT + "mu_tong.png"),
 	"gu_xing":preload(ROOT + "Maru.png"),
 	"xu_mian":preload(ROOT + "Emily.png"),
 	"chen_yu":preload(ROOT + "Elliott.png"),
@@ -20,7 +21,7 @@ const NPC_SHEETS := {
 	"su_qin":preload(ROOT + "Harvey.png"),
 	"tang_he":preload(ROOT + "Gus.png"),
 	"he_mu":preload(ROOT + "Robin.png"),
-	"yan_zhen":preload(ROOT + "Clint.png"),
+	"yan_zhen":preload(HARBOR_ROOT + "yan_zhen.png"),
 	"zhou_chao":preload(ROOT + "Willy.png"),
 	"tian_qing":preload(ROOT + "Marnie.png"),
 	"lu_yao":preload(ROOT + "Evelyn.png"),

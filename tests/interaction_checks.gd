@@ -44,7 +44,7 @@ func _initialize() -> void:
 	var restored=World.new()
 	_check(restored.restore(saved),"v12 deck furniture and inventory restore")
 	saved.version=11
-	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:saved.erase(v14_key)
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories","chronicles"]:saved.erase(v14_key)
 	for v14_player in saved.players.values():v14_player.erase("room")
 	saved.erase("threats")
 	for legacy_player in saved.players.values(): legacy_player.erase("dive_status")

@@ -18,7 +18,7 @@ var chest_before: Array = []
 func _ready() -> void:
 	main = get_parent()
 	role = str(main.cli["test-role"])
-	if not main.cli.has("save-path") or ProjectSettings.globalize_path(str(main.save_path)) in [ProjectSettings.globalize_path("user://world_v1.json"), ProjectSettings.globalize_path("user://world_v2.json"), ProjectSettings.globalize_path("user://world_v3.json"), ProjectSettings.globalize_path("user://world_v4.json"), ProjectSettings.globalize_path("user://world_v5.json"), ProjectSettings.globalize_path("user://world_v6.json"), ProjectSettings.globalize_path("user://world_v7.json"), ProjectSettings.globalize_path("user://world_v8.json"), ProjectSettings.globalize_path("user://world_v9.json"), ProjectSettings.globalize_path("user://world_v10.json"), ProjectSettings.globalize_path("user://world_v11.json"), ProjectSettings.globalize_path("user://world_v12.json"), ProjectSettings.globalize_path("user://world_v13.json"), ProjectSettings.globalize_path("user://world_v14.json"), ProjectSettings.globalize_path("user://world_v15.json"), ProjectSettings.globalize_path("user://world_v16.json")]:
+	if not main.cli.has("save-path") or ProjectSettings.globalize_path(str(main.save_path)) in [ProjectSettings.globalize_path("user://world_v1.json"), ProjectSettings.globalize_path("user://world_v2.json"), ProjectSettings.globalize_path("user://world_v3.json"), ProjectSettings.globalize_path("user://world_v4.json"), ProjectSettings.globalize_path("user://world_v5.json"), ProjectSettings.globalize_path("user://world_v6.json"), ProjectSettings.globalize_path("user://world_v7.json"), ProjectSettings.globalize_path("user://world_v8.json"), ProjectSettings.globalize_path("user://world_v9.json"), ProjectSettings.globalize_path("user://world_v10.json"), ProjectSettings.globalize_path("user://world_v11.json"), ProjectSettings.globalize_path("user://world_v12.json"), ProjectSettings.globalize_path("user://world_v13.json"), ProjectSettings.globalize_path("user://world_v14.json"), ProjectSettings.globalize_path("user://world_v15.json"), ProjectSettings.globalize_path("user://world_v16.json"), ProjectSettings.globalize_path("user://world_v17.json")]:
 		_fail("network tests require an isolated save path, never the player default")
 		return
 	start_ms = Time.get_ticks_msec()
@@ -32,7 +32,7 @@ func _ready() -> void:
 		# The survival playthrough separately proves gathering and constructing these from nothing.
 		var old: Dictionary = main.world.snapshot()
 		old.version = 2
-		for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old.erase(v14_key)
+		for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories","chronicles"]:old.erase(v14_key)
 		for v14_player in old.players.values():v14_player.erase("room")
 		old.erase("threats")
 		for player in old.players.values(): player.erase("dive_status")

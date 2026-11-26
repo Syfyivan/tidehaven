@@ -2,11 +2,12 @@ extends RefCounted
 ## Fixed appearances assembled from the original, matching farmer layers.
 ## No NPC heads, generated action bodies, resampling or per-frame body scaling.
 const ROOT := "res://assets/vendor/stardew-island/player/"
+const HARBOR_ROOT := "res://assets/characters/harbor/"
 const Appearance=preload("res://scripts/appearance.gd")
 const MALE := preload(ROOT + "farmer_base.png")
 const FEMALE := preload(ROOT + "farmer_girl_base.png")
-const HAIR := preload(ROOT + "hairstyles.png")
-const SHIRTS := preload(ROOT + "shirts.png")
+const HAIR := preload(HARBOR_ROOT + "harbor_hairstyles.png")
+const SHIRTS := preload(HARBOR_ROOT + "harbor_shirts.png")
 const PANTS := preload(ROOT + "pants.png")
 const SKIN := preload(ROOT + "skinColors.png")
 const SHOES := preload(ROOT + "shoeColors.png")
@@ -65,12 +66,13 @@ static func _palette(slot:String)->Dictionary:
 	var base:=_image(MALE if _male(who) else FEMALE)
 	var result:Dictionary={}
 	for i in 3:result[base.get_pixel(260+i,0).to_rgba32()]=_image(SKIN).get_pixel(i,int(spec.skin))
-	for i in 4:result[base.get_pixel(268+i,0).to_rgba32()]=_image(SHOES).get_pixel(i,int(spec.shoes))
-	var shirt_at:=Vector2i(int(spec.shirt)%16*8,int(spec.shirt)/16*32)
+	var cloth_shoes:=[Color("ded6c3"),Color("343a46"),Color("242932"),Color("191c22")]
+	for i in 4:result[base.get_pixel(268+i,0).to_rgba32()]=cloth_shoes[i]
+	var shirt_at:=Vector2i(int(spec.shirt)*8,0)
 	for i in 3:
-		result[base.get_pixel(256+i,0).to_rgba32()]=_image(SHIRTS).get_pixel(shirt_at.x,shirt_at.y+4-i)
-	result[base.get_pixel(276,0).to_rgba32()]=Color("69764c")
-	result[base.get_pixel(277,0).to_rgba32()]=Color("263525")
+		result[base.get_pixel(256+i,0).to_rgba32()]=_image(SHIRTS).get_pixel(shirt_at.x,4-i)
+	result[base.get_pixel(276,0).to_rgba32()]=Color("3b2721")
+	result[base.get_pixel(277,0).to_rgba32()]=Color("1a1110")
 	_palettes[who]=result
 	return result
 
@@ -88,7 +90,10 @@ static func _tinted(source:Image,tint:Color)->Image:
 	for y in result.get_height():
 		for x in result.get_width():
 			var pixel:=result.get_pixel(x,y)
-			if pixel.a>0:result.set_pixel(x,y,pixel*tint)
+			if pixel.a>0:
+				var spread:=maxf(pixel.r,maxf(pixel.g,pixel.b))-minf(pixel.r,minf(pixel.g,pixel.b))
+				if spread<0.08:
+					result.set_pixel(x,y,Color(pixel.r*tint.r,pixel.g*tint.g,pixel.b*tint.b,1.0))
 	return result
 
 static func _over(target:Image,source:Image,at:Vector2i=Vector2i.ZERO)->void:
@@ -114,17 +119,15 @@ static func _texture(slot:String,direction:int,frame:int,arms_only:bool)->Textur
 	_over(body,trousers)
 	var feature_x:int=-1 if frame==48 else 0
 	var feature_y:int=int(FEATURE_Y.get(frame,0))
-	var shirt_at:=Vector2i(int(spec.shirt)%16*8,int(spec.shirt)/16*32+int([0,16,8,24][direction]))
+	var shirt_at:=Vector2i(int(spec.shirt)*8,int([0,16,8,24][direction]))
 	var shirt:=_image(SHIRTS).get_region(Rect2i(shirt_at,Vector2i(8,8)))
-	var shirt_dye:=_image(SHIRTS).get_region(Rect2i(shirt_at+Vector2i(128,0),Vector2i(8,8)))
 	var shirt_position:=Vector2i(4+(-feature_x if direction==1 else feature_x),14+feature_y)
 	_over(body,shirt,shirt_position)
-	_over(body,shirt_dye,shirt_position)
 	if direction==3:_over(body,arms)
-	var hair_at:=Vector2i(int(spec.hair)%8*16,int(spec.hair)/8*96+int([0,32,32,64][direction]))
+	var hair_at:=Vector2i(int(spec.hair)*16,int([0,32,32,64][direction]))
 	var hair:=_tinted(_image(HAIR).get_region(Rect2i(hair_at,SIZE)),spec.hair_color)
 	if direction==1:hair.flip_x()
-	var gender_y:int=-1 if _male(who) and int(spec.hair)>=16 else (1 if not _male(who) and int(spec.hair)<16 else 0)
+	var gender_y:int=1 if not _male(who) else 0
 	_over(body,hair,Vector2i(-feature_x if direction==1 else feature_x,feature_y+gender_y+(1 if direction==3 else 0)))
 	if direction!=3:_over(body,arms)
 	_frames[key]=ImageTexture.create_from_image(body)

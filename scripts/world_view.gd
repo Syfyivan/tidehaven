@@ -983,10 +983,28 @@ func _draw_beacon(at:Vector2)->void:
 func _draw_yard(bounds: Rect2) -> void:
 	var gate: Vector2 = IslandMap.YARD_GATE
 	if bounds.has_point(gate):
+		var hcy: Dictionary = state.get("chronicles", {}).get("hou_chao_yuan", {})
+		var step := int(hcy.get("step", 0))
+		var style := str(hcy.get("style", ""))
+		var plaque := "候潮驿院" if step >= 5 and style == "inn" else ("候潮农庄" if step >= 5 and style == "farm" else "旧院")
 		draw_texture_rect(IslandArt.region(IslandArt.season(int(state.get("day", 1))), Rect2i(144, 256, 32, 32)), Rect2(gate + Vector2(-57, -92), Vector2(48, 48)), false)
-		_label("旧院", gate + Vector2(-34, -60), Color("f1d6a6"), 11)
+		_label(plaque, gate + Vector2(-33, -60), Color("f1d6a6"), 10 if plaque.length() > 2 else 11)
+		if step >= 5 and style == "farm":
+			_shadow(gate + Vector2(-46, -24), Vector2(10, 4), Color(0.20, 0.24, 0.16, 0.26))
+			_r(gate + Vector2(-54, -36), Vector2(16, 12), Color("8f683b"))
+			_r(gate + Vector2(-52, -34), Vector2(12, 8), Color("b88b52"))
+			_r(gate + Vector2(-50, -38), Vector2(8, 4), Color("759965"))
+		elif step >= 5 and style == "inn":
+			_r(gate + Vector2(-47, -52), Vector2(3, 28), Color("6b4f35"))
+			_r(gate + Vector2(-51, -56), Vector2(11, 8), Color("d9b468") if float(state.get("minute", 360.0)) >= 1080.0 else Color("9e8f73"))
+			if float(state.get("minute", 360.0)) >= 1080.0:
+				draw_circle(gate + Vector2(-46, -52), 24, Color(1.0, 0.85, 0.45, 0.14))
+				draw_circle(gate + Vector2(-46, -52), 8, Color(1.0, 0.92, 0.66, 0.30))
 		if _near(gate, 130):
-			_label("你们的院子" if state.island.homestead.rented else "荒废的院子 · 镇长在东街", gate + Vector2(42, 48), CREAM, 12)
+			if state.island.homestead.rented and step == 0:
+				_label("你们的院子 · 门柱留有旧刻痕（右键查看）", gate + Vector2(118, 20), CREAM, 12)
+			else:
+				_label((plaque + " · 你们的院子") if state.island.homestead.rented else "荒废的院子 · 镇长在东街", gate + Vector2(82, 20), CREAM, 12)
 
 func _draw_fence(at: Vector2, horizontal: bool) -> void:
 	var rect: Rect2i = IslandArt.REGIONS.fence_h if horizontal else IslandArt.REGIONS.fence_v

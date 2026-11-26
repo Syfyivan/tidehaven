@@ -46,7 +46,7 @@ func _fixture() -> bool:
 	world.data.players.guest.can_water = 5
 	old_save = world.snapshot()
 	old_save.version = 9
-	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old_save.erase(v14_key)
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories","chronicles"]:old_save.erase(v14_key)
 	for v14_player in old_save.players.values():v14_player.erase("room")
 	old_save.erase("threats")
 	for player in old_save.players.values(): player.erase("dive_status")
@@ -133,7 +133,7 @@ func _test_conflicts_and_roundtrip() -> void:
 	if not _check(restored.restore(source), "valid v9 crop and landed-player fixture migrates to v10"):
 		return
 	_check(source == before, "migration does not mutate its original saved dictionary or nested crop records")
-	_check(int(restored.data.version) == 16 and not restored.migration_notice.is_empty(), "successful conflicting migration upgrades version and explicitly reports the moved plots")
+	_check(int(restored.data.version) == 17 and not restored.migration_notice.is_empty(), "successful conflicting migration upgrades version and explicitly reports the moved plots")
 	_check(restored.data.island.plots.size() == source.island.plots.size(), "migration neither loses nor duplicates any crop cell")
 	var reserved: Dictionary = {}
 	for key: String in stable_keys:
@@ -270,7 +270,7 @@ func _test_rejections() -> void:
 	cases.append([bad, "invalid old player water positions cannot use the safe-dock migration shortcut"])
 	bad = old_save.duplicate(true)
 	bad.version = 10
-	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:bad.erase(v14_key)
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories","chronicles"]:bad.erase(v14_key)
 	for v14_player in bad.players.values():v14_player.erase("room")
 	cases.append([bad, "v10 cannot reuse the v9 exception to admit farmland inside current water or buildings"])
 	for entry: Array in cases:

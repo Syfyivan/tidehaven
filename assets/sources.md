@@ -1,5 +1,11 @@
 # Tidehaven artwork sources
 
+## 0.19 海港人物样板、海上伙伴肖像与原创基础音效（2026-11-26）
+
+- **5位海上伙伴肖像与近代中国海港人物肖像**（`assets/portraits/ocean/*.png`、`assets/portraits/harbor/*.png`）：由内置 `image_gen` 生成原创像素画母稿，再经 `tools/build-019-art.py` 统一量化为严格二值透明 `64×64` 原生像素画布；不含任何商业游戏解包图。逐文件尺寸与 SHA256 见对应目录 `manifest.json` 与 `SOURCE.md`。
+- **海港世界角色与玩家衣发图层**（`assets/characters/harbor/yan_zhen.png`、`mu_tong.png`、`harbor_hairstyles.png`、`harbor_shirts.png`）：由项目脚本 `tools/build-019-art.py` 绘制的原创 `16×32` 网格像素素材（二值透明、固定脚点 `(8,31)`），玩家身体底图与手臂挥斧层继续在本地存在授权归档时复用 `vendor/stardew-island/player`（缺本地归档时自动使用程序内置人形兜底），不重新分发任何受限第三方原图。
+- **游戏基础音效与环境声**（`assets/audio/*.wav`）：由 `tools/generate-audio.py` 纯数学合成的 15 份原创 16-bit 22,050Hz PCM `.wav` 文件（无外部采样库或第三方音频依赖），逐文件时长与 SHA256 见 `assets/audio/manifest.json` 与 `SOURCE.md`。
+
 ## 0.18 对话与菜单
 
 沿用用户确认的ffffhx/stardew-valley-assets授权；固定提交0c31854d40fcc1f6b60b35ac07b7c9686b82b226。新增18张未改像素Portraits、MenuTiles与Cursors，哈希/画布见vendor/stardew-island/dialogue-manifest.json，复原tools/import-dialogue-art.py，裁切来源见该目录SOURCE.md。镇民肖像与身体同源，5位海上伙伴肖像仍需补画。广场仅运行时去原生石沿烘焙草背景，掩码与四季原像素验证见terrain-seams-0.18；不改原PNG，不扩大授权声明。

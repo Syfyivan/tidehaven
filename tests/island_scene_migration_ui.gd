@@ -24,7 +24,7 @@ func _run() -> void:
 	await _click(main.return_title_button.get_global_rect().get_center())
 	var historical:Dictionary=JSON.parse_string(FileAccess.get_file_as_string(main.save_path))
 	historical.version=11;historical.state.version=11
-	for key in ["rooms","gardens","restaurant","threats","wardrobe","housing","journal","stories"]:historical.state.erase(key)
+	for key in ["rooms","gardens","restaurant","threats","wardrobe","housing","journal","stories","chronicles"]:historical.state.erase(key)
 	for player in historical.state.players.values():player.erase("room");player.erase("dive_status")
 	var file:=FileAccess.open(main.save_path,FileAccess.WRITE);file.store_string(JSON.stringify(historical));file.close()
 	var original:=FileAccess.get_file_as_string(main.save_path)

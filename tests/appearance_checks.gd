@@ -9,7 +9,7 @@ func check(ok:bool,label:String)->void:
 	if not ok:failures+=1;push_error("FAIL "+label)
 func _init()->void:
 	var world:=World.new();world.join("host","测试");world.join("guest","伙伴")
-	var old:=world.snapshot();old.version=14;old.erase("wardrobe");old.erase("housing");old.erase("journal");old.erase("stories")
+	var old:=world.snapshot();old.version=14;old.erase("wardrobe");old.erase("housing");old.erase("journal");old.erase("stories");old.erase("chronicles")
 	var migrated:=World.new();check(migrated.restore(JSON.parse_string(JSON.stringify(old))),"v14 copy migrates")
 	check(migrated.data.wardrobe==Appearance.create(),"old identity preserved")
 	var guest_before:Dictionary=world.data.wardrobe.guest.duplicate()

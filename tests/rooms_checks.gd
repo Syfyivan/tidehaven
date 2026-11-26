@@ -66,7 +66,7 @@ func _initialize()->void:
 		check(not restored.restore(bad),"reject "+corruption)
 		check(restored.snapshot()==before,"reject preserves live world "+corruption)
 	var legacy:Dictionary=saved.duplicate(true);legacy.version=13;legacy.erase("rooms");legacy.erase("gardens")
-	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:legacy.erase(v14_key)
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories","chronicles"]:legacy.erase(v14_key)
 	for v14_player in legacy.players.values():v14_player.erase("room")
 	for other:Dictionary in legacy.players.values():other.erase("room")
 	check(restored.restore(legacy),"v13 migration")

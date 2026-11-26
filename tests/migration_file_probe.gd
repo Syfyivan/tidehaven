@@ -6,7 +6,7 @@ func _initialize() -> void:
 	_run.call_deferred()
 
 func _progress(state: Dictionary) -> Dictionary:
-	return {"island": state.island.duplicate(true), "host_water": state.players.host.can_water, "guest_water": state.players.guest.can_water, "day": state.day, "money": state.money, "crop": state.crop.duplicate(true), "tiles": state.deck_tiles.duplicate(), "structures": state.structures.duplicate(true), "chests": state.chests.duplicate(true), "host_bag": state.players.host.bag.duplicate(true), "guest_bag": state.players.guest.bag.duplicate(true), "entities": state.entities.duplicate(true), "wardrobe":state.wardrobe.duplicate(true), "housing":state.housing.duplicate(true), "journal":state.journal.duplicate(true), "stories":state.stories.duplicate(true), "rooms":state.rooms.duplicate(true), "gardens":state.gardens.duplicate(true), "restaurant":state.restaurant.duplicate(true)}
+	return {"island": state.island.duplicate(true), "host_water": state.players.host.can_water, "guest_water": state.players.guest.can_water, "day": state.day, "money": state.money, "crop": state.crop.duplicate(true), "tiles": state.deck_tiles.duplicate(), "structures": state.structures.duplicate(true), "chests": state.chests.duplicate(true), "host_bag": state.players.host.bag.duplicate(true), "guest_bag": state.players.guest.bag.duplicate(true), "entities": state.entities.duplicate(true), "wardrobe":state.wardrobe.duplicate(true), "housing":state.housing.duplicate(true), "journal":state.journal.duplicate(true), "stories":state.stories.duplicate(true), "chronicles":state.chronicles.duplicate(true), "rooms":state.rooms.duplicate(true), "gardens":state.gardens.duplicate(true), "restaurant":state.restaurant.duplicate(true)}
 
 func _run() -> void:
 	var arguments := {}
@@ -40,9 +40,9 @@ func _run() -> void:
 	success = success and game._persist() and game._start("solo", true)
 	success = success and _progress(game.world.data) == _progress(expected.data)
 	var written: Variant = JSON.parse_string(FileAccess.get_file_as_string(destination))
-	success = success and written is Dictionary and written.get("version") == 16 and written.get("state") is Dictionary and written.state.get("version") == 16 and FileAccess.get_file_as_string(source) == original
+	success = success and written is Dictionary and written.get("version") == 17 and written.get("state") is Dictionary and written.state.get("version") == 17 and FileAccess.get_file_as_string(source) == original
 	game.mode = "menu"
 	game.queue_free()
 	await process_frame
-	print("MIGRATION FILE ", "PASS" if success else "FAIL", ": v", int(wrapper.get("version", 0)), " source preserved; inventories, layouts, crops, resources, appearances and stories survive v16 write/reload")
+	print("MIGRATION FILE ", "PASS" if success else "FAIL", ": v", int(wrapper.get("version", 0)), " source preserved; inventories, layouts, crops, resources, appearances, stories and chronicles survive v17 write/reload")
 	quit(0 if success else 1)

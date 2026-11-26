@@ -55,8 +55,21 @@ static func line(data:Dictionary, slot:String, id:String) -> String:
 	var pool:Array = BASIC[id].duplicate()
 	var followup:String = progress(data, slot, id)
 	if not followup.is_empty(): pool.append(followup)
+	var chronicle:String = chronicle_line(data, id)
+	if not chronicle.is_empty(): pool.append(chronicle)
 	var index:int = posmod(int(data.get("day", 1)) + BASIC.keys().find(id), pool.size())
 	return str(pool[index])
+
+static func chronicle_line(data:Dictionary, id:String) -> String:
+	var hcy:Dictionary = data.get("chronicles", {}).get("hou_chao_yuan", {})
+	if int(hcy.get("step", 0)) != 5: return ""
+	var inn:bool = str(hcy.get("style", "")) == "inn"
+	match id:
+		"xu_an": return "候潮驿院那盏门灯傍晚亮起来很显眼，岑婆听说了准高兴。" if inn else "候潮农庄的木牌挂正了。路过西门看见那只竹篮，就知道这院子真有人气了。"
+		"he_mu": return "门廊那根横木顶稳了，挂风灯正合适，海风吹不晃。" if inn else "门廊横木加固过了，那只旧木匣的榫头我现在还记着。"
+		"qiao_xin": return "现在往东南送信好认多了，看见候潮驿院的灯就知道没走岔。" if inn else "岑婆回信字大又清楚，比那些只写半行地址的省心多啦。"
+		"lu_yao": return "指路图上我已经把『旧院』改成现在的候潮院名号了。"
+	return ""
 
 static func progress(data:Dictionary, slot:String, id:String) -> String:
 	if slot not in ["host", "guest"] or not BASIC.has(id): return ""

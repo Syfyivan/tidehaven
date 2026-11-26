@@ -1,0 +1,140 @@
+{
+  "generator": "tools/generate-audio.py",
+  "files": [
+    {
+      "file": "ui_click.wav",
+      "description": "Warm wooden tap for buttons, slots and panel toggles",
+      "sample_rate": 22050,
+      "frames": 1212,
+      "seconds": 0.055,
+      "bytes": 2468,
+      "sha256": "d3979afcb4d622580cac38da77dc367fcd7d0f7252b693b2bbaae4560959b428"
+    },
+    {
+      "file": "dialogue_open.wav",
+      "description": "Soft two-note reed chime when opening conversation",
+      "sample_rate": 22050,
+      "frames": 2094,
+      "seconds": 0.095,
+      "bytes": 4232,
+      "sha256": "ee0555b076f0b821d19728579676e693164ffcb39471705d13bcf035eac3835a"
+    },
+    {
+      "file": "hook_cast.wav",
+      "description": "Rope cast whoosh for salvage hook and fishing rod",
+      "sample_rate": 22050,
+      "frames": 4189,
+      "seconds": 0.19,
+      "bytes": 8422,
+      "sha256": "87aff5ae1f9c7cc4773bfb50e90f78ed65b6167c71bef223e2644a81690cd5de"
+    },
+    {
+      "file": "splash.wav",
+      "description": "Water splash on diving, surfacing and hook contact",
+      "sample_rate": 22050,
+      "frames": 6615,
+      "seconds": 0.3,
+      "bytes": 13274,
+      "sha256": "0fe6b8b2770095403b2f9924bd0cc3f86f5fc1f14baa0898ca77392e57e78f85"
+    },
+    {
+      "file": "pickup.wav",
+      "description": "Rising wood marimba fifth on confirmed item gain",
+      "sample_rate": 22050,
+      "frames": 3748,
+      "seconds": 0.17,
+      "bytes": 7540,
+      "sha256": "dc05bd4fea50db6c0f86e7f4321c8d1b6589ee6b68c3c4b17347bb50cbf59e86"
+    },
+    {
+      "file": "build.wav",
+      "description": "Double wooden mallet knock on confirmed deck/facility placement",
+      "sample_rate": 22050,
+      "frames": 5071,
+      "seconds": 0.23,
+      "bytes": 10186,
+      "sha256": "0837654e63ac9635876cbe3b175f4f7e30ffc3c472361657c96202b3843d482b"
+    },
+    {
+      "file": "chop_hit.wav",
+      "description": "Crisp timber axe impact synchronized with blade contact",
+      "sample_rate": 22050,
+      "frames": 2535,
+      "seconds": 0.115,
+      "bytes": 5114,
+      "sha256": "0c735f402b0253f12bed61ab09dcd21c8ae9930d6e64a2918469c8f3fe49f6bd"
+    },
+    {
+      "file": "tree_fall.wav",
+      "description": "Timber creak and soft fall on confirmed tree depletion",
+      "sample_rate": 22050,
+      "frames": 10143,
+      "seconds": 0.46,
+      "bytes": 20330,
+      "sha256": "38a32c9a61269c5842aef8abcb57a74e47be6179b43f00ba0376a4a016eba8c9"
+    },
+    {
+      "file": "mine_hit.wav",
+      "description": "Pickaxe stone/ore clink synchronized with mining swing",
+      "sample_rate": 22050,
+      "frames": 2866,
+      "seconds": 0.13,
+      "bytes": 5776,
+      "sha256": "fd8f631e13afef88e534aa5e9cc1b5a90cd284ab339534de2b84d952abb554f3"
+    },
+    {
+      "file": "spear.wav",
+      "description": "Underwater harpoon thrust whoosh",
+      "sample_rate": 22050,
+      "frames": 3528,
+      "seconds": 0.16,
+      "bytes": 7100,
+      "sha256": "654c9ed02c1bff03bbccad1552cee01582c9cad42bd4112691b214c2f3610331"
+    },
+    {
+      "file": "alert.wav",
+      "description": "Muted two-tone underwater warning for threat windup or low oxygen",
+      "sample_rate": 22050,
+      "frames": 5292,
+      "seconds": 0.24,
+      "bytes": 10628,
+      "sha256": "d7bec3ad63361683b7f126e56bc8db6889ed89f74ca455f7b28ef5aefd49ce01"
+    },
+    {
+      "file": "craft_ready.wav",
+      "description": "Warm bell triad when processing finishes or new day begins",
+      "sample_rate": 22050,
+      "frames": 7056,
+      "seconds": 0.32,
+      "bytes": 14156,
+      "sha256": "398e82f917e139e14ea88df3905170329c1cd612cf8e9f46a5381831f739954b"
+    },
+    {
+      "file": "sea_ambient.wav",
+      "description": "Seamless 4s ocean wave swell ambient loop",
+      "sample_rate": 22050,
+      "frames": 88200,
+      "seconds": 4.0,
+      "bytes": 176444,
+      "sha256": "4531e1157da879cdaeacafa4879c4d5c00cad1cc76d3ba3db70a097fa8fa43b4"
+    },
+    {
+      "file": "underwater_ambient.wav",
+      "description": "Seamless 4s deep underwater current loop",
+      "sample_rate": 22050,
+      "frames": 88200,
+      "seconds": 4.0,
+      "bytes": 176444,
+      "sha256": "268bc2f2f90a14c969da1f624dd293b0dc74480d4ab7b23b925b488b09fe6bb9"
+    },
+    {
+      "file": "island_ambient.wav",
+      "description": "Seamless 4s coastal island breeze loop",
+      "sample_rate": 22050,
+      "frames": 88200,
+      "seconds": 4.0,
+      "bytes": 176444,
+      "sha256": "08bcc92fb8cc5172a75c77f26de0ea01727272a9aaad21e574ed328617212138"
+    }
+  ]
+}

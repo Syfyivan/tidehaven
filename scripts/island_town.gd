@@ -10,6 +10,7 @@ const Rooms = preload("res://scripts/rooms.gd")
 const Housing=preload("res://scripts/housing.gd")
 const Journal=preload("res://scripts/journal.gd")
 const PersonalStories=preload("res://scripts/resident_stories.gd")
+const LongStories=preload("res://scripts/long_stories.gd")
 const REACH := 64.0
 const MONEY_LIMIT := 1000000000
 const BATH_SECONDS := 8.0
@@ -97,6 +98,7 @@ static func options(data: Dictionary, player: Dictionary) -> Array:
 		var npc: Dictionary = NPCS[npc_id]
 		result.append({"action": "town_talk", "label": "%s · %s · 聊聊" % [npc.name, npc.role], "args": {"id": npc_id}})
 		result.append_array(PersonalStories.entries(data,"host" if is_same(player,data.players.host) else "guest",npc_id))
+		result.append_array(LongStories.entries(data,npc_id))
 		if not open_at(npc_id, float(data.minute)):
 			continue
 		if npc_id=="he_mu":result.append_array(Housing.choices(data))
@@ -117,11 +119,13 @@ static func options(data: Dictionary, player: Dictionary) -> Array:
 
 
 static func action(data: Dictionary, player: Dictionary, verb: String, args: Dictionary, slot: String = "") -> String:
-	if verb not in ["town_talk", "town_trade", "town_treat", "town_bath", "town_rent", "town_claim", "town_shop", "town_supply","town_home_repair","town_home_expand","town_invite","town_errand_accept","town_errand_finish","town_gift","town_story_accept","town_story_finish","town_personal_open","town_personal_reply"]:
+	if verb not in ["town_talk", "town_trade", "town_treat", "town_bath", "town_rent", "town_claim", "town_shop", "town_supply","town_home_repair","town_home_expand","town_invite","town_errand_accept","town_errand_finish","town_gift","town_story_accept","town_story_finish","town_personal_open","town_personal_reply","town_chronicle_open","town_chronicle_reply"]:
 		return "这里没有这个小镇服务。"
 	var keys: Array = ["id", "offer"] if verb in ["town_trade","town_supply"] else ["id"]
 	if verb=="town_personal_open":keys=["id","story","step"]
 	if verb=="town_personal_reply":keys=["id","story","step","reply"]
+	if verb=="town_chronicle_open":keys=["id","arc","step"]
+	if verb=="town_chronicle_reply":keys=["id","arc","step","reply"]
 	if args.size() != keys.size() or not args.has_all(keys) or not args.get("id") is String or not NPCS.has(args.id):
 		return "请选择附近的居民。"
 	var npc_id: String = args.id
@@ -133,6 +137,10 @@ static func action(data: Dictionary, player: Dictionary, verb: String, args: Dic
 		if player.get("resting",false) or player.get("sleep_ready",false):return "先起身再聊吧。"
 		if not player.get("activity",{}).is_empty() or not player.get("hook",{}).is_empty() or not player.get("fishing",{}).is_empty():return "先完成手上的动作，或右键取消。"
 		return str(npc.name)+"："+(PersonalStories.open(data,slot,args) if verb=="town_personal_open" else PersonalStories.action(data,player,slot,args))
+	if verb in ["town_chronicle_open","town_chronicle_reply"]:
+		if player.get("resting",false) or player.get("sleep_ready",false):return "先起身再聊吧。"
+		if not player.get("activity",{}).is_empty() or not player.get("hook",{}).is_empty() or not player.get("fishing",{}).is_empty():return "先完成手上的动作，或右键取消。"
+		return str(npc.name)+"："+(LongStories.open(data,str(npc.name),args) if verb=="town_chronicle_open" else LongStories.action(data,player,slot,args))
 	if verb in ["town_rent", "town_claim"]:
 		return _homestead(data, player, slot, npc_id, verb)
 	if verb == "town_talk":

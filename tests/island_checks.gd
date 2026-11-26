@@ -110,7 +110,7 @@ func _legacy_island(stage := 0, progress := 0.0, watered := false) -> Dictionary
 func _old_island_save(world, version: int, stage := 0, progress := 0.0, watered := false) -> Dictionary:
 	var old: Dictionary = world.snapshot()
 	old.version = version
-	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old.erase(v14_key)
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories","chronicles"]:old.erase(v14_key)
 	for v14_player in old.players.values():v14_player.erase("room")
 	old.erase("threats")
 	for legacy_player in old.players.values(): legacy_player.erase("dive_status")
@@ -126,7 +126,7 @@ func _old_island_save(world, version: int, stage := 0, progress := 0.0, watered 
 
 func _test_landing_and_chart() -> void:
 	var world = _world()
-	_check(world.data.version == 16 and Archipelago.origin(world.data.chart) == Vector2.ZERO and not world.data.chart.visited, "v9 creates a fixed chart origin without claiming an island visit")
+	_check(world.data.version == 17 and Archipelago.origin(world.data.chart) == Vector2.ZERO and not world.data.chart.visited, "v9 creates a fixed chart origin without claiming an island visit")
 	_check(Archipelago.island_position(world.data.chart) == Vector2(520, 120), "first docking target uses the agreed 520,120 navigation offset")
 	_place(world, "host", "deck", Vector2(544, 352))
 	var before: Dictionary = world.snapshot()
@@ -350,7 +350,7 @@ func _test_save_and_migration() -> void:
 	world.tick(4.5)
 	var saved: Dictionary = _canonical(world.snapshot())
 	var loaded = WorldState.new()
-	_check(loaded.restore(saved) and loaded.data.version == 16 and loaded.data.players.host.area == "island" and _point(loaded.data.players.host) == point, "v9 JSON restoration retains a valid landed player's actual location")
+	_check(loaded.restore(saved) and loaded.data.version == 17 and loaded.data.players.host.area == "island" and _point(loaded.data.players.host) == point, "v9 JSON restoration retains a valid landed player's actual location")
 	_check(loaded.data.island == world.data.island, "JSON roundtrip normalizes regrowth days to the same integer-valued island state")
 	loaded.join("host", "船长")
 	_check(loaded.data.players.host.area == "island" and _point(loaded.data.players.host) == point, "Continue joins the saved island position while the raft is still safely docked")
@@ -368,7 +368,7 @@ func _test_save_and_migration() -> void:
 	old_world.data.navigation.distance = 980.125
 	var old: Dictionary = old_world.snapshot()
 	old.version = 6
-	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old.erase(v14_key)
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories","chronicles"]:old.erase(v14_key)
 	for v14_player in old.players.values():v14_player.erase("room")
 	old.erase("threats")
 	for legacy_player in old.players.values(): legacy_player.erase("dive_status")
@@ -393,7 +393,7 @@ func _test_save_and_migration() -> void:
 		old = _old_island_save(old_world, version, 1 if version == 7 else 2, 0.5 if version == 7 else 1.0, true)
 		old.island.resources.ore_0 = false
 		old.island.resources.palm_0 = false
-		_check(loaded.restore(_canonical(old)) and loaded.data.version == 16 and loaded.data.island.depleted.ore_0 == old.day + 1 and loaded.data.island.depleted.palm_0 == old.day + 1 and loaded.data.island.plots.size() == 1, "actual v%d island resources/crop shape migrates to sparse depletion and one existing crop" % version)
+		_check(loaded.restore(_canonical(old)) and loaded.data.version == 17 and loaded.data.island.depleted.ore_0 == old.day + 1 and loaded.data.island.depleted.palm_0 == old.day + 1 and loaded.data.island.plots.size() == 1, "actual v%d island resources/crop shape migrates to sparse depletion and one existing crop" % version)
 		var migrated: Dictionary = loaded.data.island.plots.values()[0]
 		_check(migrated.crop == "seed" and migrated.growth == (2 if version == 7 else 4) and migrated.watered and loaded.data.players.host.can_water == 0 and loaded.data.players.host.bag == old.players.host.bag and loaded.data.players.guest.bag == old.players.guest.bag, "legacy crop progress, original bags and a new empty water counter survive v%d migration" % version)
 		var migrated_island: Dictionary = _canonical(loaded.data.island)
@@ -484,7 +484,7 @@ func _test_invalid_saves() -> void:
 	invalid.append({"state": bad, "label": "an online landed player requires the anchored raft to remain in docking range"})
 	bad = baseline.duplicate(true)
 	bad.version = 6
-	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:bad.erase(v14_key)
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories","chronicles"]:bad.erase(v14_key)
 	for v14_player in bad.players.values():v14_player.erase("room")
 	bad.players.host.area = "deck"
 	bad.players.host.x = 544.0

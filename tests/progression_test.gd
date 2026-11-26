@@ -250,7 +250,7 @@ func _test_migration_and_restore() -> void:
 	var world = _world()
 	var old: Dictionary = world.snapshot()
 	old.version = 3
-	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old.erase(v14_key)
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories","chronicles"]:old.erase(v14_key)
 	for v14_player in old.players.values():v14_player.erase("room")
 	old.erase("threats")
 	for legacy_player in old.players.values(): legacy_player.erase("dive_status")
@@ -266,11 +266,11 @@ func _test_migration_and_restore() -> void:
 	old.entities.fish_00.active = false
 	old.players.host.hook = {"id": "drift_06", "remaining": 1.0, "x": old.drift.drift_06.x, "y": old.drift.drift_06.y}
 	var loaded = WorldState.new()
-	_check(loaded.restore(JSON.parse_string(JSON.stringify(old))) and loaded.data.version == 16 and loaded.data.entities.size() == 30 and not loaded.data.entities.fish_00.active, "v3 migration adds mineral and wreck nodes while preserving previous harvests")
+	_check(loaded.restore(JSON.parse_string(JSON.stringify(old))) and loaded.data.version == 17 and loaded.data.entities.size() == 30 and not loaded.data.entities.fish_00.active, "v3 migration adds mineral and wreck nodes while preserving previous harvests")
 	_check(loaded.data.players.host.hook.is_empty() and loaded.data.players.host.activity.is_empty() and loaded.data.drift.drift_06.active, "migrating an old in-progress hook cancels the old action without consuming its resource")
 	old = world.snapshot()
 	old.version = 2
-	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old.erase(v14_key)
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories","chronicles"]:old.erase(v14_key)
 	for v14_player in old.players.values():v14_player.erase("room")
 	old.erase("threats")
 	for legacy_player in old.players.values(): legacy_player.erase("dive_status")
@@ -284,7 +284,7 @@ func _test_migration_and_restore() -> void:
 			player.erase(key)
 		player.x = 475.0
 		player.y = 390.0
-	_check(loaded.restore(old) and loaded.data.version == 16 and loaded.data.entities.has("ore_07") and loaded.data.structures.has("legacy_grill") and int(loaded.chest_totals().wood) == 9, "v2 migration preserves legacy facilities and belongings while adding mineral resources")
+	_check(loaded.restore(old) and loaded.data.version == 17 and loaded.data.entities.has("ore_07") and loaded.data.structures.has("legacy_grill") and int(loaded.chest_totals().wood) == 9, "v2 migration preserves legacy facilities and belongings while adding mineral resources")
 	world = _furnace_world()
 	_give(world, "host", {"fins": 1, "reinforced_hook": 1})
 	world.data.entities.ore_00.active = false

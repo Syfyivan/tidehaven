@@ -5,6 +5,7 @@ const Journal=preload("res://scripts/journal.gd")
 const Town=preload("res://scripts/island_town.gd")
 const Inventory=preload("res://scripts/inventory.gd")
 const PersonalStories=preload("res://scripts/resident_stories.gd")
+const LongStories=preload("res://scripts/long_stories.gd")
 const Rooms=preload("res://scripts/rooms.gd")
 var content:RichTextLabel
 var magic_buttons:Dictionary={}
@@ -34,7 +35,7 @@ func refresh(data:Dictionary,slot:String)->void:
 	else:
 		var chapter:Dictionary=Journal.STORY[step]
 		text+="[b]%s[/b]  ·  %s\n%s\n找%s，带上：%s\n"%[chapter.title,"已接取" if j.story_accepted else "可选择接取",chapter.text,Town.NPCS[chapter.npc].name,cost_text(chapter.cost)]
-	text+="\n"+PersonalStories.summary(data,slot)+"\n[b]你的委托[/b]\n"
+	text+="\n"+LongStories.summary(data)+"\n"+PersonalStories.summary(data,slot)+"\n[b]你的委托[/b]\n"
 	if p.accepted.is_empty():text+="还没有接取委托。到村民身边打开右键菜单，想帮忙时再接。\n"
 	for id:String in p.accepted:
 		var q:Dictionary=Journal.REQUESTS[id]

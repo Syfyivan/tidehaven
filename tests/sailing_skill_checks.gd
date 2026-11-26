@@ -142,7 +142,7 @@ func _test_save_and_tools() -> void:
 	check(loaded.data.players.host.hook.is_empty() and loaded.data.drift.drift_00.active and Inventory.count(loaded.data.players.host.bag, "compass") == 1, "resume cancels transient hook without rewards or loss")
 	var old: Dictionary = saved.duplicate(true)
 	old.version = 7
-	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old.erase(v14_key)
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories","chronicles"]:old.erase(v14_key)
 	for v14_player in old.players.values():v14_player.erase("room")
 	old.erase("threats")
 	for player in old.players.values(): player.erase("dive_status")
@@ -152,7 +152,7 @@ func _test_save_and_tools() -> void:
 		player.erase("activity")
 		player.erase("can_water")
 		player.hook = {}
-	check(loaded.restore(old) and loaded.data.version == 16, "v7 migrates to v16")
+	check(loaded.restore(old) and loaded.data.version == 17, "v7 migrates to v17")
 	var bad: Dictionary = saved.duplicate(true)
 	bad.players.host.hook.dx = NAN
 	check(not loaded.restore(bad), "malformed projectile rejected atomically")

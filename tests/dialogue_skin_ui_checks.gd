@@ -46,9 +46,11 @@ func _run() -> void:
 			await _settle(0.04)
 			await _click(_world_point(Ocean.position(id), _player().area))
 			var ui = main.dialogue_ui
-			_check(ui.visible and not ui.portrait.visible and not ui.portrait_frame.visible, "ocean NPC uses honest full-width fallback " + id)
+			_check(ui.visible and ui.portrait.visible and ui.portrait_frame.visible, "ocean NPC displays matching 64x64 portrait " + id)
+			var otex: AtlasTexture = ui.portrait.texture
+			_check(otex != null and otex.region == Rect2(0,0,64,64) and not ui.portrait.get_global_rect().intersects(ui.body_scroll.get_global_rect()), "ocean portrait crisp and never covers text " + id)
 			await choose(str(Stories.ARCS[id].title))
-			_check(ui.body_scroll.size.x == 1062 and ui.body.text.begins_with(Stories.ARCS[id].steps[0].text), "ocean story begins with situation " + id)
+			_check(ui.body_scroll.size.x == 830 and ui.body.text.begins_with(Stories.ARCS[id].steps[0].text), "ocean story begins with situation " + id)
 			_check(ui.body_scroll.size.y >= ui.body.get_theme_font("font").get_height(20) * 3 + 8, "ocean answers do not squeeze out situation " + id)
 			if id == "tai_lu": await _capture("ocean-dialogue-%d.png" % shape.x)
 			await _click(ui.close_button.get_global_rect().get_center())
@@ -57,6 +59,9 @@ func _run() -> void:
 			_check(ui.body.text.contains(Daily.line(main.world.data,"host",id)), "sea daily voice uses the same conversation UI " + id)
 			_check(main.world.data.journal.host.friendship[id] == 2, "sea UI repeats cannot farm affection " + id)
 			await _tap(KEY_ESCAPE)
+		main.dialogue_ui.present({"name":"远方船客","role":"旅人"}, "远方船客：顺风借过。", [], "missing_portrait_id")
+		_check(main.dialogue_ui.visible and not main.dialogue_ui.portrait.visible and main.dialogue_ui.body_scroll.size.x == 1062, "unregistered speaker still falls back cleanly to full-width layout")
+		main.dialogue_ui.hide()
 		_fixture_player("deck", Vector2(480,288))
 		main.world.data.navigation.anchored = true
 		_player().bag = Inventory.empty_slots(12)

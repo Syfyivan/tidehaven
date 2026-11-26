@@ -1,0 +1,36 @@
+{
+  "files": [
+    {
+      "file": "yan_zhen.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "378f19f91b6523df40338a3b9c578d91b9315269c5c6a7ffe8837ffb1afb2b2f"
+    },
+    {
+      "file": "mu_tong.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "a225f4432529f87bb44a16569be302d6cf801561b57ff9daa6d3221dba47ec0d"
+    },
+    {
+      "file": "harbor_shirts.png",
+      "canvas": [
+        128,
+        32
+      ],
+      "sha256": "7b9a7f4f6fc40881ef6809b80bda1df82fec4e412c417ec369494c5e952e879f"
+    },
+    {
+      "file": "harbor_hairstyles.png",
+      "canvas": [
+        128,
+        96
+      ],
+      "sha256": "2d4c3b578fa0c78aadbd33935b1e8933376821f0676245e01a8327e18b0561e1"
+    }
+  ]
+}
