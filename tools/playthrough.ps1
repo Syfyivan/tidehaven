@@ -1,7 +1,7 @@
-param([string]$Game = '', [string]$Resolution = '', [switch]$Island, [switch]$Skill)
+param([string]$Game = '', [string]$Resolution = '', [switch]$Island, [switch]$Skill, [switch]$Threats, [switch]$Core, [switch]$DummyAudio)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-if (-not $Game) { $Game = Join-Path $projectRoot 'build\Tidehaven-0.10.1.exe' }
+if (-not $Game) { $Game = Join-Path $projectRoot 'build\Tidehaven-0.18.0.exe' }
 if (-not (Test-Path -LiteralPath $Game)) { throw 'Export the Windows game before running this check.' }
 $runRoot = Join-Path $projectRoot ('artifacts\playthrough-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 New-Item -ItemType Directory -Path $runRoot | Out-Null
@@ -11,6 +11,11 @@ $reportPath = Join-Path $runRoot 'report.json'
 $arguments = @('--max-fps', '30', '--', '--playthrough', ('--save-path="' + (Join-Path $runRoot 'world.json') + '"'), ('--report="' + $reportPath + '"'), ('--evidence-dir="' + $runRoot + '"'))
 if ($Island) { $arguments[3] = '--island-playthrough' }
 if ($Skill) { $arguments[3] = '--skill-playthrough' }
+if ($Threats) { $arguments[3] = '--threats-playthrough' }
+if ($Core) { $arguments += '--core-survival' }
+# Explicit validator-only option for machines whose audio device is unavailable.
+# It does not change the exported project's audio settings or validate sound.
+if ($DummyAudio) { $arguments = @('--audio-driver', 'Dummy') + $arguments }
 if ((Split-Path -Leaf $Game) -like 'Godot*') { $arguments = @('--path', ('"' + $projectRoot + '"')) + $arguments }
 if ($Resolution) {
     if ($Resolution -notmatch '^\d{3,5}x\d{3,5}$') { throw 'Resolution must be WIDTHxHEIGHT.' }
@@ -18,10 +23,12 @@ if ($Resolution) {
 }
 $validator = Start-Process -FilePath $Game -ArgumentList $arguments -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
 $null = $validator.Handle
-Write-Output "Packaged survival-opening input playthrough (480-second game deadline). Evidence: $runRoot"
+$fullAdvanced = -not ($Island -or $Skill -or $Threats -or $Core)
+$deadline = if ($Island) { 600 } elseif ($fullAdvanced) { 660 } else { 480 }
+Write-Output "Packaged input playthrough ($deadline-second game deadline). Evidence: $runRoot"
 $watch = [Diagnostics.Stopwatch]::StartNew()
 try {
-    while (-not $validator.HasExited -and $watch.Elapsed.TotalSeconds -lt 510) { Start-Sleep -Milliseconds 500 }
+    while (-not $validator.HasExited -and $watch.Elapsed.TotalSeconds -lt ($deadline + 30)) { Start-Sleep -Milliseconds 500 }
     if (-not $validator.HasExited) { throw 'Packaged playthrough timed out.' }
     Get-Content -LiteralPath $stdout
     $errors = Get-Content -LiteralPath $stderr -Raw
@@ -34,5 +41,3 @@ try {
 } finally {
     if (-not $validator.HasExited) { Stop-Process -Id $validator.Id }
 }
-
-

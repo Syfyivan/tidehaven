@@ -74,12 +74,12 @@ func _test_hook() -> void:
 	world = fresh()
 	host = world.data.players.host
 	for index in host.bag.size():
-		host.bag[index] = {"item": "wood", "count": 20}
+		host.bag[index] = {"item": "wood", "count": Inventory.STACK_LIMIT}
 	world.action("host", "hook", {"x": 1, "y": 0})
 	step_hook(world, 1)
 	world.action("host", "pull_hook")
 	step_hook(world, 2)
-	check(world.data.drift.drift_00.active and Inventory.count(host.bag, "wood") == 240 and not Hook.reserved(world.data, "drift_00"), "full bag releases original resource")
+	check(world.data.drift.drift_00.active and Inventory.count(host.bag, "wood") == Inventory.BAG_SIZE * Inventory.STACK_LIMIT and not Hook.reserved(world.data, "drift_00"), "full bag releases original resource")
 	world = fresh()
 	world.action("host", "hook", {"x": 1, "y": 0})
 	step_hook(world, 1)
@@ -142,13 +142,17 @@ func _test_save_and_tools() -> void:
 	check(loaded.data.players.host.hook.is_empty() and loaded.data.drift.drift_00.active and Inventory.count(loaded.data.players.host.bag, "compass") == 1, "resume cancels transient hook without rewards or loss")
 	var old: Dictionary = saved.duplicate(true)
 	old.version = 7
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old.erase(v14_key)
+	for v14_player in old.players.values():v14_player.erase("room")
+	old.erase("threats")
+	for player in old.players.values(): player.erase("dive_status")
 	old.island = {"resources": {"palm_0": true,"palm_1": true,"seeds_0": true,"stone_0": true,"ore_0": true,"wood_1": true}, "crop": {"stage": 0, "progress": 0.0, "watered": false}}
 	old.navigation.erase("moored")
 	for player in old.players.values():
 		player.erase("activity")
 		player.erase("can_water")
 		player.hook = {}
-	check(loaded.restore(old) and loaded.data.version == 10, "v7 migrates to v9")
+	check(loaded.restore(old) and loaded.data.version == 16, "v7 migrates to v16")
 	var bad: Dictionary = saved.duplicate(true)
 	bad.players.host.hook.dx = NAN
 	check(not loaded.restore(bad), "malformed projectile rejected atomically")

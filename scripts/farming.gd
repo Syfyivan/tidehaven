@@ -1,4 +1,5 @@
 extends RefCounted
+const Housing=preload("res://scripts/housing.gd")
 ## Sparse island soil and daily crop rules. WorldState owns when a day advances.
 
 const Inventory = preload("res://scripts/inventory.gd")
@@ -84,10 +85,16 @@ static func action(data: Dictionary, player: Dictionary, verb: String, args: Dic
 		return _refill(player, at, point)
 	var key := plot_key(point)
 	var center := plot_center(key)
+	if Housing.bounds(data).grow(16).has_point(center):return "这里是小屋和门前通道，不能开垦。"
 	if at.distance_to(center) > REACH:
 		return "再靠近一些，农事操作只能照料身边两格。"
+	for chest in data.get("chests", {}).values():
+		if chest.get("area", "deck") == "island" and absf(float(chest.x)-center.x) < 32 and absf(float(chest.y)-center.y) < 32:
+			return "这里放着木箱，请先搬走再开垦。"
 	var plots: Dictionary = data.island.plots
 	if verb == "till":
+		if IslandMap.YARD_BOUNDS.has_point(center) and not data.island.get("homestead", {}).get("rented", false) and not plots.has(key):
+			return "这处院子还空着，先去镇公所问问镇长吧。"
 		if plots.has(key):
 			return "这格地已经开垦好了。"
 		if Inventory.count(player.bag, "hoe") < 1:
@@ -96,6 +103,8 @@ static func action(data: Dictionary, player: Dictionary, verb: String, args: Dic
 			return "只有岛上的草地可以开垦，道路、沙滩和水边不能种植。"
 		var blocked := obstruction(data, center)
 		if not blocked.is_empty():
+			if str(blocked.tool).is_empty():
+				return "先徒手%s，再锄地。" % blocked.label
 			return "先用%s%s，再锄地。" % [Inventory.ITEM_NAMES[blocked.tool], blocked.label]
 		plots[key] = new_plot()
 		_resume_work(player)
@@ -103,6 +112,10 @@ static func action(data: Dictionary, player: Dictionary, verb: String, args: Dic
 	if not plots.has(key):
 		return "先用锄头开垦这一格。"
 	var plot: Dictionary = plots[key]
+	return tend(data,player,plot,verb,args)
+
+static func tend(data: Dictionary, player: Dictionary, plot: Dictionary, verb: String, args: Dictionary) -> String:
+	# Daily crop rules are shared by island soil, each raft pot and the greenhouse.
 	match verb:
 		"plant":
 			return _plant(data, player, plot, args)
@@ -217,14 +230,14 @@ static func advance_day(island: Dictionary, old_day: int, new_day: int) -> void:
 		plot.watered = false
 
 
-static func restore_plots(value: Variant, old_map: bool = false) -> Variant:
+static func restore_plots(value: Variant, old_map: bool = false, previous_town: bool = false) -> Variant:
 	if not value is Dictionary or value.size() > ceili(IslandMap.SIZE.x / TILE) * ceili(IslandMap.SIZE.y / TILE):
 		return null
 	var result: Dictionary = {}
 	for key in value:
 		if not key is String or _key_tile(key).x < 0:
 			return null
-		if not (IslandMap.legacy_tillable(plot_center(key)) if old_map else IslandMap.tillable(plot_center(key))):
+		if not (IslandMap.legacy_tillable(plot_center(key)) if old_map else (IslandMap.v10_terrain(plot_center(key)) == "grass" if previous_town else (IslandMap.tillable(plot_center(key)) or IslandMap.v11_terrain(plot_center(key))=="grass"))):
 			return null
 		var plot: Variant = value[key]
 		if not plot is Dictionary or plot.size() != 5 or not plot.has_all(["crop", "growth", "watered", "covered", "dead"]):
@@ -235,6 +248,16 @@ static func restore_plots(value: Variant, old_map: bool = false) -> Variant:
 		if not _integer(plot.growth, 0, maximum) or (plot.crop.is_empty() and plot.dead) or (plot.dead and (plot.watered or plot.covered)):
 			return null
 		result[key] = {"crop": plot.crop, "growth": int(plot.growth), "watered": plot.watered, "covered": plot.covered, "dead": plot.dead}
+	return result
+
+static func restore_plot(value: Variant) -> Variant:
+	if not value is Dictionary or value.size()!=5 or not value.has_all(["crop","growth","watered","covered","dead"]):return null
+	if not value.crop is String or (value.crop!="" and not CROPS.has(value.crop)):return null
+	if not value.watered is bool or not value.covered is bool or not value.dead is bool:return null
+	if not _integer(value.growth,0,0 if value.crop=="" else int(CROPS[value.crop].days)):return null
+	if (value.crop=="" and value.dead) or (value.dead and (value.watered or value.covered)):return null
+	var result:Dictionary=value.duplicate(true)
+	result.growth=int(result.growth)
 	return result
 
 

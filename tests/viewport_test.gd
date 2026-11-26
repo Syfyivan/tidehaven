@@ -33,11 +33,11 @@ func _run() -> void:
 		_check(_contains(visible_rect, world_transform * Rect2(Vector2.ZERO, Main.WORLD_SIZE)), description + ": every gameplay edge stays visible")
 		_check(_contains(visible_rect, ui_transform * Rect2(Vector2.ZERO, Main.UI_SIZE)), description + ": complete UI design frame stays visible")
 		_check(_same_rect(world_transform * main.view.canvas_bounds, visible_rect), description + ": ocean canvas covers all viewport edges without a frame")
-		var shades_cover: bool = main._window_shades.size() == 7
+		var shades_cover: bool = main._window_shades.size() == 11
 		for shade in main._window_shades:
 			var drawn_rect: Rect2 = shade.get_global_transform_with_canvas() * Rect2(Vector2.ZERO, shade.size)
 			shades_cover = shades_cover and _same_rect(drawn_rect, visible_rect)
-		_check(shades_cover, description + ": title, pause, inventory, discard, crafting, chart and island atlas shades reach all edges")
+		_check(shades_cover, description + ": title, pause, inventory, discard, crafting, chart, island/room atlas restaurant, journal and appearance shades reach all edges")
 		var controls_visible := true
 		var controls: Array = [main.new_game_button, main.continue_button, main.return_title_button, main.crafting_ui.make_button, main.crafting_ui.close_button, main.inventory_ui.discard_confirm_button, main.inventory_ui.close_button, main.hud.bag_button, main.hud.crafting_button, main.hud.menu_button]
 		controls.append_array(main.inventory_ui.bag_buttons)

@@ -1,0 +1,46 @@
+extends "res://tests/island_ui_checks.gd"
+const Rooms=preload("res://scripts/rooms.gd")
+const Town=preload("res://scripts/island_town.gd")
+const Gardens=preload("res://scripts/gardens.gd")
+const Shop=preload("res://scripts/restaurant.gd")
+func _run()->void:
+	evidence=ProjectSettings.globalize_path("res://artifacts/p1-entry-ui-%d"%Time.get_unix_time_from_system())
+	DirAccess.make_dir_recursive_absolute(evidence)
+	main=MainScene.instantiate();root.add_child(main);main.save_path=evidence.path_join("world.json");main.automated=true
+	create_timer(100).timeout.connect(func():if not finished:quit(1))
+	await _settle();await _click(main.new_game_button.get_global_rect().get_center());main.set_physics_process(false)
+	main.world.data.minute=720;main.world.data.chart.visited=true
+	var coast:=Archipelago.island_position(main.world.data.chart)
+	main.world.data.navigation.x=coast.x;main.world.data.navigation.y=coast.y;main.world.data.navigation.anchored=true
+	for size in [Vector2i(960,600),Vector2i(1280,800)]:
+		root.size=size;main.world.data.gardens=Gardens.create();main.world.data.restaurant=Shop.create()
+		main.world.data.money=30;_player().bag=Inventory.empty_slots(12)
+		Inventory.add(_player().bag,"wood",32);Inventory.add(_player().bag,"ingot",4);Inventory.add(_player().bag,"plastic",12)
+		Rooms._arrive(main.world.data,_player(),"townhall",Town.position("xu_an",720)+Vector2(24,0))
+		await _settle();await _tap(KEY_P);await _choose_context("town_shop")
+		_check(main.world.data.restaurant.rented and main.world.data.money==0 and Inventory.count(_player().bag,"wood")==20,"optional shop lease works before any farm gift or task")
+		await _capture("shop-lease-%d.png"%size.x);await _tap(KEY_ESCAPE)
+		_fixture_player("island",IslandMap.LANDMARKS.restaurant.door+Vector2(0,32));await _tap(KEY_H);await _settle()
+		await _capture("restaurant-exterior-%d.png"%size.x)
+		await _click(_world_point(IslandMap.LANDMARKS.restaurant.door,"island"));_check(_player().room=="restaurant","actual restaurant door enters native room")
+		await _tap(KEY_E);_check(_player().area=="island","entry return goes back to correct exterior")
+		_fixture_player("island",IslandMap.LANDMARKS.greenhouse.door+Vector2(0,32));await _settle();_check(IslandMap.can_stand(Vector2(_player().x,_player().y)),"greenhouse approach stands clear of yard fence");await _capture("greenhouse-broken-%d.png"%size.x)
+		var greenhouse_door:Vector2=IslandMap.LANDMARKS.greenhouse.door
+		var visible:Rect2=Rect2(IslandMap.page_origin(Vector2(_player().x,_player().y)),IslandMap.PAGE)
+		_check(visible.encloses(Rect2(greenhouse_door-Vector2(112,320),Vector2(224,352))),"entire greenhouse and approach share the visible island page")
+		for y in range(int(greenhouse_door.y),1057,8):_check(IslandMap.can_stand(Vector2(greenhouse_door.x,y)),"greenhouse entrance joins the street below the neighboring house")
+		await _click(_world_point(IslandMap.LANDMARKS.greenhouse.door,"island"));_check(_player().area=="island","broken greenhouse does not admit player")
+		await _tap(KEY_P);await _choose_context("repair_greenhouse")
+		_check(main.world.data.gardens.greenhouse and Inventory.count(_player().bag,"wood")==0 and Inventory.count(_player().bag,"ingot")==0,"visible repair consumes exact materials and updates exterior")
+		await _capture("greenhouse-repaired-%d.png"%size.x)
+		await _tap(KEY_M);await _click(main.island_atlas.region_buttons.harbor.get_global_rect().get_center())
+		var page:Vector2i=Vector2i(IslandMap.page_origin(IslandMap.LANDMARKS.greenhouse.door)/IslandMap.PAGE)
+		await _click(main.island_atlas.page_buttons["%d,%d"%[page.x,page.y]].get_global_rect().get_center())
+		_check(main.island_atlas.detail_label.text.contains("已修复"),"island page reflects actual greenhouse repair")
+		await _capture("town-map-%d.png"%size.x);await _tap(KEY_ESCAPE)
+		await _click(_world_point(IslandMap.LANDMARKS.greenhouse.door,"island"));_check(_player().room=="greenhouse","repaired entrance opens real greenhouse")
+		_fixture_player("island",IslandMap.LANDMARKS.mine_entrance.door+Vector2(0,30));await _settle();await _capture("mine-exterior-%d.png"%size.x)
+		var mine_door:Vector2=IslandMap.LANDMARKS.mine_entrance.door
+		_check(IslandMap.can_stand(Vector2(_player().x,_player().y)) and Rect2(IslandMap.page_origin(Vector2(_player().x,_player().y)),IslandMap.PAGE).encloses(preload("res://scripts/island_tiles.gd").facade_rect("mine_entrance",mine_door)),"mine mouth and approach are walkable and fully visible together")
+		await _click(_world_point(IslandMap.LANDMARKS.mine_entrance.door,"island"));_check(_player().room=="mine_1","actual mountain entrance opens floor one")
+	finished=true;print("P1 ENTRY UI: %d checks, %d failures; %s"%[checks,failures,evidence]);quit(0 if failures==0 else 1)

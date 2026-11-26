@@ -1,0 +1,105 @@
+{
+  "commit": "0c31854d40fcc1f6b60b35ac07b7c9686b82b226",
+  "files": [
+    {
+      "source": "assets/Maps/Hospital.tmx",
+      "file": "maps/Hospital.tmx",
+      "sha256": "835da27fa1cda7cb27ad991ef33c4bfcdd5eb2c230a7c49e4cbed96137e23a7e"
+    },
+    {
+      "source": "assets/Maps/SeedShop.tmx",
+      "file": "maps/SeedShop.tmx",
+      "sha256": "6e662414ed7fb0fd54e382dd2fef92100abb55bc978f4e6fad4b526083aaa3e7"
+    },
+    {
+      "source": "assets/Maps/ScienceHouse.tmx",
+      "file": "maps/ScienceHouse.tmx",
+      "sha256": "0d673e5f0a70c211a0e678908ddeed209801ee35712349b835cda2dec137dfbf"
+    },
+    {
+      "source": "assets/Maps/BathHouse_Pool.tmx",
+      "file": "maps/BathHouse_Pool.tmx",
+      "sha256": "6fdcb6db034af0a3d942ec9d3750d7819346f3ef8867831571b5422792ef1215"
+    },
+    {
+      "source": "assets/Maps/Blacksmith.tmx",
+      "file": "maps/Blacksmith.tmx",
+      "sha256": "0afeed1b43eabe4025639c1a779e43f1414fa79ba3fd9e709e9e3da600654240"
+    },
+    {
+      "source": "assets/Maps/FishShop.tmx",
+      "file": "maps/FishShop.tmx",
+      "sha256": "ca51a48d37c6a86b15a7ebd384135c68b9985a947e2a843a8a9549f3bb91ab9b"
+    },
+    {
+      "source": "assets/Maps/ManorHouse.tmx",
+      "file": "maps/ManorHouse.tmx",
+      "sha256": "76b76f031eac258ad909b418056e0fc6c39836b1aa93bff4c4e07ffa455a74d5"
+    },
+    {
+      "source": "assets/Maps/AnimalShop.tmx",
+      "file": "maps/AnimalShop.tmx",
+      "sha256": "f1ac0c5d66ce8611c94613f5d4a4fa558a746e82d8e3e2c276ff1440863ead96"
+    },
+    {
+      "source": "assets/Maps/Saloon.tmx",
+      "file": "maps/Saloon.tmx",
+      "sha256": "23c1596b511f3c2e14274f2848fb97c8d55fdebe2f70870c62b4eae9fb7b4816"
+    },
+    {
+      "source": "assets/Maps/Greenhouse.tmx",
+      "file": "maps/Greenhouse.tmx",
+      "sha256": "11cbcb84a339d35a74066d491698d855a8fdf703533e3977269ff3cf82d4db0f"
+    },
+    {
+      "source": "assets/Maps/SamHouse.tmx",
+      "file": "maps/SamHouse.tmx",
+      "sha256": "d179a8c8731eed4ca1253f85d96290170b92c1b04116eaa2d4b6abd2c010347d"
+    },
+    {
+      "source": "assets/Maps/Trailer.tmx",
+      "file": "maps/Trailer.tmx",
+      "sha256": "6b955688c794fbaeacf5623d0a63ca66821787877d4f85b7380c6310eafdff51"
+    },
+    {
+      "source": "assets/Maps/Mines/1.tmx",
+      "file": "maps/Mines/1.tmx",
+      "sha256": "60a213f038cda5998460c451d2eed3d09d4cab0aa2dabbbc9a66113f3e348572"
+    },
+    {
+      "source": "assets/Maps/Mines/2.tmx",
+      "file": "maps/Mines/2.tmx",
+      "sha256": "0d2099bc5946348a7d9bb10415eedfbfba055d43aa63c43689a47e036a5433b5"
+    },
+    {
+      "source": "assets/Maps/Mines/3.tmx",
+      "file": "maps/Mines/3.tmx",
+      "sha256": "82fb6d93ff58571d409e5615a1946fb81bf0cec03477fbc236795426ac2b4c97"
+    },
+    {
+      "source": "assets/Maps/Mines/mine.png",
+      "file": "Mines/mine.png",
+      "sha256": "c2376bb840d48701578a3e5a33a71d9b2ffb99300f5617ba26555a4e07fa303c"
+    },
+    {
+      "source": "assets/Maps/bathhouse_tiles.png",
+      "file": "bathhouse_tiles.png",
+      "sha256": "1bff959d5423352ca2e3ee1c545449b9217033ccfa0a87eae8788eecf66e0437"
+    },
+    {
+      "source": "assets/Maps/paths.png",
+      "file": "paths.png",
+      "sha256": "e9a796b02350448cf4c53f9581e66121576af42626f6741dab299fdf994402a3"
+    },
+    {
+      "source": "assets/Maps/townInterior.png",
+      "file": "townInterior.png",
+      "sha256": "d440a649cdc3b82d1329884e258fcff628ca91e9d98220d033d677011883dc05"
+    },
+    {
+      "source": "assets/Maps/townInterior_2.png",
+      "file": "townInterior_2.png",
+      "sha256": "3658405dc29361ef7c3615e4d8a1136c6977df96c627b7321cdaae092628389b"
+    }
+  ]
+}

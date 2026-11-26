@@ -30,6 +30,9 @@ func _world(two := false):
 	world.join("host", "船长")
 	if two:
 		world.join("guest", "伙伴")
+	# Isolate inventory/resource transactions from encounters; interruptions have their own regression.
+	for enemy in world.data.threats.values():
+		enemy.phase="repelled";enemy.remaining=preload("res://scripts/sea_threats.gd").DEFINITIONS[enemy.kind].repel
 	return world
 
 
@@ -54,7 +57,9 @@ func _count(world, slot: String, item: String) -> int:
 func _furnace_world(two := false):
 	var world = _world(two)
 	_give(world, "host", {"stone": 6, "scrap": 2, "wood": 10, "ore": 4})
+	world.data.structures.test_bench = world._new_structure("test_bench", "workbench", Vector2(480, 352))
 	world.action("host", "craft", {"recipe": "furnace", "x": 480.0, "y": 224.0})
+	world.data.structures.erase("test_bench")
 	_check(world.data.structures.has("structure_0") and world.data.structures.structure_0.kind == "furnace" and _count(world, "host", "stone") == 0 and _count(world, "host", "scrap") == 0 and _count(world, "host", "wood") == 6, "furnace is built through the recipe with exact resource costs")
 	return world
 
@@ -86,7 +91,7 @@ func _test_mining() -> void:
 	before = world.snapshot()
 	Skills.gather(world, "host", "mine", "stone_00")
 	_check(stone.active and world.data.players.host.bag == before.players.host.bag and world.data.players.host.stamina == before.players.host.stamina, "completed full-pack mining preserves stone deposit, every item and stamina")
-	world.data.players.host.bag[0] = {"item": "stone", "count": 19}
+	world.data.players.host.bag[0] = {"item": "stone", "count": Inventory.STACK_LIMIT - 1}
 	before = world.snapshot()
 	Skills.gather(world, "host", "mine", "stone_00")
 	_check(stone.active and world.data.players.host.bag == before.players.host.bag and world.data.players.host.stamina == before.players.host.stamina, "a two-stone yield never partially fills the last stack or consumes stamina")
@@ -171,10 +176,11 @@ func _test_smelting_and_crafting() -> void:
 	before = world.snapshot()
 	world.action("host", "collect_output", {"id": "structure_0"})
 	_check(world.snapshot() == before and world.data.structures.structure_0.output == "ingot", "completed ingot remains in furnace while recipient bag is full")
-	Inventory.remove(world.data.players.host.bag, "cup", 20)
+	Inventory.remove(world.data.players.host.bag, "cup", Inventory.STACK_LIMIT)
 	world.action("host", "collect_output", {"id": "structure_0"})
 	_check(_count(world, "host", "ingot") == 1 and world.data.structures.structure_0.output.is_empty(), "making room allows exactly one delayed collection")
 	world.data.players.host.bag = Inventory.empty_slots(Inventory.BAG_SIZE)
+	world.data.structures.test_bench = world._new_structure("test_bench", "workbench", Vector2(480, 352))
 	_give(world, "guest", {"ingot": 4, "plastic": 4, "rope": 3})
 	before = world.snapshot()
 	world.action("host", "craft", {"recipe": "fins"})
@@ -207,7 +213,7 @@ func _test_relocation() -> void:
 	move = {"id": "chest_0", "from_x": 416.0, "from_y": 352.0, "x": 544.0, "y": 352.0}
 	world.action("host", "relocate", move)
 	world.action("guest", "relocate", move)
-	_check(world.data.chests.size() == 1 and world.data.chests.chest_0.x == 544.0 and world.data.chests.chest_0.slots == slots and Inventory.count(slots, "ore") == 320, "full shared chest moves without repacking or loss, and a racing request cannot duplicate it")
+	_check(world.data.chests.size() == 1 and world.data.chests.chest_0.x == 544.0 and world.data.chests.chest_0.slots == slots and Inventory.count(slots, "ore") == Inventory.CHEST_SIZE * Inventory.STACK_LIMIT, "full shared chest moves without repacking or loss, and a racing request cannot duplicate it")
 	_place(world, "host", "deck", 544, 288)
 	before = world.snapshot()
 	var invalid := [
@@ -244,6 +250,10 @@ func _test_migration_and_restore() -> void:
 	var world = _world()
 	var old: Dictionary = world.snapshot()
 	old.version = 3
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old.erase(v14_key)
+	for v14_player in old.players.values():v14_player.erase("room")
+	old.erase("threats")
+	for legacy_player in old.players.values(): legacy_player.erase("dive_status")
 	old.erase("navigation")
 	old.erase("chart")
 	old.erase("island")
@@ -256,10 +266,14 @@ func _test_migration_and_restore() -> void:
 	old.entities.fish_00.active = false
 	old.players.host.hook = {"id": "drift_06", "remaining": 1.0, "x": old.drift.drift_06.x, "y": old.drift.drift_06.y}
 	var loaded = WorldState.new()
-	_check(loaded.restore(JSON.parse_string(JSON.stringify(old))) and loaded.data.version == 10 and loaded.data.entities.size() == 30 and not loaded.data.entities.fish_00.active, "v3 migration adds mineral and wreck nodes while preserving previous harvests")
+	_check(loaded.restore(JSON.parse_string(JSON.stringify(old))) and loaded.data.version == 16 and loaded.data.entities.size() == 30 and not loaded.data.entities.fish_00.active, "v3 migration adds mineral and wreck nodes while preserving previous harvests")
 	_check(loaded.data.players.host.hook.is_empty() and loaded.data.players.host.activity.is_empty() and loaded.data.drift.drift_06.active, "migrating an old in-progress hook cancels the old action without consuming its resource")
 	old = world.snapshot()
 	old.version = 2
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old.erase(v14_key)
+	for v14_player in old.players.values():v14_player.erase("room")
+	old.erase("threats")
+	for legacy_player in old.players.values(): legacy_player.erase("dive_status")
 	old.entities = world._new_entities(false)
 	for key in ["deck_tiles", "structures", "drift", "navigation", "chart", "island"]:
 		old.erase(key)
@@ -270,7 +284,7 @@ func _test_migration_and_restore() -> void:
 			player.erase(key)
 		player.x = 475.0
 		player.y = 390.0
-	_check(loaded.restore(old) and loaded.data.version == 10 and loaded.data.entities.has("ore_07") and loaded.data.structures.has("legacy_grill") and int(loaded.chest_totals().wood) == 9, "v2 migration preserves legacy facilities and belongings while adding mineral resources")
+	_check(loaded.restore(old) and loaded.data.version == 16 and loaded.data.entities.has("ore_07") and loaded.data.structures.has("legacy_grill") and int(loaded.chest_totals().wood) == 9, "v2 migration preserves legacy facilities and belongings while adding mineral resources")
 	world = _furnace_world()
 	_give(world, "host", {"fins": 1, "reinforced_hook": 1})
 	world.data.entities.ore_00.active = false

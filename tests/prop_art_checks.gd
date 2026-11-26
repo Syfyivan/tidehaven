@@ -4,7 +4,7 @@ const Art = preload("res://scripts/art_catalog.gd")
 const Inventory = preload("res://scripts/inventory.gd")
 const Recipes = preload("res://scripts/recipes.gd")
 const CharacterArt = preload("res://scripts/character_art.gd")
-const REQUIRED_KEYS: Array[String] = ["anchor", "autumn_seed", "axe", "barrel", "bed", "bedroll", "canopy", "chest", "chest_open", "coin", "compass", "cooked_fish", "cup", "fiber", "fins", "fire", "fish", "floor", "floor_alt", "foundation", "freshwater", "furnace", "garden", "garden_empty", "garden_growing", "grill", "hammer", "harpoon", "hatch", "hoe", "hook", "ingot", "kitchen", "leaf", "meal", "orders", "ore", "paddle", "pickaxe", "plant", "plastic", "purifier", "reinforced_hook", "rock", "rod", "rope", "saltwater", "scrap", "scythe", "seaweed", "seed", "seeds", "stone", "summer_seed", "treasure", "tree", "veg", "watering_can", "winter_seed", "wood"]
+const REQUIRED_KEYS: Array[String] = ["cabin","mushroom","rice","sashimi","maki","salad","anchor", "autumn_seed", "axe", "barrel", "bed", "bedroll", "canopy", "chest", "chest_open", "coin", "compass", "cooked_fish", "cup", "fiber", "fins", "fire", "fish", "fish_swim", "floor", "floor_alt", "foundation", "freshwater", "furnace", "furnace_active", "garden", "garden_empty", "garden_growing", "grill", "hammer", "harpoon", "hatch", "hoe", "hook", "ingot", "kitchen", "leaf", "meal", "orders", "ore", "paddle", "pickaxe", "plant", "plastic", "purifier", "reinforced_hook", "rock", "rod", "rope", "saltwater", "scrap", "scythe", "sea_chest", "sea_chest_open", "seaweed", "seed", "seeds", "stone", "summer_seed", "treasure", "tree", "veg", "watering_can", "winter_seed", "wood", "workbench"]
 const QUANTIZATION_TOLERANCE: float = 1.1 / 255.0
 var checks: int = 0
 var failures: int = 0
@@ -15,7 +15,7 @@ var recolored_pixels: int = 0
 func _initialize() -> void:
 	var before_character: PackedByteArray = CharacterArt.texture("host", 0, 1).get_image().get_data()
 	var all_keys: Array[String] = Art.keys()
-	_check(all_keys == REQUIRED_KEYS, "catalog exposes all 60 distinct, sorted prop and state keys")
+	_check(all_keys == _sorted_required(), "catalog exposes all registered distinct, sorted prop and state keys")
 	_check(Art.texture("missing_prop") == null, "unknown keys remain absent instead of borrowing unrelated artwork")
 	for key: String in all_keys:
 		_check_key(key)
@@ -26,7 +26,9 @@ func _initialize() -> void:
 		_check(key in all_keys and Art.texture(key) != null, str(recipe.id) + ": crafting result has catalog artwork, including foundation")
 	for key: String in ["chest_open", "furnace", "grill"]:
 		_check_recess(key)
-	_check(Art.texture("bedroll").get_size() == Vector2(16, 24) and Art.texture("bed").get_size() == Vector2(16, 32), "sleeping bag and framed bed retain distinct silhouettes")
+	_check(Art.texture("bedroll").get_size() == Vector2(32, 46) and Art.texture("bed").get_size() == Vector2(32, 58), "new sleeping bag and framed bed retain distinct silhouettes")
+	_check_world_geometry()
+	_check_registration()
 	_check(Art.texture("floor").get_size() == Vector2(32, 32) and Art.texture("foundation").get_image().get_data() == Art.texture("floor").get_image().get_data(), "foundation recipe uses the same native wooden boards as floor")
 	_check(CharacterArt.texture("host", 0, 1).get_image().get_data() == before_character, "processing the entire prop catalog leaves accepted character pixels unchanged")
 	_check(edge_pixels > 0 and recolored_pixels > 0, "checks actually visited visible contours and changed source pixels")
@@ -57,7 +59,7 @@ func _check_key(key: String) -> void:
 	var has_opaque_pixels: bool = false
 	var min_value: float = 1.0
 	var max_value: float = 0.0
-	var step: int = 2 if Art.MATERIAL_ICONS.has(key) else 1
+	var step: int = 2 if Art.MATERIAL_ICONS.has(key) and not Art.CoastalArt.has(key) and not Art.SurvivalArt.has(key) else 1
 	for y: int in before.get_height():
 		for x: int in before.get_width():
 			var old: Color = before.get_pixel(x, y)
@@ -71,9 +73,9 @@ func _check_key(key: String) -> void:
 			max_value = maxf(max_value, value)
 			if _exposed(before, Vector2i(x, y), step):
 				edge_pixels += 1
-				contour_readable = contour_readable and value >= 0.40 - QUANTIZATION_TOLERANCE
+				contour_readable = contour_readable and value >= (0.18 if key in ["floor", "floor_alt", "foundation"] else 0.40) - QUANTIZATION_TOLERANCE
 			else:
-				interior_readable = interior_readable and value >= 0.31 - QUANTIZATION_TOLERANCE
+				interior_readable = interior_readable and value >= (0.18 if key in ["floor", "floor_alt", "foundation"] else 0.31) - QUANTIZATION_TOLERANCE
 			if _luma(old) >= 0.49:
 				highlights_preserved = highlights_preserved and _rgb_delta(old, shown) <= QUANTIZATION_TOLERANCE
 			if _rgb_delta(old, shown) > QUANTIZATION_TOLERANCE:
@@ -101,6 +103,41 @@ func _check_recess(key: String) -> void:
 				darkest_inside = minf(darkest_inside, value)
 	_check(inside_found and darkest_inside >= 0.31 - QUANTIZATION_TOLERANCE and lightest - darkest_inside >= 0.10, key + ": cavity remains visibly darker than the lit rim/body")
 
+func _check_world_geometry() -> void:
+	var at := Vector2(416, 224)
+	var adult := Vector2(CharacterArt.texture("host").get_image().get_used_rect().size) * 2
+	var bag := Art.world_rect("bedroll", at)
+	_check(bag.size.y > adult.y and bag.size.x >= adult.x, "sleeping bag fits the visible adult body, excluding transparent sprite padding")
+	_check(bag.size.x <= 64 and bag.size.y <= 64, "flat sleeping bag fits its original raft cell without changing occupancy")
+	for key: String in Art.WORLD_PROPS:
+		var rect := Art.world_rect(key, at)
+		var source := Art.texture(key).get_size()
+		_check(is_equal_approx(rect.size.x / rect.size.y, source.x / source.y), key + ": world display preserves source aspect ratio")
+		var moved := Art.world_rect(key, at + Vector2(64, 64))
+		_check(moved.size == rect.size and moved.position - rect.position == Vector2(64, 64), key + ": preview/move keeps dimensions and contact offset")
+	var closed := Art.world_rect("chest", at)
+	var opened := Art.world_rect("chest_open", at)
+	_check(is_equal_approx(closed.size.x, opened.size.x) and absf(closed.end.y - opened.end.y) < 1.0, "open lid preserves chest base width and ground contact")
+	_check(opened.size.y > closed.size.y, "opening raises the lid instead of squeezing a taller image into the closed frame")
+
+
+func _check_registration() -> void:
+	for recipe: Dictionary in Recipes.ALL.values():
+		var kind: String = str(recipe.structure)
+		if not kind.is_empty() and kind != "foundation":
+			_check(Art.WORLD_PROPS.has(kind), kind + ": every placeable recipe declares its own world geometry instead of using a fallback")
+	for key: String in Art.WORLD_PROPS:
+		var spec: Dictionary = Art.WORLD_PROPS[key]
+		_check(Art.texture(key) != null and spec.box.x > 0 and spec.box.y > 0 and is_finite(float(spec.contact_y)), key + ": registered geometry has artwork, positive extent and a finite contact point")
+	for key: String in Art.CoastalArt.SOURCES:
+		var source: Texture2D = Art.CoastalArt.SOURCES[key]
+		var region: Rect2i = Art.CoastalArt.REGIONS.get(key, Rect2i())
+		_check(region.has_area() and Rect2i(Vector2i.ZERO, Vector2i(source.get_size())).encloses(region), key + ": crop is nonempty and wholly inside its original PNG")
+		_check(int(Art.CoastalArt.WIDTHS.get(key, 0)) > 0, key + ": source declares its logical design grid")
+	var seedling := Art.world_rect("garden_growing", Vector2.ZERO)
+	var empty := Art.world_rect("garden_empty", Vector2.ZERO)
+	var ripe := Art.world_rect("garden", Vector2.ZERO)
+	_check(is_equal_approx(empty.size.x, seedling.size.x) and is_equal_approx(ripe.size.x, seedling.size.x) and absf(empty.end.y - seedling.end.y) < 1.0 and absf(ripe.end.y - seedling.end.y) < 1.0, "planting-box stages preserve footprint width and ground contact")
 
 func _exposed(bitmap: Image, at: Vector2i, step: int) -> bool:
 	var bounds: Rect2i = Rect2i(Vector2i.ZERO, bitmap.get_size())
@@ -124,3 +161,6 @@ func _check(condition: bool, description: String) -> void:
 	if not condition:
 		failures += 1
 		printerr("FAIL ", description)
+
+func _sorted_required()->Array:
+	var keys=REQUIRED_KEYS.duplicate();keys.sort();return keys

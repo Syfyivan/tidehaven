@@ -1,0 +1,30 @@
+{
+  "version": "0.14.0",
+  "generated": "2026-10-22",
+  "mode": "builtin image_gen",
+  "transparent_background": true,
+  "assets": [
+    {
+      "path": "shark-0.14.png",
+      "sha256": "26F9909C8EEF2F82E1E422A7B14970879388D3B9E7F6B909FE26789C8CA0009C",
+      "source_canvas": [
+        1536,
+        1024
+      ],
+      "frames": 6,
+      "adaptation": "scripts/sea_creature_art.gd",
+      "prompts": "PROMPTS.md"
+    },
+    {
+      "path": "moray-0.14.png",
+      "sha256": "DC0628A981F889E8D2B73D156CE64FBD38104776CD8E8D68BD384E4F8E147FFD",
+      "source_canvas": [
+        1536,
+        1024
+      ],
+      "frames": 6,
+      "adaptation": "scripts/sea_creature_art.gd",
+      "prompts": "PROMPTS.md"
+    }
+  ]
+}

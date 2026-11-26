@@ -48,7 +48,7 @@ function Assert-Validator([string]$Role) {
     if (-not (Test-Path -LiteralPath $reportPath)) { throw "$Role produced no passing report." }
     $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
     $minimumChecks = @{ host = 11; client = 12; resume = 4 }
-    if (-not $report.passed -or $report.role -ne $Role -or $report.version -ne 10 -or $report.checks.Count -lt $minimumChecks[$Role]) { throw "$Role report was incomplete or did not pass." }
+    if (-not $report.passed -or $report.role -ne $Role -or $report.version -ne 15 -or $report.checks.Count -lt $minimumChecks[$Role]) { throw "$Role report was incomplete or did not pass." }
 }
 
 try {

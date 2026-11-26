@@ -14,6 +14,8 @@ const FOOD := Color("aa8663")
 
 
 static func material_color(key: String) -> Color:
+	if key == "workbench":
+		return WOOD
 	if key in ["wood", "floor", "floor_alt", "foundation", "chest", "chest_open", "treasure", "barrel", "paddle", "rod", "hook", "orders", "hatch", "rope"]:
 		return WOOD
 	if key in ["bedroll", "bed"]:
@@ -128,41 +130,6 @@ static func _minimum_light(color: Color, minimum: float) -> Color:
 	return color.lightened((minimum - level) / maxf(0.001, 1.0 - level))
 
 
-static func floor_texture(alternate: bool = false) -> Texture2D:
-	# Original code-native illustration of the scene's staggered warm raft planks.
-	# It replaces the old red barn-wall crop in recipes and construction previews.
-	var bitmap: Image = Image.create(32, 32, false, Image.FORMAT_RGBA8)
-	bitmap.fill(Color("806b53"))
-	var tones := [Color("987b5d"), Color("917458"), Color("9e8061"), Color("a18463")]
-	for row in 4:
-		var y: int = row * 8
-		var tone: Color = tones[posmod(row + int(alternate), tones.size())]
-		bitmap.fill_rect(Rect2i(0, y + 1, 32, 7), tone)
-		bitmap.fill_rect(Rect2i(0, y + 1, 32, 1), tone.lightened(0.12))
-		var joint: int = 9 if row % 2 == 0 else 25
-		bitmap.fill_rect(Rect2i(joint, y + 1, 1, 7), Color("816b51"))
-		bitmap.fill_rect(Rect2i(3, y + 4, 6, 1), tone.darkened(0.08))
-		bitmap.fill_rect(Rect2i(16, y + 6, 8, 1), tone.darkened(0.07))
-		bitmap.set_pixel(joint + 2, y + 3, Color("7b715d"))
-	return ImageTexture.create_from_image(bitmap)
-
-
-static func bedroll_texture() -> Texture2D:
-	# Original linen pillow and sea-green sleeping bag, without a bed's hard frame.
-	var pixels := [
-		"................", ".....ssssss.....", "...ssllllllss...", "..sllhhhhhhlls..",
-		"..slhhhhhhhhls..", "..sllhhhhhhlls..", "..ssssssssssss..", "..sggggggggggs..",
-		"..sghhmmmmmmgs..", "..sghmmmmmmmgs..", "..sghmmmmmmmgs..", "..sghmmmmmmmgs..",
-		"..sghmmmmmmmgs..", "..sghmmmmmmmgs..", "..sghmmmmmmmgs..", "..sghmmmmmmmgs..",
-		"..sghmmmmmmmgs..", "..sghmmmmmmmgs..", "..sghmmmmmmmgs..", "..sggggggggggs..",
-		"...sggggggggs...", "....ssssssss....", "................", "................",
-	]
-	var colors := {"s": Color("86846f"), "l": Color("c4b89a"), "h": Color("e5ddbb"), "g": Color("819986"), "m": Color("abc0a3")}
-	var bitmap: Image = Image.create(16, 24, false, Image.FORMAT_RGBA8)
-	bitmap.fill(Color.TRANSPARENT)
-	for y in pixels.size():
-		for x in 16:
-			var code: String = str(pixels[y]).substr(x, 1)
-			if colors.has(code):
-				bitmap.set_pixel(x, y, colors[code])
-	return ImageTexture.create_from_image(bitmap)
+static func floor_texture(_alternate: bool = false) -> Texture2D:
+	# Same native dock boards in the world, foundation recipe and placement preview.
+	return preload("res://scripts/maritime_art.gd").texture("raft")

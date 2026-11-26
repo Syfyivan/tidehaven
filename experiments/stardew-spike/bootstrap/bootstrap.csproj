@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType><TargetFramework>net6.0</TargetFramework><RuntimeIdentifier>win-x64</RuntimeIdentifier><SelfContained>false</SelfContained>
+    <AssemblyName>TidehavenBootstrap</AssemblyName><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable><CheckEolTargetFramework>false</CheckEolTargetFramework>
+    <GamePath Condition="'$(GamePath)'==''">$(MSBuildProjectDirectory)/../../../artifacts/stardew-spike/runtime</GamePath>
+  </PropertyGroup>
+  <ItemGroup><Reference Include="0Harmony"><HintPath>$(GamePath)/smapi-internal/0Harmony.dll</HintPath><Private>false</Private></Reference></ItemGroup>
+</Project>

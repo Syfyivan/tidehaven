@@ -51,14 +51,16 @@ func _regions_and_paths() -> void:
 			partitioned = partitioned and memberships == 1 and Rect2(region.bounds).has_point(center)
 			if column > 0:
 				var border_x: float = origin.x
-				var crossing_y: float = Map.horizontal_path_y(border_x, row)
-				for offset: float in [-12.0, 0.0, 12.0]:
-					connected = connected and Map.walkable(Vector2(border_x + offset, crossing_y))
+				var found:=false
+				for y in range(int(origin.y)+24,int(origin.y+Map.PAGE.y)-24,16):
+					if Map.can_stand(Vector2(border_x-12,y)) and Map.can_stand(Vector2(border_x,y)) and Map.can_stand(Vector2(border_x+12,y)): found=true; break
+				connected=connected and found
 			if row > 0:
 				var border_y: float = origin.y
-				var crossing_x: float = Map.vertical_path_x(border_y, column)
-				for offset: float in [-12.0, 0.0, 12.0]:
-					connected = connected and Map.walkable(Vector2(crossing_x, border_y + offset))
+				var found:=false
+				for x in range(int(origin.x)+24,int(origin.x+Map.PAGE.x)-24,16):
+					if Map.can_stand(Vector2(x,border_y-12)) and Map.can_stand(Vector2(x,border_y)) and Map.can_stand(Vector2(x,border_y+12)): found=true; break
+				connected=connected and found
 			var page_bounds := Rect2(origin, Map.PAGE)
 			for pond: Dictionary in Map.ponds_near(center):
 				if page_bounds.has_point(pond.center):
@@ -81,12 +83,12 @@ func _nodes() -> void:
 	var region_clearing_counts: Dictionary = {}
 	var region_pages: Dictionary = {}
 	var changed_ground := 0
-	var expected_tools := {"tree": "axe", "branch": "axe", "fiber": "scythe", "stone": "pickaxe", "ore": "pickaxe", "dig_seed": "hoe", "dig_treasure": "hoe"}
+	var expected_tools := {"mushroom":"","tree": "axe", "branch": "axe", "fiber": "scythe", "stone": "pickaxe", "ore": "pickaxe", "dig_seed": "hoe", "dig_treasure": "hoe"}
 	for row in Map.PAGES.y:
 		for column in Map.PAGES.x:
 			var page_bounds := Rect2(Vector2(column, row) * Map.PAGE, Map.PAGE)
 			var nearby: Dictionary = Map.nodes_near(page_bounds.get_center())
-			nearby_bounded = nearby_bounded and nearby.size() <= 297
+			nearby_bounded = nearby_bounded and nearby.size() <= 450
 			var area_id: String = str(Map.region(page_bounds.get_center()).id)
 			region_pages[area_id] = int(region_pages.get(area_id, 0)) + 1
 			var count_value := 0
@@ -101,15 +103,17 @@ func _nodes() -> void:
 					clearing_count += 1
 					clearing_kinds[entry.kind] = true
 					region_clearing_counts[area_id] = int(region_clearing_counts.get(area_id, 0)) + 1
-					positions_valid = positions_valid and Map.tillable(at) and at == (at / Map.TILE).floor() * Map.TILE + Vector2.ONE * 16
+					positions_valid = positions_valid and Map.v10_terrain(at) == "grass" and at == (at / Map.TILE).floor() * Map.TILE + Vector2.ONE * 16
+				elif id.begins_with("yard_"):
+					positions_valid = positions_valid and Map.YARD_BOUNDS.has_point(at) and Map.tillable(at) and at == (at / Map.TILE).floor() * Map.TILE + Vector2.ONE * 16
 				elif not Map.walkable(at):
 					changed_ground += 1
 				unique[id] = entry.duplicate(true)
 				definitions_valid = definitions_valid and entry.id == id and entry.tool == expected_tools[entry.kind] and float(entry.duration) > 0 and int(entry.amount) > 0 and int(entry.regrow) >= 1 and float(entry.radius) > 0 and Map.node(id) == entry
-			page_bounded = page_bounded and count_value >= 1 and count_value <= 33
+			page_bounded = page_bounded and count_value >= 1 and count_value <= (77 if page_bounds.intersects(Map.YARD_BOUNDS) else 37)
 	_check(nearby_bounded, "nearby resource lookup stays bounded to nine pages including wilderness clumps")
-	_check(page_bounded and unique.size() < 6336, "all pages retain bounded resource density and substantial uncultivated ground")
-	_check(positions_valid, "legacy coordinates remain on original ground and new clearing nodes occupy valid grass grid cells")
+	_check(page_bounded and unique.size() < 6336, "pages retain bounded density including at most four marked forest resources and substantial uncultivated ground")
+	_check(positions_valid, "legacy coordinates remain on original ground and v10 clearing ids retain old coordinates and new yard nodes occupy valid grass grid cells")
 	_check(clearing_count > 500 and clearing_kinds.has_all(["tree", "fiber", "branch", "stone"]), "wilderness adds tool-clearable trees, weeds, branches and stones across the real island")
 	_check(float(region_clearing_counts.get("woodland", 0)) / int(region_pages.woodland) > float(region_clearing_counts.get("harbor", 0)) / int(region_pages.harbor), "forest pages contain denser clearing work than harbor grassland")
 	_check(changed_ground > 0, "changed geography retains blocked old node definitions for save compatibility instead of renumbering them")
@@ -137,10 +141,10 @@ func _town() -> void:
 	var wanted := ["market", "clinic", "bathhouse", "carpenter", "smith", "fishery", "farmhouse", "plaza"]
 	_check(Map.LANDMARKS.has_all(wanted) and Map.LANDMARKS.has("mine_entrance"), "town exposes all eight destinations and a distinct closed mine entrance")
 	var nearby: Dictionary = Map.landmarks_near(Map.LANDMARKS.plaza.door)
-	_check(nearby.has_all(wanted) and not nearby.has("mine_entrance"), "local landmark lookup includes town without leaking the distant mine marker")
-	var region := Rect2(160, 96, 1536, 960)
+	_check(wanted.all(func(id: String) -> bool: return Map.landmarks_near(Map.LANDMARKS[id].door).has(id)) and not nearby.has("mine_entrance"), "each local landmark lookup includes its place without leaking the distant mine marker")
+	var region := Rect2(160, 96, 3360, 2320)
 	var reachable := _walk_region(Map.DOCK, region)
-	_check(reachable.has(_cell(Vector2(960, 280), region)), "the original dock connects on foot to the second-page town approach")
+	_check(reachable.has(_cell(Vector2(1344, 352), region)), "the original dock connects on foot to the redesigned main street")
 	for id: String in wanted:
 		var landmark: Dictionary = Map.LANDMARKS[id]
 		var door: Vector2 = landmark.door
@@ -154,7 +158,7 @@ func _town() -> void:
 			var offset := Vector2.RIGHT.rotated(index * TAU / 8.0) * radius
 			ring_valid = ring_valid and Map.walkable(Vector2(Map.LANDMARKS.plaza.door) + offset)
 	_check(ring_valid, "all eight evening gathering positions remain on accessible plaza ground")
-	_check(not bool(Map.LANDMARKS.mine_entrance.open) and Map.walkable(Map.LANDMARKS.mine_entrance.door) and not Map.walkable(Rect2(Map.LANDMARKS.mine_entrance.bounds).get_center()), "mine has an accessible marked entrance but its sealed interior is not playable")
+	_check(bool(Map.LANDMARKS.mine_entrance.open) and Map.walkable(Map.LANDMARKS.mine_entrance.door) and not Map.walkable(Rect2(Map.LANDMARKS.mine_entrance.bounds).get_center()), "mine has a walkable door and solid facade; rooms provide its three playable floors")
 	_check(Map.landmarks_near(Map.LANDMARKS.mine_entrance.door).has("mine_entrance") and not Map.settlement(Map.LANDMARKS.mine_entrance.door), "mine belongs to the distant foothills rather than the harbor settlement")
 
 

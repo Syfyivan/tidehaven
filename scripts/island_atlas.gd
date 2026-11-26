@@ -1,13 +1,16 @@
 extends Control
+const Housing=preload("res://scripts/housing.gd")
 ## Local island notebook. Buttons change the view, never player/world state.
 signal closed
 signal sea_requested
 
 const UI = preload("res://scripts/ui_style.gd")
+const IslandArt = preload("res://scripts/island_art.gd")
 const IslandMap = preload("res://scripts/island_map.gd")
 const IslandState = preload("res://scripts/island_state.gd")
-const NODE_NAMES := {"tree": "树木", "branch": "枯枝", "fiber": "纤维", "stone": "石料", "ore": "矿石", "dig_seed": "野生种子", "dig_treasure": "埋藏物"}
-const NODE_COLORS := {"tree": Color("456b4c"), "branch": Color("896b4a"), "fiber": Color("b4c47e"), "stone": Color("d4d1bb"), "ore": Color("668883"), "dig_seed": Color("d6bd7c"), "dig_treasure": Color("b28369")}
+const Town=preload("res://scripts/island_town.gd")
+const NODE_NAMES := {"mushroom":"林菇","tree": "树木", "branch": "枯枝", "fiber": "纤维", "stone": "石料", "ore": "矿石", "dig_seed": "野生种子", "dig_treasure": "埋藏物"}
+const NODE_COLORS := {"mushroom":Color("bfa178"),"tree": Color("456b4c"), "branch": Color("896b4a"), "fiber": Color("b4c47e"), "stone": Color("d4d1bb"), "ore": Color("668883"), "dig_seed": Color("d6bd7c"), "dig_treasure": Color("b28369")}
 
 var close_button: Button
 var sea_button: Button
@@ -28,6 +31,7 @@ var _water_label: Label
 var _heading: Label
 var _data: Dictionary = {}
 var _slot: String = "host"
+var _page_roads: Dictionary = {}
 
 
 func _ready() -> void:
@@ -56,7 +60,7 @@ func _ready() -> void:
 		button.add_theme_color_override("font_color", Color("304c3b"))
 		button.add_theme_color_override("font_hover_color", Color("243f31"))
 		for appearance: String in ["normal", "hover", "pressed"]:
-			button.add_theme_stylebox_override(appearance, UI.box("quick_hover" if appearance == "hover" else "clear"))
+			button.add_theme_stylebox_override(appearance, UI.box("map_hover" if appearance != "normal" else "clear"))
 		button.tooltip_text = str(entry.description)
 		region_buttons[id] = button
 	UI.label(self, "岛上札记", Rect2(884, 184, 280, 26), 15, UI.MUTED)
@@ -91,7 +95,7 @@ func refresh(data: Dictionary, slot: String) -> void:
 	var player: Dictionary = data.get("players", {}).get(slot, {})
 	var at := Vector2(float(player.get("x", 210)), float(player.get("y", 380)))
 	var page := Vector2i(IslandMap.page_origin(at) / IslandMap.PAGE)
-	position_label.text = "你在 %s · 第 %d 列 / %d 行  |  绿点：你  蓝点：伙伴  浅蓝：淡水" % [IslandMap.region(at).name, page.x + 1, page.y + 1]
+	position_label.text = "你在 %s · 第 %d 列 / %d 行  |  绿：你  蓝：伙伴  紫：居民所在处" % [IslandMap.region(at).name, page.x + 1, page.y + 1]
 	back_button.disabled = selected_region.is_empty()
 	for id: String in region_buttons:
 		var button: Button = region_buttons[id]
@@ -102,7 +106,7 @@ func refresh(data: Dictionary, slot: String) -> void:
 	for key: String in page_buttons:
 		var button: Button = page_buttons[key]
 		button.visible = not selected_region.is_empty()
-		button.add_theme_stylebox_override("normal", UI.box("quick_selected" if key == _page_key(selected_page) else "clear"))
+		button.add_theme_stylebox_override("normal", UI.box("map_selected" if key == _page_key(selected_page) else "clear"))
 	_refresh_details()
 	map_canvas.queue_redraw()
 
@@ -128,7 +132,7 @@ func _select_region(id: String) -> void:
 			var rect: Rect2 = _project_rect(Rect2(Vector2(page) * IslandMap.PAGE, IslandMap.PAGE))
 			var button: Button = UI.button(map_canvas, "", rect, func() -> void: _select_page(page))
 			for appearance: String in ["normal", "hover", "pressed"]:
-				button.add_theme_stylebox_override(appearance, UI.box("quick_hover" if appearance == "hover" else "clear"))
+				button.add_theme_stylebox_override(appearance, UI.box("map_hover" if appearance != "normal" else "clear"))
 			button.tooltip_text = "查看第 %d 列 / %d 行；不会移动角色" % [column + 1, row + 1]
 			page_buttons[_page_key(page)] = button
 	refresh(_data, _slot)
@@ -183,10 +187,10 @@ func _refresh_details() -> void:
 		_heading.text = "潮芽岛 · 岛内地图"
 		_subtitle.text = "选择一片区域，查看小径、淡水与物资分布。"
 		title_label.text = "六片地貌"
-		detail_label.text = "近港小镇有超市、诊所与澡堂。沿路可去森林、湖河、山麓和荒地。"
+		detail_label.text = "潮芽镇由广场延伸至东街与南巷。镇公所东南有座荒院，可向镇长承租；外围通往森林、湖河与山麓。"
 		_page_title.text = "16 列 × 12 行"
 		_water_label.text = "码头与营地在西北角。"
-		resources_label.text = "未开垦土地不赠送农田：清理树枝、草和石头，再用锄头开地。矿洞入口尚未开放。"
+		resources_label.text = "院子里的荒草和树石需要自己整理，水泊可装水。温室可修复，北街寿司屋可承租；东面灰岩矿洞有三层矿脉。"
 		return
 	var entry: Dictionary = _region_by_id(selected_region)
 	_heading.text = "潮芽岛 · " + str(entry.name)
@@ -221,10 +225,12 @@ func _refresh_details() -> void:
 	var places := PackedStringArray()
 	for landmark: Dictionary in IslandMap.landmarks_near(page_rect.get_center()).values():
 		if page_rect.has_point(landmark.door):
-			places.append(str(landmark.name))
+			places.append(IslandMap.landmark_label(_data,landmark.id))
 	for feature: Dictionary in IslandMap.water_features_near(page_rect.get_center()):
 		if feature.kind != "pond" and page_rect.intersects(feature.bounds):
 			places.append(str(feature.name))
+	if page_rect.intersects(IslandMap.YARD_BOUNDS):
+		places.append("旧院 · " + ("已承租" if _data.island.homestead.rented else "可向镇长承租"))
 	if not places.is_empty():
 		detail_label.text = "这一页：" + "、".join(places)
 
@@ -237,7 +243,7 @@ func _draw_map() -> void:
 		if not rect.intersects(bounds):
 			continue
 		var drawn: Rect2 = _project_rect(rect.intersection(bounds))
-		map_canvas.draw_rect(drawn, entry.color)
+		map_canvas.draw_rect(drawn, entry.color.lerp(IslandArt.map_color(int(_data.get("day",1))),0.45))
 		map_canvas.draw_rect(drawn, Color(0.29, 0.39, 0.29, 0.28), false, 1)
 	if selected_region.is_empty():
 		for column in range(1, IslandMap.PAGES.x):
@@ -247,15 +253,29 @@ func _draw_map() -> void:
 	else:
 		_draw_region_pages(bounds)
 	_draw_landmarks(bounds)
+	for point:Vector2 in resident_markers(_data).values():
+		if bounds.has_point(point):map_canvas.draw_circle(_project(point),3,Color("825d8f"))
+	var beacon:Vector2=preload("res://scripts/journal.gd").BEACON
+	if bounds.has_point(beacon):map_canvas.draw_circle(_project(beacon),4,Color("e3bd65") if int(_data.journal.story_step)>0 else Color("84775c"))
+	for chest in _data.get("chests", {}).values():
+		var at := Vector2(chest.x, chest.y)
+		if chest.get("area", "deck") == "island" and bounds.has_point(at):
+			map_canvas.draw_rect(Rect2(_project(at)-Vector2(3,3),Vector2(6,6)),Color("a66d35"))
 	var dock: Vector2 = _project(IslandMap.DOCK)
 	if bounds.has_point(IslandMap.DOCK):
 		map_canvas.draw_rect(Rect2(dock - Vector2(4, 3), Vector2(8, 6)), Color("c7ad79"))
 		map_canvas.draw_line(dock + Vector2(-7, 0), dock + Vector2(7, 0), Color("665442"), 2, false)
 	for slot: String in _data.get("players", {}):
 		var player: Dictionary = _data.players[slot]
-		if not player.get("online", false) or player.get("area", "deck") != "island":
+		if not player.get("online", false) or (player.get("area", "deck") != "island" and not (player.get("area")=="room" and not str(player.get("room","")).begins_with("sea_"))):
 			continue
 		var at := Vector2(float(player.x), float(player.y))
+		if player.area=="room":
+			if player.room in ["yard_home","yard_annex"]:at=Housing.door(_data)
+			else:
+				var marker:="mine_entrance" if str(player.room).begins_with("mine_") else str(player.room)
+				if not IslandMap.LANDMARKS.has(marker):continue
+				at=IslandMap.LANDMARKS[marker].door
 		if not bounds.has_point(at):
 			continue
 		var screen: Vector2 = _project(at)
@@ -274,8 +294,8 @@ func _draw_region_pages(bounds: Rect2) -> void:
 			var page_rect := Rect2(Vector2(column, row) * IslandMap.PAGE, IslandMap.PAGE)
 			var drawn: Rect2 = _project_rect(page_rect)
 			map_canvas.draw_rect(drawn, Color(0.37, 0.43, 0.31, 0.3), false, 1)
-			map_canvas.draw_line(_project(page_rect.position + Vector2(0, 272)), _project(page_rect.position + Vector2(896, 272)), Color(0.88, 0.84, 0.65, 0.65), 1, false)
-			map_canvas.draw_line(_project(page_rect.position + Vector2(448, 0)), _project(page_rect.position + Vector2(448, 544)), Color(0.88, 0.84, 0.65, 0.65), 1, false)
+			for route: PackedVector2Array in _roads_for_page(column, row):
+				map_canvas.draw_line(_project(route[0]), _project(route[1]), Color(0.88, 0.84, 0.65, 0.65), 1, false)
 			map_canvas.draw_string(get_theme_default_font(), drawn.position + Vector2(4, 13), "%d,%d" % [column + 1, row + 1], HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color("415b43"))
 			for pond: Dictionary in IslandMap.ponds_near(page_rect.get_center()):
 				if page_rect.has_point(pond.center):
@@ -288,7 +308,52 @@ func _draw_region_pages(bounds: Rect2) -> void:
 					map_canvas.draw_rect(Rect2(_project(at) - Vector2(2, 2), Vector2(4, 4)), NODE_COLORS[node.kind])
 
 
+static func resident_markers(data:Dictionary)->Dictionary:
+	var result:Dictionary={}
+	for id:String in Town.NPCS:
+		var place:=Town.location(id,float(data.minute),data)
+		if place.area=="island":result[id]=Vector2(place.at)
+		elif IslandMap.LANDMARKS.has(str(place.room)):result[id]=Vector2(IslandMap.LANDMARKS[place.room].door)
+	return result
+
+func _roads_for_page(column: int, row: int) -> Array:
+	var key := "%d,%d" % [column, row]
+	if _page_roads.has(key):
+		return _page_roads[key]
+	var segments: Array = []
+	var origin := Vector2(column, row) * IslandMap.PAGE
+	for axis in 2:
+		var limit := int(IslandMap.PAGE.x if axis == 0 else IslandMap.PAGE.y)
+		for step in range(0, limit, 16):
+			var a: Vector2
+			var b: Vector2
+			if axis == 0:
+				a = Vector2(origin.x + step, IslandMap.horizontal_path_y(origin.x + step, row))
+				b = Vector2(origin.x + step + 16, IslandMap.horizontal_path_y(origin.x + step + 16, row))
+			else:
+				a = Vector2(IslandMap.vertical_path_x(origin.y + step, column), origin.y + step)
+				b = Vector2(IslandMap.vertical_path_x(origin.y + step + 16, column), origin.y + step + 16)
+			var midpoint := (a + b) * 0.5
+			if IslandMap.on_path(midpoint) and IslandMap.walkable(midpoint):
+				segments.append(PackedVector2Array([a, b]))
+	_page_roads[key] = segments
+	return segments
+
 func _draw_landmarks(bounds: Rect2) -> void:
+	if int(_data.get("housing",{}).get("site",-1))>=0 and bounds.has_point(Housing.door(_data)):
+		var home_at:=_project(Housing.door(_data))
+		map_canvas.draw_rect(Rect2(home_at-Vector2(4,4),Vector2(8,8)),Color("e4b46a"))
+		map_canvas.draw_string(get_theme_default_font(),home_at+Vector2(10,-5),Housing.landmark(_data).name,HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("3f5544"))
+	if bounds.intersects(IslandMap.YARD_BOUNDS):
+		var yard: Rect2 = _project_rect(IslandMap.YARD_BOUNDS.intersection(bounds))
+		map_canvas.draw_rect(yard, Color(0.37,0.55,0.22,0.23))
+		map_canvas.draw_rect(yard, Color("907d57"), false, 2)
+		map_canvas.draw_string(get_theme_default_font(), Vector2(yard.position.x + 4, yard.end.y + 15) if selected_region.is_empty() else yard.position + Vector2(4, 15), "旧院 · " + ("已承租" if _data.island.homestead.rented else "空置"), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("3f5544"))
+	for route: PackedVector2Array in IslandMap.town_streets():
+		if bounds.has_point(route[0]) and bounds.has_point(route[1]):
+			for piece: Dictionary in IslandMap.route_segments(route):
+				map_canvas.draw_line(_project(piece.a),_project(piece.b),Color("b4976b") if piece.kind=="bridge" else Color("e0ce9b"),2)
+
 	for feature: Dictionary in IslandMap.WATER_FEATURES.values():
 		if not bounds.intersects(feature.bounds):
 			continue
@@ -314,15 +379,23 @@ func _draw_landmarks(bounds: Rect2) -> void:
 					var b := before.lerp(after, float(step + 1) / samples)
 					if bounds.has_point(a) and bounds.has_point(b):
 						map_canvas.draw_line(_project(a), _project(b), Color("76a99b"), maxf(2, float(feature.width) * _scale()), false)
+	for site:Dictionary in IslandMap.FOREST_SITES.values():
+		if bounds.has_point(site.at):
+			map_canvas.draw_circle(_project(site.at),4,Color("ab845f"))
+			map_canvas.draw_string(get_theme_default_font(),_project(site.at)+Vector2(8,4),site.name,HORIZONTAL_ALIGNMENT_LEFT,-1,12,Color("3f5544"))
 	for landmark: Dictionary in IslandMap.LANDMARKS.values():
 		var at: Vector2 = landmark.door
 		if not bounds.has_point(at):
 			continue
 		var position: Vector2 = _project(at)
+		if not selected_region.is_empty():
+			map_canvas.draw_rect(_project_rect(Rect2(landmark.bounds).intersection(bounds)), Color("c5b899") if landmark.kind=="plaza" else Color("b69476"))
 		map_canvas.draw_rect(Rect2(position - Vector2(3, 3), Vector2(6, 6)), Color("ba855a") if landmark.open else Color("747868"))
+		if landmark.id in ["restaurant","greenhouse"] and not selected_region.is_empty():
+			map_canvas.draw_string(get_theme_default_font(),position+Vector2(7,3),IslandMap.landmark_label(_data,landmark.id),HORIZONTAL_ALIGNMENT_LEFT,-1,11,Color("3f5544"))
 		# Name the town once at island/region scale; page details list each building.
-		if landmark.id in ["plaza", "mine_entrance"]:
-			map_canvas.draw_string(get_theme_default_font(), position + Vector2(7, 3), "潮芽镇" if landmark.id == "plaza" else "矿洞（未开放）", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("3f5544"))
+		if landmark.id in ["plaza", "mine_entrance"] or (landmark.id == "townhall" and not selected_region.is_empty()):
+			map_canvas.draw_string(get_theme_default_font(), position + Vector2(7, 3), {"plaza": "潮芽镇", "townhall": "镇公所 · 镇长", "mine_entrance": "灰岩矿洞 · 3层"}[landmark.id], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color("3f5544"))
 
 func _pond_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()

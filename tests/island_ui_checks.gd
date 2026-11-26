@@ -70,12 +70,12 @@ func _chart_checks() -> void:
 	var navigation: Dictionary = main.world.data.navigation.duplicate(true)
 	await _settle(0.32)
 	_check(is_equal_approx(float(main.world.data.elapsed), elapsed) and main.world.data.navigation == navigation, "solo chart pauses both time and raft travel")
-	var locked: Button = main.chart_ui.island_buttons["island_mist"]
-	await _click(locked.get_global_rect().get_center())
-	_check(main.chart_ui.selected_island == "island_mist" and main.chart_ui.title_label.text == "雾岬", "locked-island click shows its own details")
-	_check(main.chart_ui.destination_button.disabled and "尚未开放" in str(main.chart_ui.status_label.text), "locked destination remains explicitly unavailable")
+	var mist: Button = main.chart_ui.island_buttons["island_mist"]
+	await _click(mist.get_global_rect().get_center())
+	_check(main.chart_ui.selected_island == "island_mist" and main.chart_ui.title_label.text == "雾岬", "new-island click shows its own details")
+	_check(not main.chart_ui.destination_button.disabled and "可航行到达" in str(main.chart_ui.status_label.text), "opened mist island is a real reachable destination")
 	await _click(main.chart_ui.destination_button.get_global_rect().get_center())
-	_check(main.world.data.chart.destination == "" and main.world.data.navigation == navigation, "disabled locked destination does not change route or teleport the raft")
+	_check(main.world.data.chart.destination == "island_mist" and main.world.data.navigation == navigation and _player().area=="deck", "setting a new island marker does not teleport the raft or player")
 	await _click(main.chart_ui.island_buttons["island_home"].get_global_rect().get_center())
 	_check(not main.chart_ui.destination_button.disabled, "first island can be selected as a destination")
 	await _click(main.chart_ui.destination_button.get_global_rect().get_center())
@@ -176,7 +176,7 @@ func _hook_checks() -> void:
 	target.speed = 12.0
 	target.phase = 0.0
 	target.sway = 4.0
-	await _tap(KEY_1)
+	await _tap(KEY_H)
 	await _click(_drift_point(id))
 	_check(not _player().hook.is_empty() and str(_player().hook.get("phase", "")) == "out" and not _player().hook.has("id"), "left click throws a directional hook without a locked resource id")
 	_check(main.hovered_drift.is_empty() and main.view.hovered_id.is_empty(), "pointing at drift does not highlight or lock it")
@@ -202,7 +202,7 @@ func _multi_hook_checks() -> void:
 	for object: Dictionary in main.world.data.drift.values():
 		object.active = false
 		object.respawn = 999.0
-	await _tap(KEY_1)
+	await _tap(KEY_H)
 	await _click(_world_point(Vector2(820, 224), "drift"))
 	_check(not _player().hook.is_empty() and _player().hook.get("cargo") is Array and _player().hook.cargo.is_empty() and not _player().hook.has("id"), "throwing toward empty sea creates an empty cargo array with no target lock")
 	var floating: bool = await _wait_for(func() -> bool: return str(_player().hook.get("phase", "")) == "float", 3.0)
@@ -272,7 +272,7 @@ func _shore_occlusion_checks() -> void:
 	target.speed = 12.0
 	target.phase = 0.0
 	target.sway = 4.0
-	await _tap(KEY_1)
+	await _tap(KEY_H)
 	_check(not main.view.surface_is_clear(Vector2(690, 228)), "island terrain occludes sea drift on the land silhouette")
 	var before_bag: Array = _player().bag.duplicate(true)
 	await _click(_drift_point(id))
@@ -303,7 +303,7 @@ func _mooring_checks() -> void:
 	navigation.push_y = 0.0
 	navigation.host_cooldown = 0.0
 	navigation.guest_cooldown = 0.0
-	await _tap(KEY_1)
+	await _tap(KEY_H)
 	await _tap(KEY_P)
 	await _choose_context("moor")
 	_check(navigation.moored and navigation.anchored and Inventory.count(_player().bag, "rope") == 0 and Inventory.count(_player().bag, "anchor") == 0, "P-menu mooring consumes the sole rope and stops the raft without requiring an anchor")
@@ -370,7 +370,7 @@ func _paddle_checks() -> void:
 	nav.host_cooldown = 0.0
 	nav.push_x = 0.0
 	nav.push_y = 0.0
-	await _tap(KEY_3)
+	await _select_item("paddle")
 	_check(main.active_tool == "paddle", "3 selects the carried paddle")
 	await _move_mouse(_world_point(Vector2(780, 310), "drift"))
 	var stamina: float = float(_player().stamina)
@@ -384,28 +384,20 @@ func _paddle_checks() -> void:
 
 
 func _toolbar_checks() -> void:
-	_fixture_player("deck", Vector2(480, 288))
-	_player().bag = Inventory.empty_slots(Inventory.BAG_SIZE)
-	for tool: String in ["rod", "paddle", "harpoon"]:
-		Inventory.add(_player().bag, tool, 1)
-	main.world.data.navigation.anchored = true
+	_fixture_player("deck",Vector2(480,288))
+	_player().bag=Inventory.empty_slots(12)
+	for tool in ["rod","paddle","harpoon"]:Inventory.add(_player().bag,tool,1)
 	await _settle()
-	_check(main.hud.tool_buttons.size() == 4 and main.hud.quick_buttons.size() == 16 and main.hud.slots.size() == 12 and main.hud.quick_buttons.filter(func(button): return button.visible).size() == 9, "sea toolbar retains five visible bag shortcuts beside four distinct tools")
-	for tool: String in ["hook", "rod", "paddle"]:
-		await _click(main.hud.tool_buttons[tool].get_global_rect().get_center())
-		_check(main.active_tool == tool and _player().hook.is_empty() and _player().fishing.is_empty(), tool + ": toolbar selection does not pass through into a world action")
-	_check(main.hud.tool_buttons.harpoon.disabled, "harpoon toolbar control is unavailable on deck")
-	_fixture_player("water", Vector2(300, 240))
-	await _tap(KEY_4)
-	_check(main.active_tool == "harpoon" and not main.hud.tool_buttons.harpoon.disabled and main.hud.tool_buttons.rod.disabled and main.hud.tool_buttons.paddle.disabled, "4 selects the water-only harpoon while deck tools become unavailable")
-	await _tap(KEY_1)
-	_check(main.active_tool == "hook", "1 returns to the water gathering tool")
-	await _click(main.hud.tool_buttons.harpoon.get_global_rect().get_center())
-	_check(main.active_tool == "harpoon" and _player().activity.is_empty(), "clicking the fourth toolbar control selects harpoon without firing it")
-	await _tap(KEY_2)
-	_check(main.active_tool == "rod", "legacy 2 keyboard selection remains mapped to rod")
+	_check(main.hud.slots.size()==12 and main.hud.slots.all(func(s):return s.button.visible),"all actual bag slots visible at sea")
+	for tool in ["rod","paddle","harpoon"]:
+		await _select_item(tool)
+		_check(main.active_tool==tool and _player().hook.is_empty() and _player().fishing.is_empty(),"select carried "+tool+" without action")
+	_fixture_player("water",Vector2(300,240))
 	await _tap(KEY_3)
-	_check(main.active_tool == "paddle", "legacy 3 keyboard selection remains mapped to paddle")
+	_check(main.active_tool=="harpoon" and _player().activity.is_empty(),"3 selects actual third bag slot without firing")
+	await _tap(KEY_H);_check(main.active_tool=="hook","H equips permanent hook")
+	await _tap(KEY_1);_check(main.active_tool=="rod","1 selects first bag slot")
+	await _tap(KEY_2);_check(main.active_tool=="paddle","2 selects second bag slot")
 
 
 func _island_checks() -> void:
@@ -420,11 +412,12 @@ func _island_checks() -> void:
 	_player().bag = Inventory.empty_slots(12)
 	main.world.data.island.depleted.erase("palm_0")
 	main.world.data.island.plots.clear()
-	await _tap(KEY_1)
+	await _tap(KEY_H)
 	var resource: Dictionary = IslandMap.node("palm_0")
 	await _click(_world_point(Vector2(float(resource.x), float(resource.y)), "island"))
 	_check(_player().activity.is_empty() and IslandState.active(main.world.data.island, "palm_0", int(main.world.data.day)) and Inventory.count(_player().bag, "wood") == 0, "island tree click without a personal axe cannot start gathering or award wood")
 	Inventory.add(_player().bag, "axe", 1)
+	await _select_item("axe")
 	await _click(_world_point(Vector2(float(resource.x), float(resource.y)), "island"))
 	_check(_player().activity.get("kind", "") == "island_gather" and _player().activity.get("id", "") == "palm_0" and Inventory.count(_player().bag, "wood") == 0, "left click with the axe starts the correct timed island node, with no instant reward")
 	var completed: bool = await _wait_for(func() -> bool: return _player().activity.is_empty(), float(resource.duration) + 2.0)
@@ -458,10 +451,10 @@ func _island_checks() -> void:
 	Inventory.add(_player().bag, "plastic", 4)
 	Inventory.add(_player().bag, "rope", 2)
 	await _click(main.crafting_ui.recipe_buttons["purifier"].get_global_rect().get_center())
-	_check(main.crafting_ui.make_button.disabled and main.crafting_ui.make_button.text == "请返回甲板", "island facility recipe requires returning to deck even with enough materials")
+	_check(not main.crafting_ui.make_button.disabled,"handcraft facility into bag on land")
 	var before_structures: Dictionary = main.world.data.structures.duplicate(true)
 	await _click(main.crafting_ui.make_button.get_global_rect().get_center())
-	_check(main.world.data.structures == before_structures and main.placement_recipe.is_empty(), "unavailable island facility cannot enter placement or consume materials")
+	_check(main.world.data.structures == before_structures and Inventory.count(_player().bag,"purifier")==1 and main.placement_recipe.is_empty(),"land craft creates carried item without auto placing")
 	await _tap(KEY_ESCAPE)
 
 
@@ -507,14 +500,14 @@ func _farm_input_checks() -> void:
 	await _click(_world_point(second, "island"))
 	_check(main.world.data.island.plots[second_key].crop == "summer_seed" and Inventory.count(_player().bag, "summer_seed") == 0 and int(main.world.data.island.plots[first_key].growth) == 0 and int(main.world.data.island.plots[second_key].growth) == 0, "covered soil accepts the selected out-of-season crop while neither plot gains artificial growth")
 	await _capture("island-two-plots.png")
-	await _tap(KEY_1)
+	await _tap(KEY_H)
 	_fixture_player("island", Vector2(640, 430))
 	await _settle()
 	await _click(_world_point(Vector2(640, 430), "island"))
 	_check(int(_player().can_water) == Farming.CAN_CAPACITY, "normal mouse interaction at the freshwater bank fills the personal watering can")
 	_check(main.world.data.island.plots[first_key].watered and main.world.data.island.plots[second_key].watered and main.world.data.island.plots.size() == 2, "refilling leaves both independent plots untouched")
 	_player().can_water = 0
-	await _tap(KEY_7)
+	await _select_item("watering_can")
 	await _tap(KEY_P)
 	_check(main.context_ui.visible and main.active_tool == "hook", "one P in watering mode exposes the pond refill menu immediately")
 	await _choose_context("refill_can")
@@ -550,7 +543,7 @@ func _atlas_checks() -> void:
 
 func _page_input_checks() -> void:
 	_fixture_player("island", Vector2(884, 208))
-	await _tap(KEY_1)
+	await _tap(KEY_H)
 	await _settle()
 	var before: Vector2 = main.view.world_to_screen(Vector2(944, 208), "island")
 	main.automated = false
@@ -572,7 +565,7 @@ func _page_input_checks() -> void:
 	var target := Vector2(944, 208)
 	var screen: Vector2 = main.view.world_to_screen(target, "island")
 	_check(screen == Vector2(48, 208) and before - screen == Vector2(896, 0) and main.view.screen_to_world(screen, "island") == target, "page switch applies one fixed page offset and exactly inverts pointer coordinates")
-	await _tap(KEY_5)
+	await _select_item("hoe")
 	await _move_mouse(_world_point(target, "island"))
 	await _settle()
 	_check(main.view.farm_preview.get("x", -1) == target.x and main.view.farm_preview.get("y", -1) == target.y and bool(main.view.farm_preview.get("valid", false)), "farm preview after crossing pages selects the global target cell")
@@ -583,12 +576,14 @@ func _page_input_checks() -> void:
 
 
 func _town_input_checks() -> void:
-	_fixture_player("island", Vector2(1088, 480))
 	main.world.data.minute = 660.0
+	var town=preload("res://scripts/island_town.gd")
+	var market_at:Vector2=town.position("lin_sui",660)
+	preload("res://scripts/rooms.gd")._arrive(main.world.data,_player(),"market",market_at+Vector2(24,0))
 	main.world.data.money = 30
 	main.active_tool = "hook"
 	await _settle()
-	await _click(_world_point(Vector2(1088, 480), "island"))
+	await _click(_world_point(market_at,"room"))
 	_check(main.dialogue_ui.visible and "林穗" in main.dialogue_ui.speaker.text and main.world.data.money == 30, "left-click market resident opens readable conversation without any automatic purchase")
 	var clock_before: float = main.world.data.minute
 	await _settle(0.25)
@@ -598,9 +593,9 @@ func _town_input_checks() -> void:
 	_check(not main.dialogue_ui.visible and not main.pause_open, "Escape closes only the conversation")
 	var before_seed: int = Inventory.count(_player().bag, "seed")
 	await _tap(KEY_P)
-	await _choose_context("town_trade")
+	await _choose_context("town_trade","buy_seed")
 	_check(main.world.data.money == 27 and Inventory.count(_player().bag, "seed") == before_seed + 1, "explicit market menu buys one seasonal seed for three shared coins")
-	_fixture_player("island", Vector2(1528, 576))
+	preload("res://scripts/rooms.gd")._arrive(main.world.data,_player(),"bathhouse",Vector2(400,560))
 	_player().stamina = 20.0
 	await _settle()
 	await _tap(KEY_P)
@@ -614,8 +609,10 @@ func _town_input_checks() -> void:
 	await _capture("town-south.png")
 	await _tap(KEY_M)
 	await _click(main.island_atlas.region_buttons.harbor.get_global_rect().get_center())
-	await _click(main.island_atlas.page_buttons["1,0"].get_global_rect().get_center())
-	_check("超市" in main.island_atlas.detail_label.text and "诊所" in main.island_atlas.detail_label.text, "island page details list actual reachable town buildings")
+	for landmark in ["market","clinic"]:
+		var page := Vector2i(IslandMap.page_origin(IslandMap.LANDMARKS[landmark].door)/IslandMap.PAGE)
+		await _click(main.island_atlas.page_buttons["%d,%d" % [page.x,page.y]].get_global_rect().get_center())
+		_check(IslandMap.LANDMARKS[landmark].name in main.island_atlas.detail_label.text, "page details list current " + landmark + " location")
 	await _capture("town-atlas.png")
 	await _tap(KEY_M)
 	_fixture_player("island", Vector2(6704, 2352))
@@ -623,8 +620,8 @@ func _town_input_checks() -> void:
 	await _capture("lake-shore.png")
 	# Stage a genuine wild grass tile; all clearing and farming goes through input.
 	var wild: Dictionary = {}
-	for node: Dictionary in IslandMap.nodes_near(Vector2(2000, 280)).values():
-		if str(node.id).begins_with("clear_2_0_") and node.kind == "fiber" and node.y < 350:
+	for node: Dictionary in IslandMap.nodes_near(Vector2(5000, 850)).values():
+		if str(node.id).begins_with("clear_5_1_") and node.kind == "fiber" and node.y > 820 and node.y < 1000:
 			wild = node
 			break
 	_check(not wild.is_empty(), "wilderness includes an uncleared grass cell")
@@ -640,22 +637,22 @@ func _town_input_checks() -> void:
 	main.world.data.island.depleted.erase(wild.id)
 	main.world.data.island.plots.erase(Farming.plot_key(at))
 	await _settle()
-	await _tap(KEY_5)
+	await _select_item("hoe")
 	await _move_mouse(_world_point(at, "island"))
 	await _settle()
-	_check(not main.view.farm_preview.valid, "hoe preview marks uncleared grass as blocked")
+	_check(main.active_tool == "till" and main.view.farm_preview.has("valid") and not main.view.farm_preview.get("valid", true), "hoe preview marks uncleared grass as blocked")
 	await _click(_world_point(at, "island"))
 	_check(not main.world.data.island.plots.has(Farming.plot_key(at)), "clicking blocked soil cannot skip grass clearing")
-	await _tap(KEY_1)
+	await _select_item("scythe")
 	await _click(_world_point(at, "island"))
 	_check(_player().activity.get("kind") == "island_gather", "scythe gathering starts via clicked grass")
 	await _settle(1.9)
 	_check(_player().activity.is_empty() and Inventory.count(_player().bag, "fiber") == 3, "timed scythe work yields the grass once")
-	await _tap(KEY_5)
+	await _select_item("hoe")
 	await _click(_world_point(at, "island"))
-	await _tap(KEY_6)
+	await _select_item("seed")
 	await _click(_world_point(at, "island"))
-	await _tap(KEY_7)
+	await _select_item("watering_can")
 	await _click(_world_point(at, "island"))
 	var plot: Dictionary = main.world.data.island.plots.get(Farming.plot_key(at), {})
 	_check(plot.get("crop") == "seed" and plot.get("watered", false), "cleared wild ground becomes a personal-choice planted and watered cell")
@@ -664,6 +661,7 @@ func _town_input_checks() -> void:
 func _fixture_player(area: String, at: Vector2) -> void:
 	var player: Dictionary = _player()
 	player.area = area
+	player.room=""
 	player.x = at.x
 	player.y = at.y
 	player.resting = false
@@ -680,10 +678,10 @@ func _player() -> Dictionary:
 	return main.world.data.players.host
 
 
-func _choose_context(action: String) -> void:
+func _choose_context(action: String, offer: String = "") -> void:
 	var index: int = -1
 	for candidate: int in main.current_options.size():
-		if str(main.current_options[candidate].action) == action:
+		if str(main.current_options[candidate].action) == action and (offer.is_empty() or main.current_options[candidate].get("args",{}).get("offer")==offer):
 			index = candidate
 			break
 	_check(main.context_ui.visible and index >= 0 and index < main.context_ui.buttons.size(), "nearby menu contains the distinct " + action + " button")
@@ -759,7 +757,8 @@ func _capture(filename: String) -> void:
 	if DisplayServer.get_name() == "headless":
 		print("Screenshot requires a rendering display: ", evidence.path_join(filename))
 		return
-	await RenderingServer.frame_post_draw
+	await process_frame
+	RenderingServer.force_draw(false)
 	var screenshot: Image = root.get_texture().get_image()
 	var error: Error = screenshot.save_png(evidence.path_join(filename))
 	_check(error == OK, filename + " screenshot saves successfully")
@@ -771,3 +770,20 @@ func _check(condition: bool, description: String) -> void:
 		failures += 1
 		printerr("FAIL ", description)
 
+
+func _select_item(item:String)->void:
+	main._update_hud()
+	await _settle()
+	for i in _player().bag.size():
+		if _player().bag[i].get("item","")==item:
+			await _click(main.hud.slots[i].button.get_global_rect().get_center())
+			return
+	_check(false,"carried item exists: "+item)
+
+func _hold_crafted(item:String)->void:
+	if main.crafting_ui.visible:await _tap(KEY_C)
+	var found:=-1
+	for index in _player().bag.size():
+		if _player().bag[index].get("item")==item:found=index;break
+	_check(found>=0,"crafted product is in a real bag slot: "+item)
+	if found>=0:await _click(main.hud.slots[found].button.get_global_rect().get_center())

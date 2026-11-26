@@ -1,6 +1,7 @@
 extends RefCounted
 
 const SalvageHook = preload("res://scripts/salvage_hook.gd")
+const SeaThreats = preload("res://scripts/sea_threats.gd")
 const UnderwaterActions = preload("res://scripts/underwater_actions.gd")
 const Inventory = preload("res://scripts/inventory.gd")
 const Recipes = preload("res://scripts/recipes.gd")
@@ -11,6 +12,15 @@ const IslandMap = preload("res://scripts/island_map.gd")
 const IslandActivity = preload("res://scripts/island_activity.gd")
 const Farming = preload("res://scripts/farming.gd")
 const IslandTown = preload("res://scripts/island_town.gd")
+const Rooms = preload("res://scripts/rooms.gd")
+const Restaurant = preload("res://scripts/restaurant.gd")
+const Gardens = preload("res://scripts/gardens.gd")
+const Appearance=preload("res://scripts/appearance.gd")
+const Housing=preload("res://scripts/housing.gd")
+const Journal=preload("res://scripts/journal.gd")
+const ResidentStories=preload("res://scripts/resident_stories.gd")
+const HomeLife=preload("res://scripts/home_life.gd")
+const OceanResidents=preload("res://scripts/ocean_residents.gd")
 var migration_notice := ""
 const SLOTS := ["host", "guest"]
 const BAG_ITEMS := ["fish", "wood", "veg", "meal"]
@@ -25,7 +35,7 @@ const HOOK_SECONDS := 1.0
 const DRIFT_CURRENT := Vector2(1.0, 0.10)
 const DRIFT_KINDS := ["wood", "leaf", "plastic", "scrap", "barrel", "wood", "leaf", "plastic", "wood", "leaf", "plastic", "scrap", "barrel", "wood", "leaf", "plastic"]
 const BUILD_DISTANCE := 220.0
-const STRUCTURE_KINDS := ["bedroll", "bed", "purifier", "grill", "garden", "orders", "furnace"]
+const STRUCTURE_KINDS := ["bedroll", "bed", "purifier", "grill", "garden", "orders", "furnace", "workbench"]
 const INTERACTION_DISTANCE := 64.0
 const INPUT_TIMEOUT := 0.4
 const CROP_SECONDS := 65.0
@@ -54,7 +64,7 @@ func _init() -> void:
 		for gy in range(3, 6):
 			initial_tiles.append(_tile_key(gx, gy))
 	data = {
-		"version": 10, "day": 1, "minute": 360.0, "elapsed": 0.0,
+		"version": 16, "wardrobe":Appearance.create(), "day": 1, "minute": 360.0, "elapsed": 0.0, "rooms": Rooms.create(), "gardens": Gardens.create(), "restaurant":Restaurant.create(),
 		"navigation": Navigation.create(), "chart": Archipelago.create(Navigation.create()), "island": IslandState.create(),
 		"money": 0, "chests": {}, "deck_tiles": initial_tiles,
 		"structures": {"bedroll_0": _new_structure("bedroll_0", "bedroll", Vector2(416, 224))},
@@ -62,12 +72,18 @@ func _init() -> void:
 		"expansion": 0, "crop": {"stage": 0, "progress": 0.0, "watered": false},
 		"orders_filled": 0, "orders_limit": 3,
 		"players": {"host": _new_player("船长"), "guest": _new_player("伙伴")},
-		"entities": _new_entities(),
+		"entities": _new_entities(), "threats": SeaThreats.create(),
 	}
+	data.housing=Housing.create(data)
+	data.journal=Journal.create()
+	data.stories=ResidentStories.create()
 
 
-func _new_chest(id: String, label: String, point: Vector2, slots: Array) -> Dictionary:
-	return {"id": id, "name": label, "x": point.x, "y": point.y, "slots": slots}
+func _new_chest(id: String, label: String, point: Vector2, slots: Array, area := "deck") -> Dictionary:
+	var chest := {"id": id, "name": label, "x": point.x, "y": point.y, "slots": slots}
+	if area != "deck":
+		chest.area = area
+	return chest
 
 
 func _new_structure(id: String, kind: String, point: Vector2) -> Dictionary:
@@ -117,7 +133,8 @@ func _outside_raft(point: Vector2, bounds: Rect2, margin: float) -> Vector2:
 
 func _new_player(display_name: String) -> Dictionary:
 	return {
-		"name": display_name, "online": false, "area": "deck", "x": 480.0, "y": 288.0,
+		"name": display_name, "online": false, "area": "deck", "room": "", "x": 480.0, "y": 288.0,
+		"dive_status": SeaThreats.player_state(),
 		"oxygen": 100.0, "stamina": 100.0, "resting": false, "sleep_ready": false,
 		"bag": Inventory.empty_slots(Inventory.BAG_SIZE), "caught": 0, "fishing": {},
 		"hunger": 80.0, "thirst": 75.0, "hook": {}, "activity": {}, "can_water": 0, "notice": "", "notice_id": 0,
@@ -167,7 +184,12 @@ func join(slot: String, display_name: String) -> bool:
 	var player: Dictionary = data.players[slot]
 	player.name = display_name.strip_edges().left(32) if not display_name.strip_edges().is_empty() else ("船长" if slot == "host" else "伙伴")
 	player.online = true
-	if player.area == "island" and data.chart.visited and data.navigation.anchored and Archipelago.within_docking_range(data.chart, data.navigation) and IslandMap.walkable(Vector2(player.x, player.y)):
+	var room_island:String=str(player.get("room","")) if str(player.get("room","")).begins_with("island_") else Archipelago.HOME_ID
+	if player.area == "room" and (player.room=="raft_cabin" or (data.navigation.anchored and Archipelago.within_docking_range(data.chart,data.navigation,room_island))) and not Rooms.underwater(player) and Rooms.can_stand(player.room,Vector2(player.x,player.y)):
+		player.activity = {}
+		player.resting = false
+		player.sleep_ready = false
+	elif player.area == "island" and data.chart.visited and data.navigation.anchored and Archipelago.within_docking_range(data.chart, data.navigation) and IslandMap.walkable(Vector2(player.x, player.y)):
 		player.oxygen = 100.0
 		player.resting = false
 		player.sleep_ready = false
@@ -194,9 +216,12 @@ func leave(slot: String) -> void:
 func _safe_deck(player: Dictionary, slot: String) -> void:
 	var point := _safe_position(slot)
 	player.area = "deck"
+	player.room = ""
 	player.x = point.x
 	player.y = point.y
 	player.oxygen = 100.0
+	player.dive_status.grace = 0.0
+	player.dive_status.hurt = 0.0
 	player.resting = false
 	player.sleep_ready = false
 	player.fishing = {}
@@ -215,6 +240,9 @@ func set_move(slot: String, direction: Vector2) -> void:
 	var movement := direction.limit_length(1.0)
 	_inputs[slot] = {"direction": movement, "age": 0.0}
 	if movement.length_squared() > 0.001:
+		if data.players[slot].activity.get("kind","")=="island_gather":
+			data.players[slot].activity={}
+			_notify(data.players[slot],"已停止采集，物资留在原处。")
 		data.players[slot].resting = false
 		data.players[slot].sleep_ready = false
 
@@ -222,32 +250,32 @@ func set_move(slot: String, direction: Vector2) -> void:
 func tick(delta: float) -> void:
 	if not is_finite(delta) or delta <= 0.0 or not _any_online():
 		return
+	Restaurant.tick(data,delta)
+	for slot:String in SLOTS:data.journal.cooldown[slot]=maxf(0,float(data.journal.cooldown[slot])-delta)
 	data.elapsed += delta
 	data.minute = minf(1430.0, float(data.minute) + delta * MINUTES_PER_SECOND)
 	var old_position := Vector2(float(data.navigation.x), float(data.navigation.y))
 	var old_distance := float(data.navigation.distance)
 	Navigation.tick(data.navigation, delta)
 	# Keep the hull off the island shore; the western dock remains approachable.
-	var island_center: Vector2 = Archipelago.island_position(data.chart) + Archipelago.ISLAND_BODY_OFFSET
 	var raft_position := Vector2(float(data.navigation.x), float(data.navigation.y))
-	if not bool(data.navigation.anchored) and raft_position.distance_to(island_center) < 215:
-		var away := (raft_position - island_center).normalized()
-		raft_position = island_center + (Vector2.LEFT if away.is_zero_approx() else away) * 215
-		data.navigation.x = raft_position.x
-		data.navigation.y = raft_position.y
-		data.navigation.push_x = 0.0
-		data.navigation.push_y = 0.0
+	for island_id:String in Archipelago.ISLANDS:
+		var island_center:Vector2=Archipelago.island_position(data.chart,island_id)+Archipelago.ISLAND_BODY_OFFSET
+		if not bool(data.navigation.anchored) and raft_position.distance_to(island_center) < 215:
+			var away := (raft_position - island_center).normalized()
+			raft_position = island_center + (Vector2.LEFT if away.is_zero_approx() else away) * 215
+			data.navigation.x = raft_position.x
+			data.navigation.y = raft_position.y
+			data.navigation.push_x = 0.0
+			data.navigation.push_y = 0.0
 	data.navigation.distance = old_distance + raft_position.distance_to(old_position)
 	_travel_velocity = (raft_position - old_position) / delta
 	_tick_drift(delta)
 	for structure in data.structures.values():
 		if float(structure.remaining) > 0.0:
 			structure.remaining = maxf(0.0, float(structure.remaining) - delta)
-	for crop in [data.crop]:
-		if int(crop.stage) == 1 and crop.watered:
-			crop.progress = minf(1.0, float(crop.progress) + delta / CROP_SECONDS)
-			if crop.progress >= 1.0:
-				crop.stage = 2
+	for rescued_slot in SeaThreats.tick(data, delta):
+		_rescue(data.players[rescued_slot], rescued_slot, "体力耗尽")
 	for slot in SLOTS:
 		var player: Dictionary = data.players[slot]
 		if not player.online:
@@ -260,8 +288,8 @@ func tick(delta: float) -> void:
 			movement.age += delta
 			if moving_delta > 0.0 and not player.resting:
 				var direction: Vector2 = movement.direction
-				var speed := water_speed(player) if player.area == "water" else DECK_SPEED
-				if player.area == "water":
+				var speed := water_speed(player) if Rooms.underwater(player) else DECK_SPEED
+				if Rooms.underwater(player):
 					speed *= 1.0 - 0.2 * float(_bag_count(player)) / BAG_CAPACITY
 				if _needs_low(player):
 					speed *= 0.7
@@ -273,21 +301,23 @@ func tick(delta: float) -> void:
 				player.fishing.remaining = maxf(0.0, float(player.fishing.remaining) - delta)
 		_tick_hook(player, delta)
 		var work_notice := ""
-		if player.get("activity", {}).get("kind") == "town_bath":
+		if player.get("activity", {}).get("kind") == "room_mine":
+			var work_delta:=_approach_chopping(player,delta) if player.activity.get("approach",false) else delta
+			work_notice = Rooms.tick(data, player, work_delta)
+		elif player.get("activity", {}).get("kind") == "town_bath":
 			work_notice = IslandTown.tick(data, player, delta)
 		elif player.get("activity", {}).get("kind") == "island_gather":
-			work_notice = IslandActivity.tick(data, player, delta)
+			var work_delta:=_approach_chopping(player,delta) if player.activity.get("approach",false) else delta
+			work_notice = IslandActivity.tick(data, player, work_delta)
 		else:
 			work_notice = UnderwaterActions.tick(data, player, delta)
 		if not work_notice.is_empty():
 			_notify(player, work_notice)
-		if player.area == "water":
-			player.oxygen = maxf(0.0, float(player.oxygen) - delta * OXYGEN_PER_SECOND)
+		if Rooms.underwater(player):
+			var air_pocket: bool = player.area == "room" and Vector2(player.x,player.y).distance_to(Rooms.entry(player.room)) < 48
+			player.oxygen = clampf(float(player.oxygen) + delta * (8.0 if air_pocket else -OXYGEN_PER_SECOND),0,100)
 			if player.oxygen <= 0.0:
-				_notify(player, "氧气耗尽，已返回木筏；本趟背包里的鱼丢失了。")
-				Inventory.remove(player.bag, "fish", Inventory.count(player.bag, "fish"))
-				_safe_deck(player, slot)
-				_inputs.erase(slot)
+				_rescue(player, slot, "氧气耗尽")
 		elif player.resting:
 			player.stamina = minf(100.0, float(player.stamina) + delta * (5.0 if _needs_low(player) else 15.0))
 	for entity in data.entities.values():
@@ -298,15 +328,64 @@ func tick(delta: float) -> void:
 			entity.y = clampf(float(entity.base_y) + sin(time * 0.37 + phase) * 12.0 + sin(time * 0.17 + phase * 1.7) * 4.0, 35.0, 520.0)
 
 
+func _rescue(player: Dictionary, slot: String, reason: String) -> void:
+	_safe_deck(player, slot)
+	_inputs.erase(slot)
+	player.stamina = minf(float(player.stamina), 25.0)
+	player.hunger = maxf(0.0, float(player.hunger) - 8.0)
+	player.thirst = maxf(0.0, float(player.thirst) - 8.0)
+	player.dive_status.recovery = SeaThreats.RESCUE_RECOVERY
+	_notify(player, reason + "，已被救回木筏。背包完整保留；休息补给后再下潜。")
+
+func _approach_chopping(player:Dictionary,delta:float)->float:
+	var activity:Dictionary=player.activity
+	var eligible:bool=player.area=="island" and IslandActivity.valid(activity) and IslandState.active(data.island,str(activity.id),int(data.day),data.chests)
+	if player.area=="room":eligible=Rooms.valid_activity(activity) and Rooms.active(data,Rooms.nodes(player.room).get(str(activity.get("id","")),{}))
+	if not eligible or Inventory.count(player.bag,"axe")==0:
+		player.activity={}
+		_notify(player,"已停止靠近，请重新选择可采集的物资。")
+		return 0.0
+	var from:=Vector2(player.x,player.y)
+	var target:=Vector2(activity.start_x,activity.start_y)
+	var speed:=DECK_SPEED*(0.7 if _needs_low(player) else 1.0)
+	var offset:=(target-from).limit_length(speed*delta)
+	_move_player(player,offset)
+	var now:=Vector2(player.x,player.y)
+	if now.distance_to(from)+0.1<offset.length():
+		player.activity={}
+		_notify(player,"前方被挡住了，请换个位置再砍。")
+		return 0.0
+	if now.distance_to(target)>0.1:return 0.0
+	activity.erase("approach")
+	return maxf(0.0,delta-from.distance_to(target)/speed)
+
 func _move_player(player: Dictionary, offset: Vector2) -> void:
-	if player.area == "island":
-		var steps := maxi(1, ceili(offset.length() / 8.0))
+	if player.area == "room":
+		if Rooms.bathing(player):offset*=0.55
+		var step := offset / maxi(1,ceili(offset.length()/6))
+		for i in maxi(1,ceili(offset.length()/6)):
+			if Rooms.clear_step(data,player.room,Vector2(player.x,player.y),Vector2(player.x+step.x,player.y)): player.x+=step.x
+			if Rooms.clear_step(data,player.room,Vector2(player.x,player.y),Vector2(player.x,player.y+step.y)): player.y+=step.y
+	elif player.area == "island":
+		# A historical save may put its old point-sized feet against an edge.
+		var standing:=IslandMap.nearby_standing_point(Vector2(float(player.x),float(player.y)))
+		player.x=standing.x
+		player.y=standing.y
+		var solids := IslandState.blockers(data.island, int(data.day), standing, standing + offset, data.chests)
+		solids=solids.filter(func(solid:Rect2):return not Housing.bounds(data).grow(16).has_point(solid.get_center()))
+		if data.housing.site>=0:solids.append(Housing.bounds(data))
+		solids.append_array(Journal.solids(data))
+		for chest in data.chests.values():
+			if chest.get("area", "deck") == "island":
+				solids.append(Rect2(Vector2(chest.x, chest.y) - Vector2(22, 16), Vector2(44, 36)))
+		var steps := maxi(1, ceili(offset.length() / 6.0))
 		var step := offset / steps
 		for index in steps:
 			var at := Vector2(float(player.x), float(player.y))
-			if IslandMap.walkable(at + Vector2(step.x, 0)):
+			if IslandMap.can_stand(at + Vector2(step.x, 0)) and IslandState.feet_clear(at, at + Vector2(step.x, 0), solids):
 				player.x += step.x
-			if IslandMap.walkable(Vector2(float(player.x), float(player.y) + step.y)):
+			at = Vector2(player.x, player.y)
+			if IslandMap.can_stand(at + Vector2(0, step.y)) and IslandState.feet_clear(at, at + Vector2(0, step.y), solids):
 				player.y += step.y
 	elif player.area == "water":
 		player.x = clampf(float(player.x) + offset.x, 40.0, 860.0)
@@ -347,6 +426,7 @@ func _tiles_rect(tiles: Array) -> Rect2:
 
 
 func _deck_walkable(point: Vector2) -> bool:
+	if Housing.cabin_bounds(data).grow(10).has_point(point):return false
 	return _walkable_in(point, data.deck_tiles, data.structures, data.chests)
 
 
@@ -356,7 +436,7 @@ func _walkable_in(point: Vector2, tiles: Array, structures: Dictionary, chests: 
 			return false
 	for objects in [structures, chests]:
 		for object in objects.values():
-			if object.id == excluded_id:
+			if object.id == excluded_id or object.get("area", "deck") != "deck":
 				continue
 			if absf(point.x - float(object.x)) < 29.0 and absf(point.y - float(object.y)) < 29.0:
 				return false
@@ -399,65 +479,100 @@ func _edge_in_tiles(player: Dictionary, tiles: Array) -> bool:
 
 
 func can_place(slot: String, recipe_id: String, x: float, y: float) -> bool:
-	if not _is_online(slot) or data.players[slot].area != "deck" or not Recipes.ALL.has(recipe_id) or not is_finite(x) or not is_finite(y):
-		return false
+	return placement_reason(slot, recipe_id, x, y).is_empty()
+
+
+func placement_reason(slot: String, recipe_id: String, x: float, y: float, check_materials := false, check_station := true) -> String:
+	if not _is_online(slot) or data.players[slot].area != "deck":
+		return "请回到甲板上建造。"
+	if not Recipes.ALL.has(recipe_id) or Recipes.ALL[recipe_id].structure.is_empty():
+		return "请先选择要搭建的设施。"
+	if check_station and not Recipes.station_available(data, slot, recipe_id):
+		return "需要靠近甲板上的工作台。"
 	var recipe: Dictionary = Recipes.ALL[recipe_id]
-	if recipe.structure.is_empty():
-		return false
-	var gx := floori(x / TILE_SIZE)
-	var gy := floori(y / TILE_SIZE)
-	var center := Vector2(gx * TILE_SIZE + 32, gy * TILE_SIZE + 32)
-	if not center.is_equal_approx(Vector2(x, y)) or gx < 2 or gx > 11 or gy < 2 or gy > 6:
-		return false
-	var player: Dictionary = data.players[slot]
-	if Vector2(float(player.x), float(player.y)).distance_to(center) > BUILD_DISTANCE:
-		return false
-	var key := _tile_key(gx, gy)
+	var reason := _placement_cell_reason(slot, x, y)
+	if not reason.is_empty():
+		return reason
+	var key := _point_tile(Vector2(x, y))
 	if recipe.structure == "foundation":
 		if key in data.deck_tiles:
-			return false
-		for direction in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
-			if _tile_key(gx + direction.x, gy + direction.y) in data.deck_tiles:
-				return true
-		return false
-	return _can_occupy(slot, x, y)
+			return "这里已经有地板了。"
+		var adjacent := false
+		for direction in [Vector2.LEFT, Vector2.RIGHT, Vector2.UP, Vector2.DOWN]:
+			if _point_tile(Vector2(x, y) + direction * TILE_SIZE) in data.deck_tiles:
+				adjacent = true
+		if not adjacent:
+			return "新地板要接在现有甲板边上。"
+	else:
+		reason = _occupy_reason(slot, x, y)
+		if not reason.is_empty():
+			return reason
+	if recipe.structure == "chest" and data.chests.size() >= MAX_SAVED_CHESTS:
+		return "木箱数量已达到存档上限。"
+	if check_materials:
+		var available := chest_totals()
+		var missing := PackedStringArray()
+		for item in recipe.costs:
+			var shortage := int(recipe.costs[item]) - int(available.get(item, 0)) - Inventory.count(data.players[slot].bag, item)
+			if shortage > 0:
+				missing.append("%s×%d" % [Inventory.ITEM_NAMES.get(item, item), shortage])
+		if not missing.is_empty():
+			return "还缺" + "、".join(missing) + "。"
+	return ""
 
 
-func _can_occupy(slot: String, x: float, y: float, excluded_id := "") -> bool:
+func _placement_cell_reason(slot: String, x: float, y: float) -> String:
 	if not is_finite(x) or not is_finite(y):
-		return false
+		return "请选择有效的甲板格。"
 	var gx := floori(x / TILE_SIZE)
 	var gy := floori(y / TILE_SIZE)
-	var center := Vector2(gx * TILE_SIZE + 32, gy * TILE_SIZE + 32)
-	if not center.is_equal_approx(Vector2(x, y)) or gx < 2 or gx > 11 or gy < 2 or gy > 6:
-		return false
+	if not Vector2(gx * TILE_SIZE + 32, gy * TILE_SIZE + 32).is_equal_approx(Vector2(x, y)):
+		return "请把设施对齐甲板格。"
+	if gx < 2 or gx > 11 or gy < 2 or gy > 6:
+		return "已到当前可扩建的边界。"
 	var player: Dictionary = data.players[slot]
-	if Vector2(float(player.x), float(player.y)).distance_to(center) > BUILD_DISTANCE:
-		return false
-	var key := _tile_key(gx, gy)
+	if Vector2(float(player.x), float(player.y)).distance_to(Vector2(x, y)) > BUILD_DISTANCE:
+		return "距离太远，走近一些再放置。"
+	return ""
+
+
+func _occupy_reason(slot: String, x: float, y: float, excluded_id := "") -> String:
+	var reason := _placement_cell_reason(slot, x, y)
+	if not reason.is_empty():
+		return reason
+	var key := _point_tile(Vector2(x, y))
 	if key not in data.deck_tiles:
-		return false
+		return "这里没有地板，先扩建甲板。"
+	if Housing.cabin_bounds(data).grow(32).has_point(Vector2(x,y)):return "这里是船屋和门前走道。"
 	for objects in [data.structures, data.chests]:
 		for object in objects.values():
-			if object.id == excluded_id:
-				continue
-			if _point_tile(Vector2(float(object.x), float(object.y))) == key:
-				return false
+			if object.get("area", "deck") == "deck" and object.id != excluded_id and _point_tile(Vector2(float(object.x), float(object.y))) == key:
+				return "这一格已有设施，换一格或先搬走。"
 	for other in data.players.values():
 		if other.online and other.area == "deck" and absf(float(other.x) - x) < 39.0 and absf(float(other.y) - y) < 39.0:
-			return false
-	return _placement_preserves_paths(key, excluded_id)
+			return "有人站在这里，等这一格空出来。"
+	if not _placement_preserves_paths(key, excluded_id):
+		return "这样会堵住通道，请留出相连的走道。"
+	return ""
 
 
 func can_relocate(slot: String, id: String, from_x: float, from_y: float, x: float, y: float) -> bool:
-	if not _is_online(slot) or data.players[slot].area != "deck" or not is_finite(from_x) or not is_finite(from_y):
-		return false
+	return relocation_reason(slot, id, from_x, from_y, x, y).is_empty()
+
+
+func relocation_reason(slot: String, id: String, from_x: float, from_y: float, x: float, y: float) -> String:
+	if not _is_online(slot) or data.players[slot].area not in ["deck", "island"]:
+		return "请回到设施所在位置。"
+	if not is_finite(from_x) or not is_finite(from_y):
+		return "原位置无效，请重新选择设施。"
 	var object := _relocatable(id)
-	if object.is_empty() or float(object.x) != from_x or float(object.y) != from_y:
-		return false
-	if not _near(data.players[slot], Vector2(from_x, from_y)) or Vector2(from_x, from_y).is_equal_approx(Vector2(x, y)):
-		return false
-	return _can_occupy(slot, x, y, id)
+	if object.is_empty() or object.get("area", "deck") != data.players[slot].area or float(object.x) != from_x or float(object.y) != from_y:
+		return "设施已经被伙伴搬走，请在新位置重新选择。"
+	if not _near(data.players[slot], Vector2(from_x, from_y)):
+		return "请靠近原设施再搬动。"
+	if Vector2(from_x, from_y).is_equal_approx(Vector2(x, y)):
+		return "这里是原位置，请选择另一格。"
+	return island_chest_reason(slot, Vector2(x,y), id) if data.players[slot].area == "island" else _occupy_reason(slot, x, y, id)
 
 
 func _relocatable(id: String) -> Dictionary:
@@ -473,10 +588,11 @@ func _relocate(slot: String, args: Dictionary) -> String:
 	if not args.get("id") is String:
 		return "请先选择要搬动的设施。"
 	for key in ["from_x", "from_y", "x", "y"]:
-		if not _number(args.get(key), 0.0, 900.0):
+		if not _number(args.get(key), 0.0, IslandMap.SIZE.x):
 			return "搬动位置无效，设施仍在原处。"
-	if not can_relocate(slot, args.id, float(args.from_x), float(args.from_y), float(args.x), float(args.y)):
-		return "这里不能放置，或设施已经被伙伴搬走；请靠近原位置重新选择。"
+	var reason := relocation_reason(slot, args.id, float(args.from_x), float(args.from_y), float(args.x), float(args.y))
+	if not reason.is_empty():
+		return reason + "设施仍在原处。"
 	var object := _relocatable(args.id)
 	object.x = float(args.x)
 	object.y = float(args.y)
@@ -583,14 +699,36 @@ func action(slot: String, verb: String, args: Dictionary = {}) -> String:
 	if not _is_online(slot):
 		return "玩家尚未加入。"
 	var player: Dictionary = data.players[slot]
+	if verb=="appearance":
+		var profile:=Appearance.restore(args)
+		if profile.is_empty():return "外观选择无效，原有外观已保留。"
+		data.wardrobe[slot]=profile
+		return "已换好衣服，继续出发吧。"
+	if verb.begins_with("shop_"):return Restaurant.action(data,player,verb,args)
+	if verb.begins_with("ocean_"):return OceanResidents.action(data,player,slot,verb,args)
+	if verb=="spell":return OceanResidents.cast(data,player,slot,args)
+	if verb=="home_pack":return HomeLife.pack(data,player,args)
 	if verb.begins_with("town_"):
-		return IslandTown.action(data, player, verb, args)
+		return IslandTown.action(data, player, verb, args, slot)
+	if verb.begins_with("room_"):
+		if verb=="room_exit" and player.area=="room" and str(player.room).begins_with("island_"):
+			if args.size()!=1 or args.get("id")!=player.room or not _near(player,Rooms.entry(player.room),64):return "走回海岸停泊点再登筏。"
+			if not player.activity.is_empty():return "先完成手上的动作，或右键取消。"
+			_safe_deck(player,slot);_inputs.erase(slot)
+			return "已回到停泊的木筏，随身物资都带回来了。"
+		var response := Rooms.action(data,player,verb,args)
+		_inputs.erase(slot)
+		return response
 	if verb == "gather_island":
-		return IslandActivity.start(data, player, args)
-	if verb in ["till", "cover", "clear_crop", "refill_can"] or (player.area == "island" and verb in ["plant", "water", "harvest"]):
-		if not player.activity.is_empty():
-			return "先等当前动作完成，或右键取消。"
-		return Farming.action(data, player, verb, args)
+		var node:Dictionary=IslandMap.node(str(args.get("id","")))
+		if not node.is_empty() and Housing.bounds(data).grow(16).has_point(Vector2(node.x,node.y)):return "小屋占用这里，不能隔墙采集。"
+		var response:=IslandActivity.start(data, player, args)
+		if not player.activity.is_empty():_inputs.erase(slot)
+		return response
+	if verb == "repair_greenhouse": return Gardens.action(data,player,verb,args)
+	if verb in ["till", "cover", "clear_crop", "refill_can", "plant", "water", "harvest"]:
+		if not player.activity.is_empty(): return "先等当前动作完成，或右键取消。"
+		return Gardens.action(data,player,verb,args) if player.area=="deck" or (player.area=="room" and player.room=="greenhouse") else Farming.action(data,player,verb,args)
 	if verb in ["land", "board_raft", "set_destination"]:
 		return _island_action(slot, verb, args)
 	if verb == "cancel_activity":
@@ -611,6 +749,8 @@ func action(slot: String, verb: String, args: Dictionary = {}) -> String:
 		if verb == "collect" and not work_args.has("id"):
 			work_args["id"] = _nearest_entity(player, "wood")
 		return UnderwaterActions.start(data, player, verb, work_args)
+	if verb == "place_item":
+		return _place_item(slot, args)
 	if verb == "craft":
 		return _craft(slot, args)
 	if verb == "relocate":
@@ -646,7 +786,7 @@ func action(slot: String, verb: String, args: Dictionary = {}) -> String:
 		return _fishing_action(player, verb)
 	if verb == "eat":
 		var food: String = str(args.get("item", "meal" if Inventory.count(player.bag, "meal") > 0 else "cooked_fish"))
-		if food not in ["meal", "cooked_fish"]:
+		if food not in ["meal", "cooked_fish", "sashimi", "maki", "salad"]:
 			return "这件物品不能直接食用。"
 		if Inventory.count(player.bag, food) < 1:
 			return "背包里没有熟食，先用烤架做一份烤鱼。"
@@ -661,6 +801,10 @@ func action(slot: String, verb: String, args: Dictionary = {}) -> String:
 		player.sleep_ready = false
 		return "已经起身，取消结束今天的准备。"
 	if verb == "dive":
+		if float(player.dive_status.recovery) > 0.0:
+			return "刚被救回，还需缓一缓（%d秒）；可以先吃喝或休息。" % ceili(float(player.dive_status.recovery))
+		if float(player.stamina) < 8.0:
+			return "体力太低，先休息或吃熟食再下潜。"
 		if not at_edge(player):
 			return "请走到甲板边缘再下潜。"
 		if not bool(data.navigation.anchored):
@@ -668,13 +812,15 @@ func action(slot: String, verb: String, args: Dictionary = {}) -> String:
 		player.area = "water"
 		player.x = 120.0
 		player.y = 100.0
+		player.dive_status.grace = SeaThreats.DIVE_GRACE
+		player.dive_status.hurt = 0.0
 		player.oxygen = 100.0
 		player.resting = false
 		player.sleep_ready = false
 		player.fishing = {}
 		player.hook = {}
 		_inputs.erase(slot)
-		return "开始潜水；浮标旁可以返航。"
+		return "浮标浅水安全；深处有鲨鱼和海鳗。避开蓄势冲刺，鱼叉能击退。"
 	if verb == "surface":
 		if player.area != "water" or not _near(player, STATIONS.buoy):
 			return "请回到水面浮标旁再返航。"
@@ -685,7 +831,7 @@ func action(slot: String, verb: String, args: Dictionary = {}) -> String:
 		var chest_id := nearby_chest(slot)
 		if chest_id.is_empty():
 			return "请走到一个木箱旁。"
-		var chest: Dictionary = data.chests[chest_id]
+		var chest: Dictionary = Inventory.container(data,slot,chest_id)
 		if verb == "open_chest":
 			return "已打开%s。" % chest.name
 		if verb == "deposit":
@@ -710,8 +856,6 @@ func action(slot: String, verb: String, args: Dictionary = {}) -> String:
 		Inventory.remove(chest.slots, "meal", 1)
 		player.bag = bag
 		return "领取了一份料理。"
-	if verb in ["plant", "water", "harvest"]:
-		return _garden_action(player, verb)
 	if verb == "cook":
 		return _process_action(player, "cook", args)
 	if verb == "sell":
@@ -772,8 +916,8 @@ func _navigation_action(slot: String, verb: String, args: Dictionary) -> String:
 		if verb == "moor":
 			if bool(nav.anchored):
 				return "木筏已经停稳；先收回船锚或解缆。"
-			if not at_edge(player) or not Archipelago.within_docking_range(data.chart, nav):
-				return "靠近潮芽岛码头，在筏边用绳子系泊。"
+			if not at_edge(player) or Archipelago.nearby_island(data.chart,nav).is_empty():
+				return "靠近岛屿停泊点，在筏边用绳子系泊。"
 			if not Inventory.remove(player.bag, "rope", 1):
 				return "岸边系泊需要 1 根绳子 · C 可用叶子制作。"
 			nav.moored = true
@@ -841,25 +985,27 @@ func _island_action(slot: String, verb: String, args: Dictionary) -> String:
 	if verb == "set_destination":
 		if Inventory.count(player.bag, "compass") < 1:
 			return "随身带上罗盘，才能查看完整海图并设置航标。"
-		if args.get("id") != "island_home":
-			return "这片海域尚未解锁。"
-		data.chart.destination = "island_home"
-		return "已标记潮芽岛；看海图方向划桨，靠近后抛锚登岸。"
+		if not args.get("id") is String or not Archipelago.ISLANDS.has(args.id):return "请选择海图中的岛屿。"
+		data.chart.destination = args.id
+		return "已标记%s；看海图方向划桨，靠近后抛锚登岸。"%Archipelago.ISLANDS[args.id].name
 	if verb == "land":
-		if args.get("id", "island_home") != "island_home" or player.area != "deck" or not at_edge(player) or not Archipelago.within_docking_range(data.chart, data.navigation):
-			return "先划到潮芽岛停泊点附近，再走到筏边登岸。"
+		var id:Variant=args.get("id",Archipelago.nearby_island(data.chart,data.navigation))
+		if not id is String or not Archipelago.ISLANDS.has(id) or player.area != "deck" or not at_edge(player) or not Archipelago.within_docking_range(data.chart,data.navigation,id):
+			return "先划到这个岛的停泊点附近，再走到筏边登岸。"
 		if not bool(data.navigation.anchored):
 			return "先在筏边用绳子系泊，或按 G 抛锚停船，再登岸。"
-		player.area = "island"
-		player.x = IslandState.DOCK.x
-		player.y = IslandState.DOCK.y
+		if id==Archipelago.HOME_ID:
+			player.area = "island"
+			player.x = IslandState.DOCK.x
+			player.y = IslandState.DOCK.y
+			data.chart.visited = true
+		else:Rooms._arrive(data,player,id)
 		player.hook = {}
 		player.fishing = {}
 		player.resting = false
 		player.sleep_ready = false
 		_inputs.erase(slot)
-		data.chart.visited = true
-		return "到了潮芽岛；沿小路采集，码头可返回木筏。"
+		return "到了%s；M看岛图，沿海岸入口可返回木筏。"%Archipelago.ISLANDS[id].name
 	if player.area != "island":
 		return "请先登上潮芽岛。"
 	if verb == "board_raft":
@@ -873,75 +1019,108 @@ func _island_action(slot: String, verb: String, args: Dictionary) -> String:
 func _fishing_location(player: Dictionary) -> bool:
 	return (player.area == "island" and (_near(player, IslandState.FISHING, 54.0) or IslandMap.water_near(Vector2(float(player.x), float(player.y))))) or at_edge(player)
 
-func _garden_action(player: Dictionary, verb: String) -> String:
-	var on_island: bool = false
-	if (on_island and not _near(player, IslandState.FARM)) or (not on_island and not _at_station(player, "garden")):
-		return "请走到种植盆或岛上农地旁。"
-	var crop: Dictionary = data.crop
-	if verb == "plant":
-		if int(crop.stage) != 0:
-			return "种植箱里已经有作物了。"
-		if not (_personal_exchange(player, {"seed": 1}, {}) if on_island else _exchange(player, {"seed": 1}, {})):
-			return "背包和木箱里都没有种子。"
-		crop.stage = 1
-		crop.progress = 0.0
-		crop.watered = false
-		return "种好了，浇水之后才会生长。"
-	if verb == "water":
-		if int(crop.stage) != 1:
-			return "当前没有需要浇水的幼苗。"
-		if crop.watered:
-			return "已经浇过水，可以放心去做别的事。"
-		crop.watered = true
-		return "浇好了水；下潜时作物也会继续生长。"
-	if int(crop.stage) != 2:
-		return "作物还没有成熟。"
-	if not (_personal_exchange(player, {}, {"veg": 3, "seed": 1}) if on_island else _exchange(player, {}, {"veg": 3, "seed": 1})):
-		return "背包放不下蔬菜和种子，作物会留在这里等你。"
-	crop.stage = 0
-	crop.progress = 0.0
-	crop.watered = false
-	return "收获了 3 份蔬菜和 1 颗种子，已放进背包。"
-
-
 func _craft(slot: String, args: Dictionary) -> String:
 	var id: Variant = args.get("recipe")
 	if not id is String or not Recipes.ALL.has(id):
 		return "请选择一个有效配方。"
 	var player: Dictionary = data.players[slot]
 	var recipe: Dictionary = Recipes.ALL[id]
-	if player.area == "island" and recipe.structure.is_empty():
-		if not _personal_exchange(player, recipe.costs, {recipe.result: int(recipe.amount)}):
-			return "随身材料不足，或背包放不下成品；岛上不会使用船上的箱子。"
-		return "%s +%d → 我的背包" % [recipe.name, int(recipe.amount)]
-	if player.area != "deck":
-		return "岛上可手工制作随身物品；设施请回到甲板建造。"
-	if recipe.structure.is_empty():
-		if not _exchange(player, recipe.costs, {recipe.result: int(recipe.amount)}):
-			return "材料不足，或背包空间不足；没有消耗材料。"
-		return "%s +%d → 我的背包" % [recipe.name, int(recipe.amount)]
-	if recipe.structure == "chest" and data.chests.size() >= MAX_SAVED_CHESTS:
-		return "木箱数量已达到存档上限，没有消耗材料。"
-	if not _number(args.get("x"), 0.0, 900.0) or not _number(args.get("y"), 0.0, 560.0) or not can_place(slot, id, float(args.x), float(args.y)):
-		return "这里不能放置：请选附近空甲板格；地板须接在甲板旁，避开人物和设施。"
-	if not _exchange(player, recipe.costs, {}):
-		return "材料不足，没有消耗材料。"
+	if not Recipes.station_available(data, slot, id):
+		return "需要靠近工作台制作；没有消耗材料。"
+	if player.area not in ["deck", "island", "room"] or Rooms.underwater(player):
+		return "请回到甲板或陆地制作。"
+	# Old positional commands use the same craft-then-place transaction atomically.
+	var positional: bool = not recipe.structure.is_empty() and args.has("x") and args.has("y")
+	if positional:
+		if not _number(args.x, 0, 900) or not _number(args.y, 0, 560):
+			return "放置位置无效，没有消耗材料。"
+		var reason := placement_reason(slot, id, float(args.x), float(args.y), true)
+		if not reason.is_empty():
+			return reason + "没有消耗材料。"
+	var rewards := {recipe.result: int(recipe.amount)}
+	var success := _exchange(player, recipe.costs, rewards) if player.area == "deck" else _personal_exchange(player, recipe.costs, rewards)
+	if not success:
+		return "材料不足，或背包放不下成品；没有消耗材料。"
+	if positional:
+		return _place_item(slot, {"item": id, "x": args.x, "y": args.y})
+	return "%s +%d → 背包；选中后使用或放置。" % [recipe.name, int(recipe.amount)]
+
+
+func item_placement_reason(slot: String, item: String, x: float, y: float) -> String:
+	if not _is_online(slot) or not Recipes.ALL.has(item) or Recipes.ALL[item].structure.is_empty():
+		return "这个物品不能作为设施摆放。"
+	var player: Dictionary = data.players[slot]
+	if Inventory.count(player.bag, item) < 1:
+		return "背包里没有这个成品；先制作，再放置。"
+	if data.chests.size() >= MAX_SAVED_CHESTS and item == "chest":
+		return "木箱数量已达到存档上限。"
+	if player.area=="room":return HomeLife.placement_reason(data,player,item,Vector2(x,y))
+	if item=="cabin":return HomeLife.cabin_reason(data,player,Vector2(x,y))
+	if player.area == "deck":
+		return placement_reason(slot, item, x, y, false, false)
+	if player.area != "island" or item != "chest":
+		return "此设施需要甲板；储物木箱也可放在已租荒院。"
+	return island_chest_reason(slot, Vector2(x, y))
+
+
+func island_chest_reason(slot: String, at: Vector2, excluded_id := "") -> String:
+	if not is_finite(at.x) or not is_finite(at.y) or not at.is_equal_approx(Vector2(floorf(at.x / 64) * 64 + 32, floorf(at.y / 64) * 64 + 32)):
+		return "请对齐地面的放置格。"
+	if not data.island.homestead.rented or not IslandMap.YARD_BOUNDS.grow(-64).has_point(at):
+		return "先向镇长租下院子，木箱放在院内空地，给围栏和入口留路。"
+	if Housing.bounds(data).grow(48).has_point(at):return "小屋和门前需要留出通道。"
+	var player: Dictionary = data.players[slot]
+	if Vector2(player.x, player.y).distance_to(at) > 96:
+		return "距离太远，走近一些再放置。"
+	for dx in [-16, 16]:
+		for dy in [-16, 16]:
+			var point := at + Vector2(dx, dy)
+			if not IslandMap.can_stand(point) or IslandMap.terrain(point) in ["path", "bridge"]:
+				return "这里有道路、水面或建筑，请留出通路。"
+			if data.island.plots.has(Farming.plot_key(point)):
+				return "这里是耕地，不能用木箱覆盖。"
+	for resource: Dictionary in IslandMap.nodes_near(at).values():
+		if Vector2(resource.x, resource.y).distance_to(at) < 52 and IslandState.active(data.island, resource.id, int(data.day)):
+			return "先清理这片空地上的树木、石块或杂草。"
+	for chest in data.chests.values():
+		if chest.id != excluded_id and chest.get("area", "deck") == "island" and maxf(absf(chest.x-at.x), absf(chest.y-at.y)) < 96:
+			return "木箱之间留一条走道。"
+	for other in data.players.values():
+		if other.online and other.area == "island" and absf(other.x-at.x) < 39 and absf(other.y-at.y) < 39:
+			return "有人站在这里，等空出来再放。"
+	return ""
+
+
+func _place_item(slot: String, args: Dictionary) -> String:
+	if not args.get("item") is String or not _number(args.get("x"), 0, IslandMap.SIZE.x) or not _number(args.get("y"), 0, IslandMap.SIZE.y):
+		return "放置请求无效，成品保留。"
+	var item: String = args.item
+	var reason := item_placement_reason(slot, item, float(args.x), float(args.y))
+	if not reason.is_empty():
+		return reason + "成品保留。"
+	var player: Dictionary = data.players[slot]
 	var point := Vector2(float(args.x), float(args.y))
-	if recipe.structure == "foundation":
+	Inventory.remove(player.bag, item, 1)
+	if player.area=="room":
+		HomeLife.place(data,player,item,point)
+	elif item=="cabin":
+		data.housing.cabin={"x":point.x,"y":point.y}
+	elif item == "foundation":
 		data.deck_tiles.append(_point_tile(point))
-	elif recipe.structure == "chest":
+	elif item == "chest":
 		var number := 0
 		while data.chests.has("chest_%d" % number):
 			number += 1
-		var chest_id := "chest_%d" % number
-		data.chests[chest_id] = _new_chest(chest_id, "木箱 %d" % (number + 1), point, Inventory.empty_slots(Inventory.CHEST_SIZE))
+		var id := "chest_%d" % number
+		data.chests[id] = _new_chest(id, "木箱 %d" % (number + 1), point, Inventory.empty_slots(Inventory.CHEST_SIZE), str(player.area))
 	else:
 		var number := 0
 		while data.structures.has("structure_%d" % number):
 			number += 1
-		var structure_id := "structure_%d" % number
-		data.structures[structure_id] = _new_structure(structure_id, recipe.structure, point)
-	return "已建好%s。" % recipe.name
+		var id := "structure_%d" % number
+		data.structures[id] = _new_structure(id, item, point)
+		if item == "garden": Gardens.add_planter(data,id)
+	return "已放好%s。" % Inventory.ITEM_NAMES[item]
 
 
 func _process_action(player: Dictionary, verb: String, args: Dictionary) -> String:
@@ -1007,16 +1186,30 @@ func interaction_options(slot: String) -> Array:
 	if not _is_online(slot):
 		return result
 	var player: Dictionary = data.players[slot]
+	result.append_array(Rooms.options(data,player))
+	result.append_array(Gardens.options(data,player))
+	result.append_array(HomeLife.options(data,player))
+	result.append_array(OceanResidents.options(data,player,slot))
+	if player.area == "room":
+		result.append_array(Restaurant.options(data,player))
+		result.append_array(IslandTown.options(data,player))
+		return result
 	if player.area == "island":
 		result.append_array(IslandTown.options(data, player))
+		var chest_id := nearby_chest(slot)
+		if not chest_id.is_empty():
+			_option(result, "open_chest", "打开附近木箱", {"id": chest_id})
+			var chest: Dictionary = Inventory.container(data,slot,chest_id)
+			_option(result, "relocate", "搬动木箱", {"id": chest_id, "from_x": chest.x, "from_y": chest.y})
 		if _near(player, IslandState.DOCK):
 			_option(result, "board_raft", "返回自己的木筏")
 		var at := Vector2(float(player.x), float(player.y))
 		var nodes: Dictionary = IslandMap.nodes_near(at)
 		for id in nodes:
 			var resource: Dictionary = nodes[id]
-			if IslandState.active(data.island, id, int(data.day)) and _near(player, Vector2(float(resource.x), float(resource.y))):
-				_option(result, "gather_island", "%s · %s · %.1f秒" % [resource.label, Inventory.ITEM_NAMES[resource.tool], resource.duration], {"id": id})
+			if Housing.bounds(data).grow(16).has_point(Vector2(resource.x,resource.y)):continue
+			if IslandState.active(data.island, id, int(data.day), data.chests) and _near(player, Vector2(float(resource.x), float(resource.y))):
+				_option(result, "gather_island", "%s · %s · %.1f秒" % [resource.label, Inventory.ITEM_NAMES.get(resource.tool,"徒手"), resource.duration], {"id": id})
 		for key in data.island.plots:
 			var center: Vector2 = Farming.plot_center(key)
 			if not _near(player, center):
@@ -1052,20 +1245,15 @@ func interaction_options(slot: String) -> Array:
 	else:
 		if not player.fishing.is_empty() and float(player.fishing.remaining) <= 0.0 and at_edge(player):
 			_option(result, "reel", "收竿领取渔获")
+		var workbench_id := Recipes.nearby_workbench(data, slot)
+		if not workbench_id.is_empty():
+			_option(result, "open_workbench", "使用工作台", {"id": workbench_id})
 		var chest_id := nearby_chest(slot)
 		if not chest_id.is_empty():
 			_option(result, "open_chest", "打开附近木箱", {"id": chest_id})
 			if _bag_count(player) > 0:
 				_option(result, "deposit", "尽量存入附近木箱")
 			_option(result, "take_meal", "领取 1 份料理")
-		if _at_station(player, "garden"):
-			var garden_id := _nearest_structure(player, ["garden"])
-			if int(data.crop.stage) == 0:
-				_option(result, "plant", "播种 · 1 种子", {"id": garden_id})
-			elif int(data.crop.stage) == 1 and not data.crop.watered:
-				_option(result, "water", "给幼苗浇水", {"id": garden_id})
-			elif int(data.crop.stage) == 2:
-				_option(result, "harvest", "收获蔬菜", {"id": garden_id})
 		for structure_id in data.structures:
 			var structure: Dictionary = data.structures[structure_id]
 			if structure.kind not in ["purifier", "grill", "furnace"] or not _near(player, Vector2(float(structure.x), float(structure.y))):
@@ -1090,8 +1278,9 @@ func interaction_options(slot: String) -> Array:
 			if not player.sleep_ready:
 				_option(result, "sleep", "准备结束今天", {"id": bed_id})
 		if at_edge(player):
-			if Archipelago.within_docking_range(data.chart, data.navigation):
-				_option(result, "land", "登上潮芽岛" if bool(data.navigation.anchored) else "登岛前先停船")
+			var island_id:=Archipelago.nearby_island(data.chart,data.navigation)
+			if not island_id.is_empty():
+				_option(result, "land", "登上"+str(Archipelago.ISLANDS[island_id].name) if bool(data.navigation.anchored) else "登岛前先停船",{"id":island_id})
 			if player.fishing.is_empty() and Inventory.count(player.bag, "rod") > 0:
 				_option(result, "cast", "抛竿钓鱼 · 2 体力")
 			if Inventory.count(player.bag, "cup") > 0:
@@ -1099,7 +1288,7 @@ func interaction_options(slot: String) -> Array:
 			_option(result, "dive", "从筏边下潜" if bool(data.navigation.anchored) else "下潜前先抛锚 · G")
 			if bool(data.navigation.moored):
 				_option(result, "unmoor", "解缆 · 收回系泊绳")
-			elif not bool(data.navigation.anchored) and Archipelago.within_docking_range(data.chart, data.navigation):
+			elif not bool(data.navigation.anchored) and not island_id.is_empty():
 				_option(result, "moor", "系泊码头 · 1 根绳子")
 		var movable_ids: Array = [nearby_chest(slot), _nearest_structure(player, STRUCTURE_KINDS)]
 		for id in movable_ids:
@@ -1135,6 +1324,7 @@ func _at_station(player: Dictionary, station: String) -> bool:
 
 
 func _at_bed(player: Dictionary) -> bool:
+	if player.area=="room" and player.room in HomeLife.OWN_ROOMS:return true
 	return (player.area == "island" and _near(player, IslandState.CAMP)) or not _nearest_structure(player, ["bed", "bedroll"]).is_empty()
 
 
@@ -1162,13 +1352,19 @@ func _bag_count(player: Dictionary) -> int:
 
 
 func nearby_chest(slot: String) -> String:
-	if not _is_online(slot) or data.players[slot].area != "deck":
+	if _is_online(slot) and Restaurant.stock_access(data,data.players[slot]):return Restaurant.STOCK_ID
+	if _is_online(slot):
+		for prop:Dictionary in data.housing.furniture:
+			if prop.item=="chest" and HomeLife.access(data,data.players[slot],prop.id):return prop.id
+	if not _is_online(slot) or data.players[slot].area not in ["deck", "island"]:
 		return ""
 	var player: Dictionary = data.players[slot]
 	var nearest := ""
 	var distance := INTERACTION_DISTANCE
 	for id in data.chests:
 		var chest: Dictionary = data.chests[id]
+		if chest.get("area", "deck") != player.area:
+			continue
 		var candidate := Vector2(float(player.x), float(player.y)).distance_to(Vector2(float(chest.x), float(chest.y)))
 		if candidate <= distance:
 			distance = candidate
@@ -1179,6 +1375,8 @@ func nearby_chest(slot: String) -> String:
 func chest_totals() -> Dictionary:
 	var result := Inventory.totals([])
 	for chest in data.chests.values():
+		if chest.get("area", "deck") != "deck":
+			continue
 		var contents := Inventory.totals(chest.slots)
 		for item in Inventory.ITEMS:
 			result[item] += int(contents[item])
@@ -1192,14 +1390,16 @@ func inventory_totals() -> Dictionary:
 func _container_access(slot: String, container: String) -> bool:
 	if container == "bag":
 		return true
+	if container==Restaurant.STOCK_ID:return Restaurant.stock_access(data,data.players[slot])
+	if container.begins_with("home_"):return HomeLife.access(data,data.players[slot],container) and HomeLife.furniture(data,container).get("item")=="chest"
 	if not data.chests.has(container):
 		return false
 	var chest: Dictionary = data.chests[container]
-	return data.players[slot].area == "deck" and _near(data.players[slot], Vector2(float(chest.x), float(chest.y)))
+	return data.players[slot].area == chest.get("area", "deck") and _near(data.players[slot], Vector2(float(chest.x), float(chest.y)))
 
 
 func _container_slots(slot: String, container: String) -> Array:
-	return data.players[slot].bag if container == "bag" else data.chests[container].slots
+	return Inventory.container(data,slot,container).slots
 
 
 func _inventory_move(slot: String, args: Dictionary) -> String:
@@ -1240,7 +1440,8 @@ func _exchange(player: Dictionary, costs: Dictionary, rewards: Dictionary) -> bo
 	var bag: Array = player.bag.duplicate(true)
 	var containers: Dictionary = {}
 	for id in data.chests:
-		containers[id] = data.chests[id].slots.duplicate(true)
+		if data.chests[id].get("area", "deck") == "deck":
+			containers[id] = data.chests[id].slots.duplicate(true)
 	for item in costs:
 		var remaining := int(costs[item])
 		var from_bag := mini(remaining, Inventory.count(bag, item))
@@ -1331,19 +1532,20 @@ func _all_ready() -> bool:
 
 
 func _advance_day() -> void:
+	Restaurant.advance_day(data)
+	Gardens.advance_day(data)
 	Farming.advance_day(data.island, int(data.day), int(data.day) + 1)
 	data.day += 1
+	Housing.advance(data)
 	data.minute = 360.0
 	data.orders_filled = 0
 	data.entities = _new_entities()
-	for crop in [data.crop]:
-		if int(crop.stage) == 1 and crop.watered:
-			crop.stage = 2
-			crop.progress = 1.0
+	data.threats = SeaThreats.create()
 	for slot in SLOTS:
 		var player: Dictionary = data.players[slot]
 		player.stamina = 100.0
-		if player.area == "island":
+		player.dive_status = SeaThreats.player_state()
+		if player.area == "island" or (player.area=="room" and player.room in HomeLife.OWN_ROOMS):
 			player.resting = false
 			player.sleep_ready = false
 			player.activity = {}
@@ -1361,7 +1563,7 @@ func restore(saved: Dictionary) -> bool:
 	migration_notice = ""
 	var pending_migration_notice := ""
 	# Build a fresh validated value; a rejected file must leave the live world untouched.
-	if not _integer(saved.get("version"), 1, 10) or not _integer(saved.get("day"), 1, 1000000):
+	if not _integer(saved.get("version"), 1, 16) or not _integer(saved.get("day"), 1, 1000000):
 		return false
 	var legacy := int(saved.version) == 1
 	var survival := int(saved.version) >= 3
@@ -1379,9 +1581,9 @@ func restore(saved: Dictionary) -> bool:
 		return false
 	if chart.is_empty() or island.is_empty():
 		return false
-	if int(saved.version) == 9 and not saved.island.plots.keys().all(func(key: String) -> bool: return island.plots.has(key)):
+	if int(saved.version) in [9, 10, 11, 12, 13] and not saved.island.plots.keys().all(func(key: String) -> bool: return island.plots.has(key)):
 		pending_migration_notice = "旧农田与新建筑或水域重叠，已完整移到附近荒地；旧版存档仍保留。"
-	if navigation.moored and not Archipelago.within_docking_range(chart, navigation):
+	if navigation.moored and Archipelago.nearby_island(chart,navigation).is_empty():
 		return false
 	var world_keys := ["version", "day", "minute", "elapsed", "money", "chests", "expansion", "crop", "orders_filled", "orders_limit", "players", "entities"]
 	if survival:
@@ -1390,6 +1592,22 @@ func restore(saved: Dictionary) -> bool:
 		world_keys.append("navigation")
 	if islands:
 		world_keys.append_array(["chart", "island"])
+	var threats := SeaThreats.restore(saved.get("threats")) if int(saved.version) >= 13 else SeaThreats.create()
+	if threats.is_empty(): return false
+	if int(saved.version) >= 13: world_keys.append("threats")
+	var rooms := Rooms.restore(saved.get("rooms"),int(saved.day)) if int(saved.version)>=14 else Rooms.create()
+	if rooms.is_empty(): return false
+	if int(saved.version)>=14: world_keys.append_array(["rooms","gardens","restaurant"])
+	var wardrobe:=Appearance.restore_pair(saved.get("wardrobe")) if int(saved.version)>=15 else Appearance.create()
+	if wardrobe.is_empty():return false
+	var housing:=Housing.restore(saved.get("housing"),int(saved.day)) if int(saved.version)>=15 else Housing.create(saved)
+	if housing.is_empty():return false
+	var journal:=Journal.restore(saved.get("journal"),int(saved.day)) if int(saved.version)>=15 else Journal.create()
+	if journal.is_empty():return false
+	if int(saved.version)>=15:world_keys.append_array(["wardrobe","housing","journal"])
+	var stories:=ResidentStories.restore(saved.get("stories"),int(saved.day)) if int(saved.version)>=16 else ResidentStories.create()
+	if stories.is_empty():return false
+	if int(saved.version)>=16:world_keys.append("stories")
 	if not legacy and not _keys(saved, world_keys):
 		return false
 	if not _number(saved.get("minute"), 360.0, 1430.0) or not _number(saved.get("elapsed"), 0.0, 1.0e12):
@@ -1431,13 +1649,23 @@ func restore(saved: Dictionary) -> bool:
 				return false
 		if skilled:
 			player_keys.append("activity")
-			if not UnderwaterActions.valid_activity(player.get("activity")) and not (int(saved.version) >= 9 and IslandActivity.valid(player.get("activity"), int(saved.version) == 9)) and not (int(saved.version) >= 10 and IslandTown.valid(player.get("activity"))):
+			if not UnderwaterActions.valid_activity(player.get("activity")) and not (int(saved.version) >= 9 and IslandActivity.valid(player.get("activity"), int(saved.version) == 9, int(saved.version) == 10)) and not (int(saved.version) >= 10 and IslandTown.valid(player.get("activity"))) and not (int(saved.version)>=14 and Rooms.valid_activity(player.get("activity"))):
 				return false
+		if int(saved.version) >= 13:
+			player_keys.append("dive_status")
+			if not SeaThreats.valid_player(player.get("dive_status")): return false
+		if int(saved.version)>=14:
+			player_keys.append("room")
+			if not player.get("room") is String: return false
+			if player.area == "room":
+				if not Rooms.valid_id(player.room) or not rooms.visited.has(player.room) or not _number(player.get("x"),0,100000) or not _number(player.get("y"),0,100000) or not Rooms.can_stand(player.room,Vector2(player.x,player.y)): return false
+				if player.get("online")==true and str(player.room).begins_with("island_") and (not navigation.anchored or not Archipelago.within_docking_range(chart,navigation,player.room)):return false
+			elif player.room != "": return false
 		if not legacy and not _keys(player, player_keys):
 			return false
 		if not player.get("name") is String or player.name.is_empty() or player.name.length() > 32:
 			return false
-		if player.get("area") not in (["deck", "water", "island"] if islands else ["deck", "water"]):
+		if player.get("area") not in (["deck", "water", "island", "room"] if int(saved.version)>=14 else ["deck", "water", "island"] if islands else ["deck", "water"]):
 			return false
 		for flag in ["online", "resting", "sleep_ready"]:
 			if not player.get(flag) is bool:
@@ -1445,16 +1673,18 @@ func restore(saved: Dictionary) -> bool:
 		if not _number(player.get("oxygen"), 0.0, 100.0) or not _number(player.get("stamina"), 0.0, 100.0) or not _integer(player.get("caught"), 0, 1000000000):
 			return false
 		var is_water: bool = player.area == "water"
-		if not _number(player.get("x"), 40.0 if is_water else (0.0 if survival else 152.0), 860.0 if is_water else (IslandMap.SIZE.x if player.area == "island" and int(saved.version) >= 9 else 900.0 if survival else 728.0 + int(saved.expansion) * 60.0)):
+		if not _number(player.get("x"), 40.0 if is_water else (0.0 if survival else 152.0), Rooms.size(player.room).x if player.area=="room" else 860.0 if is_water else (IslandMap.SIZE.x if player.area == "island" and int(saved.version) >= 9 else 900.0 if survival else 728.0 + int(saved.expansion) * 60.0)):
 			return false
-		if not _number(player.get("y"), 35.0 if is_water else (0.0 if survival else 102.0), 520.0 if is_water else (IslandMap.SIZE.y if player.area == "island" and int(saved.version) >= 9 else 560.0 if survival else 468.0)):
+		if not _number(player.get("y"), 35.0 if is_water else (0.0 if survival else 102.0), Rooms.size(player.room).y if player.area=="room" else 520.0 if is_water else (IslandMap.SIZE.y if player.area == "island" and int(saved.version) >= 9 else 560.0 if survival else 468.0)):
 			return false
 		var restored_point := Vector2(float(player.x), float(player.y))
-		var valid_island_position: bool = (IslandMap.walkable(restored_point) if int(saved.version) >= 10 else IslandMap.legacy_walkable(restored_point)) if int(saved.version) >= 9 else Archipelago.land_walkable(restored_point)
+		var valid_island_position: bool = IslandMap.can_stand(restored_point) if int(saved.version)>=14 else ((IslandMap.walkable(restored_point) or IslandMap.v11_terrain(restored_point) not in ["water","building"]) if int(saved.version) >= 11 else (IslandMap.v10_terrain(restored_point) not in ["water", "building"] if int(saved.version) == 10 else IslandMap.legacy_walkable(restored_point))) if int(saved.version) >= 9 else Archipelago.land_walkable(restored_point)
 		if player.area == "island" and (not chart.visited or not valid_island_position):
 			return false
-		if player.area == "island" and int(saved.version) < 10 and not IslandMap.walkable(restored_point):
-			restored_point = IslandState.DOCK # A new pond may cover a valid historical landing position.
+		if player.area == "island" and int(saved.version) <= 13 and not IslandMap.can_stand(restored_point):
+			restored_point = IslandState.DOCK if int(saved.version)<11 else IslandMap.recover_standing_point(restored_point)
+			if pending_migration_notice.is_empty():
+				pending_migration_notice = "岛屿建筑布局已更新，已将你移到附近可站立的地面；旧版存档仍保留。"
 		if player.area == "island" and player.online and (not bool(navigation.anchored) or not Archipelago.within_docking_range(chart, navigation)):
 			return false
 		if player.area == "deck" and _point_tile(Vector2(float(player.x), float(player.y))) not in layout.deck_tiles:
@@ -1509,13 +1739,15 @@ func restore(saved: Dictionary) -> bool:
 				if islands and player.hook.has("manual"):
 					hook["manual"] = player.hook.manual
 		players[slot] = {
+			"room": player.room if int(saved.version)>=14 else "",
+			"dive_status": player.dive_status.duplicate(true) if int(saved.version) >= 13 else SeaThreats.player_state(),
 			"name": player.name, "online": false, "area": player.area, "x": float(player.x), "y": float(player.y),
 			"oxygen": float(player.oxygen), "stamina": float(player.stamina), "resting": false, "sleep_ready": false,
 			"bag": bag, "caught": int(player.caught), "fishing": fishing,
 			"hunger": float(player.hunger) if survival else 80.0, "thirst": float(player.thirst) if survival else 75.0,
 			"hook": {}, "activity": {}, "can_water": int(player.can_water) if int(saved.version) >= 9 else 0, "notice": player.notice if survival else "", "notice_id": int(player.notice_id) if survival else 0,
 		}
-		if player.area == "island" and int(saved.version) < 10:
+		if player.area == "island" and int(saved.version) <= 13:
 			players[slot].x = restored_point.x
 			players[slot].y = restored_point.y
 	var chests: Dictionary = {}
@@ -1530,13 +1762,19 @@ func restore(saved: Dictionary) -> bool:
 			if not id is String or not _chest_id_valid(id) or not saved.chests[id] is Dictionary:
 				return false
 			var chest: Dictionary = saved.chests[id]
-			if not _keys(chest, ["id", "name", "x", "y", "slots"]) or chest.get("id") != id or not chest.get("name") is String or chest.name.is_empty() or chest.name.length() > 32:
+			if not _keys(chest, ["id", "name", "x", "y", "slots", "area"] if int(saved.version) >= 12 and chest.has("area") else ["id", "name", "x", "y", "slots"]) or chest.get("id") != id or not chest.get("name") is String or chest.name.is_empty() or chest.name.length() > 32:
 				return false
-			if not _number(chest.get("x"), 0.0 if survival else 152.0, 900.0 if survival else 728.0 + int(saved.expansion) * 60.0) or not _number(chest.get("y"), 0.0 if survival else 102.0, 560.0 if survival else 468.0) or not Inventory.validate_slots(chest.get("slots"), Inventory.CHEST_SIZE):
+			var area: String = str(chest.get("area", "deck"))
+			if area not in ["deck", "island"] or not Inventory.validate_slots(chest.get("slots"), Inventory.CHEST_SIZE):
 				return false
-			if _point_tile(Vector2(float(chest.x), float(chest.y))) not in layout.deck_tiles:
+			if not _number(chest.get("x"), 0, IslandMap.SIZE.x if area == "island" else 900) or not _number(chest.get("y"), 0, IslandMap.SIZE.y if area == "island" else 560):
 				return false
-			chests[id] = _new_chest(id, chest.name, Vector2(float(chest.x), float(chest.y)), Inventory.normalize(chest.slots))
+			var point := Vector2(float(chest.x), float(chest.y))
+			if area == "deck" and _point_tile(point) not in layout.deck_tiles:
+				return false
+			if area == "island" and (not island.homestead.rented or not IslandMap.YARD_BOUNDS.grow(-64).has_point(point) or not IslandMap.can_stand(point)):
+				return false
+			chests[id] = _new_chest(id, chest.name, point, Inventory.normalize(chest.slots), area)
 	if not saved.get("entities") is Dictionary:
 		return false
 	var expected := _new_entities(exploration, ocean)
@@ -1566,6 +1804,10 @@ func restore(saved: Dictionary) -> bool:
 		for entity_id in current_entities:
 			if not entities.has(entity_id):
 				entities[entity_id] = current_entities[entity_id]
+	var restaurant := Restaurant.restore(saved.get("restaurant"),int(saved.day)) if int(saved.version)>=14 else Restaurant.create()
+	if restaurant.is_empty():return false
+	var gardens := Gardens.restore(saved.get("gardens"),layout.structures) if int(saved.version)>=14 else Gardens.migrate(layout.structures,crop)
+	if gardens.is_empty(): return false
 	var walkable := false
 	for tile in layout.deck_tiles:
 		if _walkable_in(_tile_center(tile), layout.deck_tiles, layout.structures, chests):
@@ -1573,13 +1815,15 @@ func restore(saved: Dictionary) -> bool:
 			break
 	if not walkable:
 		return false
-	data = {
-		"version": 10, "day": int(saved.day), "minute": float(saved.minute), "elapsed": float(saved.elapsed), "navigation": navigation, "chart": chart, "island": island,
+	var restored_data := {
+		"version": 16, "wardrobe":wardrobe,"housing":housing,"journal":journal,"stories":stories, "rooms": rooms, "gardens": gardens, "restaurant":restaurant, "day": int(saved.day), "minute": float(saved.minute), "elapsed": float(saved.elapsed), "navigation": navigation, "chart": chart, "island": island,
 		"money": int(saved.money), "chests": chests, "expansion": int(saved.expansion),
 		"crop": {"stage": int(crop.stage), "progress": float(crop.progress), "watered": bool(crop.watered)},
-		"orders_filled": int(saved.get("orders_filled", 0)), "orders_limit": 3, "players": players, "entities": entities,
+		"orders_filled": int(saved.get("orders_filled", 0)), "orders_limit": 3, "players": players, "entities": entities, "threats": threats,
 		"deck_tiles": layout.deck_tiles, "structures": layout.structures, "drift": layout.drift,
 	}
+	if not HomeLife.validate(restored_data):return false
+	data=restored_data
 	migration_notice = pending_migration_notice
 	_inputs.clear()
 	return true

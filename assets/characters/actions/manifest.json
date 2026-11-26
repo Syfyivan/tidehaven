@@ -1,0 +1,20 @@
+{
+  "guest-axe-candidate.png": {
+    "sha256": "3dfe75bd07604336c373bcb3c4a497d0b0adc309ecbfbf381a64035a28580691",
+    "bytes": 1851019,
+    "canvas": [
+      1536,
+      1024
+    ],
+    "origin": "Built-in imagegen 2026-10-16; original output unchanged"
+  },
+  "host-axe-candidate.png": {
+    "sha256": "833c4c24525c878e42f6b0d137f2b8ba4d25aaa1e95757c542f773ae4a46c9c4",
+    "bytes": 1755190,
+    "canvas": [
+      1536,
+      1024
+    ],
+    "origin": "Built-in imagegen 2026-10-16; original output unchanged"
+  }
+}

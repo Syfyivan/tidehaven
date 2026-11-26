@@ -1,0 +1,100 @@
+{
+  "commit": "0c31854d40fcc1f6b60b35ac07b7c9686b82b226",
+  "files": [
+    {
+      "source": "assets/Characters/Elliott.png",
+      "file": "characters/Elliott.png",
+      "sha256": "149dfa7a6e1a6aa5f12657eb52ca306d9280781f69d40b084f0262bc2b1eded0",
+      "bytes": 16512,
+      "canvas": [
+        64,
+        416
+      ]
+    },
+    {
+      "source": "assets/Characters/Penny.png",
+      "file": "characters/Penny.png",
+      "sha256": "2d2d733fbbb06fe568e4c2c3fcffb68d2a4b83e4e430c9f118aa51d15a1d0081",
+      "bytes": 15974,
+      "canvas": [
+        64,
+        416
+      ]
+    },
+    {
+      "source": "assets/Characters/Sam.png",
+      "file": "characters/Sam.png",
+      "sha256": "df903e06fab2e4c38806b155dfc91de3356c3d23981f5111700b93fae4301499",
+      "bytes": 19357,
+      "canvas": [
+        64,
+        448
+      ]
+    },
+    {
+      "source": "assets/Characters/Linus.png",
+      "file": "characters/Linus.png",
+      "sha256": "bb6c1f94a6d2c65cc53b967bf2351f3bc0947571bbfb99d271b1c21a1a0248a4",
+      "bytes": 9409,
+      "canvas": [
+        64,
+        224
+      ]
+    },
+    {
+      "source": "assets/Characters/Kent.png",
+      "file": "characters/Kent.png",
+      "sha256": "f564d3d90b50fcfc3a0936fac6fccbb1f850dd2f8264730ae7e383cc64cb3b48",
+      "bytes": 5806,
+      "canvas": [
+        64,
+        160
+      ]
+    },
+    {
+      "source": "assets/Characters/Alex.png",
+      "file": "characters/Alex.png",
+      "sha256": "b407c7fc5a293114151dda9af326ff8ecb9446327f807bef220b8b3dd7e7927e",
+      "bytes": 16520,
+      "canvas": [
+        64,
+        416
+      ]
+    },
+    {
+      "source": "assets/Characters/Leah.png",
+      "file": "characters/Leah.png",
+      "sha256": "c6bcd29e9f9af911173c18fcd984fca3a0823f6ed1bedbae84b5031a2f94bd1a",
+      "bytes": 15950,
+      "canvas": [
+        64,
+        416
+      ]
+    },
+    {
+      "source": "assets/Characters/Maru.png",
+      "file": "characters/Maru.png",
+      "sha256": "3514a0dd1fa125b6616a35f30864873829b9e6637405dc1ab35ec55e06fefe05",
+      "bytes": 14468,
+      "canvas": [
+        64,
+        384
+      ]
+    },
+    {
+      "source": "assets/Characters/Emily.png",
+      "file": "characters/Emily.png",
+      "sha256": "42045e3397e37495fbc6effcfd81559d746cfae4a3d715140042e2d045038d07",
+      "bytes": 19012,
+      "canvas": [
+        64,
+        448
+      ]
+    },
+    {
+      "source": "assets/Buildings/Greenhouse.png",
+      "file": "Greenhouse.png",
+      "sha256": "e2b297f266c76f27896611d061b36ca41331dae6343dc413ae35ac507e3ed7b8"
+    }
+  ]
+}

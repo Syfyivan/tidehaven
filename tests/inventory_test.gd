@@ -29,6 +29,10 @@ func _world(two_players := false):
 	var world = WorldState.new()
 	var old: Dictionary = world.snapshot()
 	old.version = 2
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old.erase(v14_key)
+	for v14_player in old.players.values():v14_player.erase("room")
+	old.erase("threats")
+	for legacy_player in old.players.values(): legacy_player.erase("dive_status")
 	old.entities = world._new_entities(false)
 	for key in ["deck_tiles", "structures", "drift", "navigation", "chart", "island"]:
 		old.erase(key)
@@ -58,21 +62,22 @@ func _transfer(world, slot: String, source: String, source_index: int, target: S
 
 
 func _test_stack_operations() -> void:
+	var limit := Inventory.STACK_LIMIT
 	var slots := Inventory.empty_slots(3)
-	_check(Inventory.add(slots, "wood", 45) == 0 and Inventory.used(slots) == 3 and int(slots[0].count) == 20 and int(slots[2].count) == 5, "add splits items into bounded stacks")
-	_check(Inventory.add(slots, "wood", 20) == 5 and Inventory.total_count(slots) == 60, "add returns exact overflow without exceeding capacity")
+	_check(Inventory.add(slots, "wood", limit*2+5) == 0 and Inventory.used(slots) == 3 and int(slots[0].count) == limit and int(slots[2].count) == 5, "add splits items into bounded stacks")
+	_check(Inventory.add(slots, "wood", limit) == 5 and Inventory.total_count(slots) == limit*3, "add returns exact overflow without exceeding capacity")
 	var before: Array = slots.duplicate(true)
-	_check(not Inventory.remove(slots, "wood", 61) and slots == before, "insufficient removal is atomic")
-	_check(Inventory.remove(slots, "wood", 25) and slots[0].is_empty() and int(slots[1].count) == 15, "removal consumes quantities and frees empty slots")
+	_check(not Inventory.remove(slots, "wood", limit*3+1) and slots == before, "insufficient removal is atomic")
+	_check(Inventory.remove(slots, "wood", limit+5) and slots[0].is_empty() and int(slots[1].count) == limit-5, "removal consumes quantities and frees empty slots")
 	var other := Inventory.empty_slots(2)
-	_check(Inventory.move(slots, 1, other, 0, 5) and int(slots[1].count) == 10 and int(other[0].count) == 5, "manual split transfers requested quantity")
+	_check(Inventory.move(slots, 1, other, 0, 5) and int(slots[1].count) == limit-10 and int(other[0].count) == 5, "manual split transfers requested quantity")
 	Inventory.add(other, "fish", 2)
 	_check(not Inventory.move(slots, 1, other, 1, 3), "partial transfer cannot swap different item types")
 	_check(Inventory.move(slots, 1, other, 1) and slots[1].item == "fish" and other[1].item == "wood", "whole stacks swap without loss")
 	before = other.duplicate(true)
 	_check(not Inventory.move(other, 1, other, 1) and other == before, "same-slot move is a harmless rejection")
 	Inventory.sort_slots(slots)
-	_check(Inventory.count(slots, "fish") == 2 and Inventory.count(slots, "wood") == 20 and Inventory.used(slots) == 2, "sort preserves all items while merging and packing")
+	_check(Inventory.count(slots, "fish") == 2 and Inventory.count(slots, "wood") == limit and Inventory.used(slots) == 2, "sort preserves all items while merging and packing")
 	_check(Inventory.validate_slots(JSON.parse_string(JSON.stringify(slots)), 3), "JSON floats are valid integral stack counts")
 	var malformed := [{"item": "wood", "count": 20.5}, {}, {}]
 	_check(not Inventory.validate_slots(malformed, 3), "fractional stack count is rejected")
@@ -121,7 +126,7 @@ func _test_discard() -> void:
 		{"index": 0, "amount": 0, "expected_item": "wood"},
 		{"index": 0, "amount": -1, "expected_item": "wood"},
 		{"index": 0, "amount": 1.5, "expected_item": "wood"},
-		{"index": 0, "amount": 20, "expected_item": "wood"},
+		{"index": 0, "amount": Inventory.STACK_LIMIT, "expected_item": "wood"},
 		{"index": 0, "amount": 21, "expected_item": "wood"},
 		{"index": 0, "expected_item": "wood"},
 		{"index": 0, "amount": 1, "expected_item": "leaf"},
@@ -140,10 +145,10 @@ func _test_discard() -> void:
 	Skills.stage_drift(world, "drift_09")
 	Skills.hook_and_reel(world, "host")
 	var full_refused: bool = world.data.drift.drift_09.active and Inventory.count(player.bag, "leaf") == 0
-	world.action("host", "discard", {"index": 0, "amount": 20, "expected_item": "wood"})
+	world.action("host", "discard", {"index": 0, "amount": Inventory.STACK_LIMIT, "expected_item": "wood"})
 	Skills.stage_drift(world, "drift_09")
 	Skills.hook_and_reel(world, "host")
-	_check(full_refused and Inventory.count(player.bag, "wood") == 220 and Inventory.count(player.bag, "leaf") == 2 and not world.data.drift.drift_09.active, "discarding one full wood stack unlocks leaf salvage without needing a chest")
+	_check(full_refused and Inventory.count(player.bag, "wood") == 11 * Inventory.STACK_LIMIT and Inventory.count(player.bag, "leaf") == 2 and not world.data.drift.drift_09.active, "discarding one full wood stack unlocks leaf salvage without needing a chest")
 
 
 func _test_capacity_and_crafting() -> void:
@@ -153,11 +158,11 @@ func _test_capacity_and_crafting() -> void:
 	var chest: Dictionary = world.data.chests.chest_0
 	chest.slots = Inventory.empty_slots(Inventory.CHEST_SIZE)
 	Inventory.add(chest.slots, "meal", Inventory.CHEST_SIZE * Inventory.STACK_LIMIT)
-	chest.slots[0] = {"item": "wood", "count": 19}
+	chest.slots[0] = {"item": "wood", "count": Inventory.STACK_LIMIT - 1}
 	Inventory.add(player.bag, "wood", 5)
 	Inventory.add(player.bag, "fish", 3)
 	world.action("host", "deposit")
-	_check(Inventory.count(chest.slots, "wood") == 20 and Inventory.count(player.bag, "wood") == 4 and Inventory.count(player.bag, "fish") == 3, "partial deposit fills only available room and leaves all remainder in bag")
+	_check(Inventory.count(chest.slots, "wood") == Inventory.STACK_LIMIT and Inventory.count(player.bag, "wood") == 4 and Inventory.count(player.bag, "fish") == 3, "partial deposit fills only available room and leaves all remainder in bag")
 	player.bag = Inventory.empty_slots(Inventory.BAG_SIZE)
 	Inventory.add(player.bag, "wood", WorldState.BAG_CAPACITY)
 	chest.slots = Inventory.empty_slots(Inventory.CHEST_SIZE)
@@ -212,7 +217,7 @@ func _test_fishing_and_treasure() -> void:
 	world.action("host", "reel")
 	world.action("host", "reel")
 	_check(not player.fishing.is_empty() and player.fishing.result == result and player.fishing.remaining == 0.0, "full bag preserves the original catch for later collection")
-	Inventory.remove(player.bag, "meal", 20)
+	Inventory.remove(player.bag, "meal", Inventory.STACK_LIMIT)
 	world.action("host", "reel")
 	world.action("host", "reel")
 	_check(player.fishing.is_empty() and Inventory.count(player.bag, result) == 1, "making room permits one collection without duplication")
@@ -227,7 +232,7 @@ func _test_fishing_and_treasure() -> void:
 	var before: Dictionary = world.snapshot()
 	world.action("host", "open_treasure", {"index": 0})
 	_check(world.snapshot() == before, "treasure opening is all-or-nothing when contents do not fit")
-	Inventory.remove(player.bag, "meal", 40)
+	Inventory.remove(player.bag, "meal", 2 * Inventory.STACK_LIMIT)
 	world.action("host", "open_treasure", {"index": 0})
 	_check(Inventory.count(player.bag, "treasure") == 0 and Inventory.count(player.bag, "wood") == 3 and Inventory.count(player.bag, "seed") == 2 and Inventory.count(player.bag, "fish") == 1, "treasure consumes one box and awards exactly its complete contents")
 
@@ -236,6 +241,10 @@ func _legacy_snapshot() -> Dictionary:
 	var world = _world(true)
 	var saved: Dictionary = world.snapshot()
 	saved.version = 1
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:saved.erase(v14_key)
+	for v14_player in saved.players.values():v14_player.erase("room")
+	saved.erase("threats")
+	for legacy_player in saved.players.values(): legacy_player.erase("dive_status")
 	saved.entities = world._new_entities(false)
 	saved.erase("chests")
 	for key in ["deck_tiles", "structures", "drift", "navigation", "chart", "island"]:
@@ -254,9 +263,9 @@ func _test_migration_and_validation() -> void:
 	var world = WorldState.new()
 	var saved := _legacy_snapshot()
 	_check(world.restore(JSON.parse_string(JSON.stringify(saved))), "valid old JSON save migrates")
-	_check(world.data.version == 10 and Inventory.count(world.data.players.guest.bag, "fish") == 5 and Inventory.count(world.data.players.guest.bag, "wood") == 3 and int(world.chest_totals().fish) == 5 and int(world.chest_totals().wood) == 3, "legacy personal and shared items remain distinct and lossless")
-	saved.storage.wood = 700
-	_check(world.restore(saved) and world.data.chests.size() >= 3 and int(world.chest_totals().wood) == 700, "oversized legacy warehouse expands into finite migration chests without loss")
+	_check(world.data.version == 16 and Inventory.count(world.data.players.guest.bag, "fish") == 5 and Inventory.count(world.data.players.guest.bag, "wood") == 3 and int(world.chest_totals().fish) == 5 and int(world.chest_totals().wood) == 3, "legacy personal and shared items remain distinct and lossless")
+	saved.storage.wood = Inventory.CHEST_SIZE * Inventory.STACK_LIMIT * 2 + 1
+	_check(world.restore(saved) and world.data.chests.size() >= 3 and int(world.chest_totals().wood) == saved.storage.wood, "oversized legacy warehouse expands into finite migration chests without loss")
 	var roundtrip: Variant = JSON.parse_string(JSON.stringify(world.snapshot()))
 	_check(world.restore(roundtrip), "migrated v8 snapshot roundtrips")
 	world.join("host", "船长")

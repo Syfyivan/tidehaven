@@ -33,16 +33,25 @@ var pause_overlay: Control
 var inventory_ui: Control
 var hud: Control
 var crafting_ui: Control
+var appearance_ui:Control
+var journal_ui:Control
+var selected_appearance:Dictionary=preload("res://scripts/appearance.gd").default_for("host")
+var appearance_chosen:=false
 var chart_ui: Control
+var restaurant_ui: Control
+var room_atlas: Control
 var island_atlas: Control
 var active_seed := "seed"
 var dialogue_ui: Control
 var pending_talk := ""
+var pending_conversation:=0
+var next_conversation:=0
 var context_ui: Control
 var status: Label
 var selected_option := 0
 var active_tool := "hook"
 var placement_recipe := ""
+var held_index := -1
 var relocation: Dictionary = {}
 var hovered_drift := ""
 var pointer_position := Vector2.ZERO
@@ -62,7 +71,7 @@ var pause_note: Label
 var font: SystemFont
 var pause_open := false
 var room_paused := false
-var save_path := "user://world_v10.json"
+var save_path := "user://world_v16.json"
 var net_clock := 0.0
 var hud_clock := 0.0
 var input_clock := 0.0
@@ -129,12 +138,37 @@ func _ready() -> void:
 	elif cli.has("town-net"):
 		var driver = load("res://tests/town_network_probe.gd").new()
 		add_child(driver)
+	elif cli.has("homestead-net"):
+		var driver = load("res://tests/homestead_network_probe.gd").new()
+		add_child(driver)
 	elif cli.has("island-net"):
 		var driver = load("res://tests/island_network_probe.gd").new()
 		driver.name = "IslandNetworkProbe"
 		add_child(driver)
 	elif cli.has("skill-net"):
 		var driver = load("res://tests/skill_network_probe.gd").new()
+		add_child(driver)
+	elif cli.has("stories-net"):
+		add_child(load("res://tests/stories_network_probe.gd").new())
+	elif cli.has("remaining-net"):
+		add_child(load("res://tests/remaining_network_probe.gd").new())
+	elif cli.has("p1-net"):
+		var driver=load("res://tests/p1_network_probe.gd").new()
+		add_child(driver)
+	elif cli.has("threats-net"):
+		var driver = load("res://tests/sea_threats_network_probe.gd").new()
+		add_child(driver)
+	elif cli.has("threats-playthrough"):
+		var driver = load("res://tests/sea_threats_playthrough.gd").new()
+		add_child(driver)
+	elif cli.has("chopping-net"):
+		var driver = load("res://tests/chopping_network_probe.gd").new()
+		add_child(driver)
+	elif cli.has("interaction-net"):
+		var driver = load("res://tests/interaction_network_probe.gd").new()
+		add_child(driver)
+	elif cli.has("workbench-net"):
+		var driver = load("res://tests/workbench_network_probe.gd").new()
 		add_child(driver)
 	elif cli.has("progression-net"):
 		var driver = load("res://tests/progression_network_probe.gd").new()
@@ -216,13 +250,14 @@ func _build_ui() -> void:
 	hud.bag_requested.connect(_toggle_inventory)
 	hud.crafting_requested.connect(_toggle_crafting)
 	hud.menu_requested.connect(_toggle_pause)
-	hud.tool_selected.connect(func(tool: String): active_tool = tool)
+	hud.tool_selected.connect(func(_tool: String): _equip_index(-1))
 	hud.item_used.connect(_use_hotbar)
 	hud.anchor_requested.connect(_toggle_anchor)
 	hud.map_requested.connect(_toggle_chart)
 	inventory_ui = InventoryPanel.new()
 	ui.add_child(inventory_ui)
 	inventory_ui.command.connect(perform)
+	inventory_ui.equip_requested.connect(_equip_index)
 	inventory_ui.close_requested.connect(_toggle_inventory)
 	crafting_ui = CraftingPanel.new()
 	ui.add_child(crafting_ui)
@@ -232,6 +267,15 @@ func _build_ui() -> void:
 	ui.add_child(chart_ui)
 	chart_ui.close_requested.connect(_toggle_chart)
 	chart_ui.destination_selected.connect(func(id: String): perform("set_destination", {"id": id}))
+	restaurant_ui=preload("res://scripts/restaurant_panel.gd").new()
+	ui.add_child(restaurant_ui)
+	restaurant_ui.action_requested.connect(func(verb:String,args:Dictionary):
+		perform(verb,args)
+		if verb in ["shop_prepare","shop_open"]:restaurant_ui.hide())
+	room_atlas = preload("res://scripts/room_atlas.gd").new()
+	ui.add_child(room_atlas)
+	room_atlas.closed.connect(func():room_atlas.hide())
+	room_atlas.sea_requested.connect(func():room_atlas.hide();chart_ui.show();_update_hud())
 	island_atlas = IslandAtlas.new()
 	ui.add_child(island_atlas)
 	island_atlas.closed.connect(func(): island_atlas.hide())
@@ -240,14 +284,30 @@ func _build_ui() -> void:
 	ui.add_child(context_ui)
 	context_ui.chosen.connect(func(option: Dictionary): perform(str(option.action), option.get("args", {})))
 	dialogue_ui = preload("res://scripts/town_dialogue.gd").new()
+	dialogue_ui.action_requested.connect(perform)
 	ui.add_child(dialogue_ui)
+	dialogue_ui.visibility_changed.connect(func():
+		if not dialogue_ui.visible:pending_talk="";pending_conversation=0)
 	_build_main_menu()
 	_build_pause_menu()
+	appearance_ui=preload("res://scripts/appearance_panel.gd").new()
+	ui.add_child(appearance_ui)
+	appearance_ui.chosen.connect(func(profile:Dictionary):
+		if mode=="menu":
+			selected_appearance=profile;appearance_chosen=true
+		else:perform("appearance",profile))
+	journal_ui=preload("res://scripts/journal_panel.gd").new()
+	ui.add_child(journal_ui)
+	journal_ui.action_requested.connect(perform)
+	_register_window_shades(journal_ui)
 	_register_window_shades(inventory_ui)
 	_register_window_shades(inventory_ui.discard_dialog)
 	_register_window_shades(crafting_ui)
 	_register_window_shades(chart_ui)
 	_register_window_shades(island_atlas)
+	_register_window_shades(room_atlas)
+	_register_window_shades(restaurant_ui)
+	_register_window_shades(appearance_ui)
 
 func _build_main_menu() -> void:
 	overlay = _shade(ui)
@@ -256,6 +316,7 @@ func _build_main_menu() -> void:
 	title.add_theme_constant_override("outline_size", 6)
 	UI.label(overlay, "T I D E H A V E N", Rect2(92, 191, 380, 33), 18, Color("d0dfc5"))
 	UI.label(overlay, "单人游戏  /  双人联机", Rect2(94, 236, 370, 28), 17, Color("e6e4c7"))
+	UI.button(overlay,"选择形象",Rect2(94,292,190,43),func():appearance_ui.present(selected_appearance))
 	menu_panel = UI.panel(overlay, Rect2(810, 165, 360, 470))
 	var panel := menu_panel
 	UI.label(panel, "开始游戏", Rect2(30, 26, 295, 38), 28)
@@ -289,7 +350,7 @@ func _build_main_menu() -> void:
 	coop_actions.hide()
 	menu_status = UI.label(panel, "", Rect2(30, 465, 300, 63), 14, UI.MUTED)
 	menu_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	UI.label(overlay, "0.7", Rect2(1180, 754, 77, 25), 14, Color("c3d8c8"))
+	UI.label(overlay, str(ProjectSettings.get_setting("application/config/name")).get_slice("Tidehaven ",1), Rect2(1174,754,83,25),14,Color("c3d8c8"))
 
 func _build_pause_menu() -> void:
 	pause_overlay = _shade(ui)
@@ -297,7 +358,8 @@ func _build_pause_menu() -> void:
 	pause_panel = UI.panel(pause_overlay, Rect2(446, 218, 388, 364))
 	var panel := pause_panel
 	UI.icon(panel, UI.symbol("gear"), Rect2(30, 32, 30, 30))
-	UI.label(panel, "游戏菜单", Rect2(75, 26, 250, 43), 28)
+	UI.label(panel, "游戏菜单", Rect2(75, 26, 170, 43), 28)
+	UI.button(panel,"换装",Rect2(264,33,91,37),func():appearance_ui.present(current_state().get("wardrobe",{}).get(local_slot,WorldState.Appearance.default_for(local_slot))))
 	pause_note = UI.label(panel, "", Rect2(30, 89, 328, 50), 16, UI.MUTED)
 	pause_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	UI.button(panel, "继续游戏", Rect2(28, 153, 332, 49), _toggle_pause, true)
@@ -395,6 +457,7 @@ func _start(next_mode: String, load_existing: bool) -> bool:
 	mode = next_mode
 	local_slot = "host"
 	world.join("host", nickname.text.strip_edges().left(16) if not nickname.text.strip_edges().is_empty() else "旅人")
+	if not load_existing:world.action("host","appearance",selected_appearance)
 	if mode == "host":
 		var peer := ENetMultiplayerPeer.new()
 		var error := peer.create_server(int(cli.get("port", PORT)), 1)
@@ -506,12 +569,17 @@ func initial_world(snapshot: Dictionary) -> void:
 	pause_overlay.hide()
 	options_signature = ""
 	_toast("已登船。你们可以各自行动，也可以一起下水。")
+	if appearance_chosen:action_request.rpc_id(1,"appearance",selected_appearance)
 
-@rpc("authority", "call_remote", "unreliable_ordered", 1)
-func world_snapshot(snapshot: Dictionary, paused: bool) -> void:
-	if mode == "client":
-		received = snapshot
-		room_paused = paused
+@rpc("authority", "call_remote", "reliable", 0)
+func world_snapshot(payload: PackedByteArray, paused: bool) -> void:
+	if mode != "client" or payload.size()>16*1024*1024:return
+	var raw:=payload.decompress_dynamic(16*1024*1024,FileAccess.COMPRESSION_DEFLATE)
+	if raw.is_empty() or not raw.has_encoded_var(0,false):return
+	var snapshot:Variant=raw.decode_var(0,false)
+	if not snapshot is Dictionary or not snapshot.has("players"):return
+	received=snapshot;room_paused=paused
+
 
 @rpc("any_peer", "call_remote", "unreliable_ordered", 0)
 func movement_request(x: float, y: float) -> void:
@@ -519,13 +587,13 @@ func movement_request(x: float, y: float) -> void:
 		world.set_move("guest", Vector2(x, y))
 
 @rpc("any_peer", "call_remote", "reliable")
-func action_request(verb: String, args: Dictionary = {}) -> void:
+func action_request(verb: String, args: Dictionary = {},conversation_id:int=0) -> void:
 	var sender := multiplayer.get_remote_sender_id()
-	if mode != "host" or sender != remote_peer or room_paused:
+	if mode != "host" or sender != remote_peer or (room_paused and verb!="appearance"):
 		return
 	var now := Time.get_ticks_msec()
 	if now - int(last_action_ms.get(sender, -1000)) < 80:
-		action_feedback.rpc_id(sender, "操作太快，请稍等后再试。", world.snapshot())
+		action_feedback.rpc_id(sender, "操作太快，请稍等后再试。", world.snapshot(),"",{},conversation_id)
 		return
 	if args.size() > 8:
 		return
@@ -534,25 +602,40 @@ func action_request(verb: String, args: Dictionary = {}) -> void:
 			return
 	last_action_ms[sender] = now
 	var message: String = _world_action("guest", verb.left(32), args)
-	action_feedback.rpc_id(sender, message, world.snapshot(), str(args.get("id", "")) if verb == "town_talk" else "")
+	action_feedback.rpc_id(sender, message, world.snapshot(), str(args.get("id", "")) if _conversation_verb(verb) else "",args if verb.ends_with("_personal_open") else {},conversation_id)
 	_send_snapshot()
 
 @rpc("authority", "call_remote", "reliable")
-func action_feedback(message: String, snapshot: Dictionary, talk_id: String = "") -> void:
+func action_feedback(message: String, snapshot: Dictionary, talk_id: String = "", story_args:Dictionary={},conversation_id:int=0) -> void:
 	if mode == "client":
 		received = snapshot
-	_action_message(message, talk_id)
+	_action_message(message, talk_id,story_args,conversation_id)
 	_update_hud()
 
 func current_state() -> Dictionary:
 	return received if mode == "client" else world.data
 
 func perform(verb: String, args: Dictionary = {}) -> void:
+	if verb=="shop_manage":
+		context_ui.hide()
+		restaurant_ui.present(current_state(),local_slot)
+		return
+	if verb == "gather_island":
+		var node := IslandMap.node(str(args.get("id", "")))
+		if not node.is_empty() and node.tool!="" and Farming.held_item(active_tool, active_seed) != node.tool:
+			_toast("先点背包里的%s，再点击目标。" % Inventory.ITEM_NAMES[node.tool])
+			return
+	if verb == "open_workbench":
+		if not Recipes.nearby_workbench(current_state(), local_slot).is_empty():
+			crafting_ui._select_category("exploration")
+			if not crafting_ui.visible:
+				_toggle_crafting()
+		return
 	if verb == "open_chest":
 		if not inventory_ui.visible:
 			_toggle_inventory()
 		return
-	if room_paused:
+	if room_paused and verb!="appearance":
 		_toast("房间暂停中。")
 		return
 	if verb == "relocate" and not args.has("x"):
@@ -560,23 +643,45 @@ func perform(verb: String, args: Dictionary = {}) -> void:
 		placement_recipe = ""
 		_toast("选择新位置 · 右键取消")
 		return
-	pending_talk = str(args.get("id", "")) if verb == "town_talk" else ""
+	pending_talk = str(args.get("id", "")) if _conversation_verb(verb) else ""
+	if not pending_talk.is_empty():next_conversation+=1
+	pending_conversation=next_conversation if not pending_talk.is_empty() else 0
 	if mode == "client":
-		action_request.rpc_id(1, verb, args)
+		action_request.rpc_id(1, verb, args,pending_conversation)
 	elif mode in ["solo", "host"]:
-		_action_message(_world_action("host", verb, args), pending_talk)
+		_action_message(_world_action("host", verb, args), pending_talk,args if verb.ends_with("_personal_open") else {},pending_conversation)
 		_send_snapshot()
 	options_signature = ""
 	_update_hud()
 
-func _action_message(message: String, talk_id: String = "") -> void:
-	var available := mode in ["solo", "host", "client"] and not (pause_open or inventory_ui.visible or crafting_ui.visible or chart_ui.visible or island_atlas.visible or context_ui.visible)
+func _conversation_verb(verb:String)->bool:
+	return verb in ["town_talk","town_rent","town_claim","town_shop","ocean_talk","town_personal_open","town_personal_reply","ocean_personal_open","ocean_personal_reply"]
+
+func _conversation_choices(talk_id:String,story_args:Dictionary)->Array:
+	var data:=current_state()
+	var ocean:=WorldState.OceanResidents.NPCS.has(talk_id)
+	if ocean and WorldState.OceanResidents.NPCS[talk_id].magic and not data.journal.tide_speech:return []
+	var choices:Array=[]
+	if not story_args.is_empty():choices=WorldState.ResidentStories.replies(data,local_slot,story_args)
+	else:
+		if not ocean:choices=IslandTown.homestead_choices(data,local_slot,talk_id)
+		choices.append_array(WorldState.ResidentStories.entries(data,local_slot,talk_id))
+	if ocean:
+		for choice:Dictionary in choices:choice.action=str(choice.action).replace("town_","ocean_")
+	return choices
+
+func _action_message(message: String, talk_id: String = "",story_args:Dictionary={},conversation_id:int=0) -> void:
+	if conversation_id!=0 and conversation_id!=pending_conversation:return
+	var available := mode in ["solo", "host", "client"] and not (pause_open or inventory_ui.visible or crafting_ui.visible or chart_ui.visible or room_atlas.visible or restaurant_ui.visible or island_atlas.visible or context_ui.visible or journal_ui.visible or appearance_ui.visible)
 	if available and talk_id == pending_talk and IslandTown.NPCS.has(talk_id) and message.begins_with(str(IslandTown.NPCS[talk_id].name) + "："):
-		dialogue_ui.present(IslandTown.NPCS[talk_id], message)
+		dialogue_ui.present(IslandTown.NPCS[talk_id], message, _conversation_choices(talk_id,story_args),talk_id)
+	elif available and talk_id==pending_talk and WorldState.OceanResidents.NPCS.has(talk_id) and message.begins_with(str(WorldState.OceanResidents.NPCS[talk_id].name)+"："):
+		dialogue_ui.present(WorldState.OceanResidents.NPCS[talk_id],message,_conversation_choices(talk_id,story_args),talk_id)
 	else:
 		_toast(message)
 	if talk_id == pending_talk:
 		pending_talk = ""
+		pending_conversation=0
 
 func _world_action(slot: String, verb: String, args: Dictionary = {}) -> String:
 	var previous_day := int(world.data.day)
@@ -630,6 +735,8 @@ func _process(delta: float) -> void:
 		return
 	view.state = current_state()
 	view.local_slot = local_slot
+	view.feedback.update(view.state if mode in ["solo", "host", "client"] else {}, local_slot, delta, not _modal_open())
+	view.open_chest_id = inventory_ui.chest_id if inventory_ui.visible else ""
 	_update_pointer()
 	view.queue_redraw()
 	hud_clock += delta
@@ -643,18 +750,32 @@ func _process(delta: float) -> void:
 
 func _send_snapshot() -> void:
 	if mode == "host" and remote_peer > 0 and world.data.players.has("guest"):
-		world_snapshot.rpc_id(remote_peer, world.snapshot(), room_paused)
+		world_snapshot.rpc_id(remote_peer, var_to_bytes(world.snapshot()).compress(FileAccess.COMPRESSION_DEFLATE), room_paused)
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo:
 		return
 	var key: int = event.physical_keycode
+	if key==KEY_ESCAPE:pending_talk="";pending_conversation=0
 	if key == KEY_F11:
 		var window := get_window()
 		window.mode = Window.MODE_WINDOWED if window.mode in [Window.MODE_FULLSCREEN, Window.MODE_EXCLUSIVE_FULLSCREEN] else Window.MODE_EXCLUSIVE_FULLSCREEN
 		get_viewport().set_input_as_handled()
 		return
+	if appearance_ui.visible:
+		if key==KEY_ESCAPE:appearance_ui.hide()
+		get_viewport().set_input_as_handled()
+		return
+	if journal_ui.visible:
+		if key in [KEY_ESCAPE,KEY_J]:journal_ui.hide()
+		get_viewport().set_input_as_handled()
+		return
 	if mode not in ["solo", "host", "client"]:
+		return
+	if inventory_ui.visible and inventory_ui.discard_dialog.visible:
+		if key in [KEY_ESCAPE, KEY_B]:
+			inventory_ui.discard_dialog.hide()
+		get_viewport().set_input_as_handled()
 		return
 	if dialogue_ui.visible:
 		if key in [KEY_ESCAPE, KEY_SPACE, KEY_ENTER]:
@@ -664,6 +785,10 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	if key == KEY_ESCAPE:
 		if context_ui.visible:
 			context_ui.hide()
+		elif restaurant_ui.visible:
+			restaurant_ui.hide()
+		elif room_atlas.visible:
+			room_atlas.hide()
 		elif island_atlas.visible:
 			island_atlas.hide()
 		elif chart_ui.visible:
@@ -686,16 +811,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	elif key == KEY_P and context_ui.visible:
 		context_ui.hide()
 	elif not _modal_open():
-		if key == KEY_1:
-			active_tool = "hook"
-		elif key == KEY_2:
-			active_tool = "rod"
-		elif key == KEY_3:
-			active_tool = "paddle"
-		elif key == KEY_4:
-			active_tool = "harpoon"
-		elif current_state().players[local_slot].area == "island" and key in [KEY_5, KEY_6, KEY_7, KEY_8]:
-			_equip_farm_item({KEY_5: "hoe", KEY_6: active_seed, KEY_7: "watering_can", KEY_8: "canopy"}[key])
+		if key==KEY_J:
+			journal_ui.present(current_state(),local_slot)
+		elif key in [KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0, KEY_MINUS, KEY_EQUAL]:
+			_use_hotbar([KEY_1, KEY_2, KEY_3, KEY_4, KEY_5, KEY_6, KEY_7, KEY_8, KEY_9, KEY_0, KEY_MINUS, KEY_EQUAL].find(key))
+		elif key == KEY_H:
+			_equip_index(-1)
 		elif key == KEY_N and current_state().players[local_slot].area == "island":
 			_cycle_seed()
 		elif key == KEY_G:
@@ -739,21 +860,89 @@ func _primary_action(keyboard: bool = false) -> void:
 			relocation = {}
 			perform("relocate", move_args)
 		else:
-			_toast("这里不能放置，请靠近原设施并选择空甲板格。")
+			_toast(str(view.placement.get("reason", "请选一个甲板格。")))
 		return
 	if not placement_recipe.is_empty():
 		if view.placement.get("valid", false):
-			perform("craft", {"recipe": placement_recipe, "x": view.placement.x, "y": view.placement.y})
-			placement_recipe = ""
+			perform("place_item", {"item": placement_recipe, "x": view.placement.x, "y": view.placement.y})
 		else:
-			_toast("这里不能放置，试试空着的甲板。")
+			_toast(str(view.placement.get("reason", "请选择合法的放置格。")))
 		return
 	var player: Dictionary = current_state().players[local_slot]
 	_sync_held_item(player)
 	var target: Vector2 = view.get_global_transform_with_canvas().affine_inverse() * pointer_position
-	if player.area == "island" and active_tool in ["till", "plant", "water", "cover"]:
+	if player.area in ["island","room"]:
+		var mouse_world: Vector2 = view.screen_to_world(target, str(player.area))
+		var resident: Dictionary = {}
+		var nearest := 30.0
+		for npc_id:String in WorldState.OceanResidents.NPCS:
+			var gap := mouse_world.distance_to(WorldState.OceanResidents.position(npc_id))
+			if WorldState.OceanResidents.near(player,npc_id) and gap < nearest:
+				nearest = gap
+				resident = {"action":"ocean_talk", "id":npc_id}
+		for npc_id: String in IslandTown.NPCS:
+			var place: Dictionary = IslandTown.location(npc_id,float(current_state().minute),current_state())
+			if player.area != place.area or player.get("room","") != place.room: continue
+			var npc_at: Vector2 = place.at
+			var gap := mouse_world.distance_to(npc_at)
+			if gap < minf(24, nearest) and Vector2(player.x, player.y).distance_to(npc_at) <= IslandTown.REACH:
+				nearest = gap
+				resident = {"action":"town_talk", "id":npc_id}
+		if not resident.is_empty():
+			perform(resident.action, {"id":resident.id})
+			return
+	if player.area=="room" and player.room=="restaurant":
+		var shop=preload("res://scripts/restaurant.gd")
+		var point:Vector2=view.screen_to_world(target,"room")
+		for option:Dictionary in shop.options(current_state(),player):
+			if option.action in ["shop_serve","shop_manage","open_chest"] and point.distance_to(Vector2(option.target_x,option.target_y))<32:
+				perform(option.action,option.args);return
+	var held := Farming.held_item(active_tool, active_seed)
+	if player.area=="room":
+		var point:Vector2=view.screen_to_world(target,"room")
+		for node:Dictionary in WorldState.Rooms.nodes(player.room).values():
+			if point.distance_to(Vector2(node.x,node.y))>=30 or not WorldState.Rooms.active(current_state(),node):continue
+			var required:String=str(node.get("tool","pickaxe"))
+			if not required.is_empty() and held!=required:_toast("这里需要%s；点对应格子切换。"%Inventory.ITEM_NAMES[required])
+			else:perform("room_mine",{"id":node.id})
+			return
+	if Recipes.ALL.has(held) and not str(Recipes.ALL[held].structure).is_empty():
+		placement_recipe = held
+		_update_pointer()
+		return
+	if held in ["freshwater", "meal", "cooked_fish", "sashimi", "maki", "salad", "cup", "anchor", "treasure"]:
+		match held:
+			"freshwater": perform("drink")
+			"meal", "cooked_fish", "sashimi", "maki", "salad": perform("eat", {"item": held})
+			"cup": perform("fill_cup")
+			"anchor": _toggle_anchor()
+			"treasure": perform("open_treasure", {"index": held_index})
+		return
+	if player.area == "island" and held in ["axe", "pickaxe", "scythe", "hoe"]:
 		var point: Vector2 = view.screen_to_world(target, "island")
+		for resource: Dictionary in IslandMap.nodes_near(point).values():
+			if point.distance_to(Vector2(resource.x, resource.y)) < 32 and preload("res://scripts/island_state.gd").active(current_state().island, resource.id, int(current_state().day), current_state().chests):
+				if resource.tool != held:
+					_toast("这里需要%s；点对应格子切换。" % Inventory.ITEM_NAMES.get(resource.tool,"徒手采摘"))
+				else:
+					perform("gather_island", {"id": resource.id})
+				return
+		if held == "scythe":
+			perform("clear_crop", {"x": point.x, "y": point.y})
+			return
+		if held != "hoe":
+			_toast("靠近对应资源，再点击它使用工具。")
+			return
+	if held == "scythe" and player.area == "deck":
+		var point: Vector2 = view.screen_to_world(target, "deck")
+		perform("clear_crop", {"x": point.x, "y": point.y})
+		return
+	if active_tool in ["till", "plant", "water", "cover"] and (player.area in ["island","deck"] or (player.area=="room" and player.room=="greenhouse")):
+		var point: Vector2 = view.screen_to_world(target, str(player.area))
 		var args := {"x": point.x, "y": point.y}
+		if active_tool == "water" and ((player.area=="island" and IslandMap.water_near(point)) or (player.area=="room" and point.distance_to(preload("res://scripts/gardens.gd").TAP)<48)):
+			perform("refill_can", args)
+			return
 		if active_tool == "plant":
 			args.seed = active_seed
 		perform(active_tool, args)
@@ -766,14 +955,18 @@ func _primary_action(keyboard: bool = false) -> void:
 		_toast("右键 / P 收钩")
 	elif player.area == "water" and active_tool == "harpoon":
 		perform("spear", {"x": direction.x, "y": direction.y})
-	elif _clicked_interaction(keyboard and active_tool == "hook"):
-		pass
 	elif active_tool == "rod" and player.area != "water":
 		perform("reel" if not player.get("fishing", {}).is_empty() else "cast")
 	elif active_tool == "paddle" and player.area == "deck":
 		perform("paddle", {"x": direction.x, "y": direction.y})
+	elif active_tool == "hook" and _clicked_interaction(keyboard):
+		pass
+	elif active_tool in ["axe", "pickaxe"] and player.area in ["water", "room"]:
+		_clicked_interaction(keyboard)
 	elif active_tool == "hook" and player.area == "deck":
 		perform("hook", {"x": direction.x, "y": direction.y})
+	elif active_tool != "hook":
+		_toast("%s：%s" % [Inventory.ITEM_NAMES.get(held, held), preload("res://scripts/inventory_slot.gd").item_usage(held)])
 
 func _clicked_interaction(keyboard: bool) -> bool:
 	# The resident can move on a schedule boundary between HUD refreshes.
@@ -790,7 +983,17 @@ func _clicked_interaction(keyboard: bool) -> bool:
 	var safe_options: Array = []
 	for option in current_options:
 		var verb := str(option.action)
+		if verb == "gather_island" and IslandMap.node(str(option.args.id)).get("tool","")!="":
+			continue
+		if active_tool == "axe" and verb != "collect":
+			continue
+		if active_tool == "pickaxe" and verb not in ["mine", "room_mine", "room_enter", "room_exit", "room_deeper"]:
+			continue
 		if verb.begins_with("town_") and verb != "town_talk":
+			continue
+		if verb.begins_with("ocean_") and verb != "ocean_talk":
+			continue
+		if verb=="home_pack":
 			continue
 		if verb in ["eat", "drink", "cast", "reel", "relocate", "sleep", "deposit", "take_meal", "drop_anchor", "raise_anchor", "sell", "build"]:
 			continue
@@ -811,7 +1014,7 @@ func _clicked_interaction(keyboard: bool) -> bool:
 		if player.area == "island":
 			var spots = preload("res://scripts/island_state.gd")
 			if verb == "town_talk":
-				target = IslandTown.position(id, float(data.minute))
+				target = IslandTown.position(id, float(data.minute),data)
 			elif str(option.action) == "gather_island":
 				var resource: Dictionary = IslandMap.node(id)
 				target = Vector2(float(resource.x), float(resource.y))
@@ -822,6 +1025,8 @@ func _clicked_interaction(keyboard: bool) -> bool:
 				target = spots.CAMP
 			elif str(option.action) == "board_raft":
 				target = spots.DOCK
+		if verb == "town_talk": target = IslandTown.position(id,float(data.minute),data)
+		if option.has("target_x"): target = Vector2(option.target_x,option.target_y)
 		var gap := local_mouse.distance_to(target)
 		if gap < distance:
 			distance = gap
@@ -859,12 +1064,17 @@ func _secondary_action() -> void:
 		_toast("靠近设施、物资或筏边，再按右键 / P。")
 
 func _modal_open() -> bool:
-	return pause_open or inventory_ui.visible or crafting_ui.visible or chart_ui.visible or island_atlas.visible or context_ui.visible or dialogue_ui.visible
+	return pause_open or inventory_ui.visible or crafting_ui.visible or chart_ui.visible or room_atlas.visible or restaurant_ui.visible or island_atlas.visible or context_ui.visible or dialogue_ui.visible or (appearance_ui!=null and appearance_ui.visible) or (journal_ui!=null and journal_ui.visible)
 
 func _toggle_chart() -> void:
+	restaurant_ui.hide()
 	if mode not in ["solo", "host", "client"] or pause_open:
 		return
-	if current_state().players[local_slot].area == "island":
+	if current_state().players[local_slot].area == "room":
+		if room_atlas.visible: room_atlas.hide()
+		else: room_atlas.present(current_state(),local_slot)
+		island_atlas.hide();chart_ui.hide()
+	elif current_state().players[local_slot].area == "island":
 		if island_atlas.visible:
 			island_atlas.hide()
 		else:
@@ -894,8 +1104,8 @@ func _rules():
 
 func _equip_farm_item(item: String) -> void:
 	var player: Dictionary = current_state().players[local_slot]
-	if player.area != "island":
-		_toast("上岛后，选中这件物品并点击土地使用。")
+	if player.area not in ["island","deck"] and not (player.area=="room" and player.room=="greenhouse"):
+		_toast("选中后可照料岛上土地、甲板种植盆和温室。")
 		return
 	if Inventory.count(player.bag, item) <= 0:
 		_toast("背包里没有%s。" % Inventory.ITEM_NAMES.get(item, item))
@@ -919,9 +1129,20 @@ func _cycle_seed() -> void:
 	_equip_farm_item(str(seeds[(seeds.find(active_seed) + 1) % seeds.size()]))
 
 func _sync_held_item(player: Dictionary) -> void:
-	if active_tool in ["till", "plant", "water", "cover"]:
-		if player.area != "island" or Inventory.count(player.bag, Farming.held_item(active_tool, active_seed)) == 0:
-			active_tool = "hook"
+	if active_tool == "hook":
+		held_index = -1
+		return
+	var item := Farming.held_item(active_tool, active_seed)
+	if held_index >= 0 and held_index < player.bag.size() and player.bag[held_index].get("item", "") == item:
+		return
+	held_index = -1
+	for index in player.bag.size():
+		if player.bag[index].get("item", "") == item:
+			held_index = index
+			break
+	if held_index < 0:
+		active_tool = "hook"
+		placement_recipe = ""
 
 
 func _update_pointer() -> void:
@@ -934,7 +1155,7 @@ func _update_pointer() -> void:
 		if not key.is_empty():
 			var center := Farming.plot_center(key)
 			var player: Dictionary = state.players[local_slot]
-			view.farm_preview = {"x": center.x, "y": center.y, "tool": active_tool, "seed": active_seed, "valid": (state.island.plots.has(key) if active_tool != "till" else IslandMap.tillable(center) and Farming.obstruction(state, center).is_empty() and not state.island.plots.has(key)) and center.distance_to(Vector2(player.x, player.y)) <= 64}
+			view.farm_preview = {"x": center.x, "y": center.y, "tool": active_tool, "seed": active_seed, "valid": (state.island.plots.has(key) if active_tool != "till" else (not IslandMap.YARD_BOUNDS.has_point(center) or state.island.homestead.rented) and IslandMap.tillable(center) and Farming.obstruction(state, center).is_empty() and not state.island.plots.has(key)) and center.distance_to(Vector2(player.x, player.y)) <= 64}
 	hovered_drift = ""
 	view.hovered_id = ""
 	view.placement = {}
@@ -943,7 +1164,7 @@ func _update_pointer() -> void:
 		return
 	var mouse: Vector2 = view.get_global_transform_with_canvas().affine_inverse() * pointer_position
 	# Only deck placement follows the gentle boat transform. Drift stays in sea space.
-	var deck_mouse: Vector2 = view.screen_to_world(mouse, "deck")
+	var deck_mouse: Vector2 = view.screen_to_world(mouse, str(data.players[local_slot].area))
 	if not relocation.is_empty():
 		var object_id := str(relocation.get("id", ""))
 		var source: Dictionary = data.chests.get(object_id, data.structures.get(object_id, {}))
@@ -956,16 +1177,20 @@ func _update_pointer() -> void:
 			_toast("伙伴已搬动这个设施，请在新位置重新选择。")
 			return
 		var snapped := Vector2(floorf(deck_mouse.x / 64.0) * 64.0 + 32.0, floorf(deck_mouse.y / 64.0) * 64.0 + 32.0)
-		view.placement = {"x": snapped.x, "y": snapped.y, "kind": source.get("kind", "chest"), "valid": _rules().can_relocate(local_slot, object_id, float(relocation.from_x), float(relocation.from_y), snapped.x, snapped.y)}
+		var reason: String = _rules().relocation_reason(local_slot, object_id, float(relocation.from_x), float(relocation.from_y), snapped.x, snapped.y)
+		view.placement = {"x": snapped.x, "y": snapped.y, "kind": source.get("kind", "chest"), "valid": reason.is_empty(), "reason": reason}
 	elif not placement_recipe.is_empty():
 		var snapped := Vector2(floorf(deck_mouse.x / 64.0) * 64.0 + 32.0, floorf(deck_mouse.y / 64.0) * 64.0 + 32.0)
-		view.placement = {"x": snapped.x, "y": snapped.y, "kind": str(Recipes.ALL[placement_recipe].structure), "valid": _rules().can_place(local_slot, placement_recipe, snapped.x, snapped.y)}
+		var reason: String = _rules().item_placement_reason(local_slot, placement_recipe, snapped.x, snapped.y)
+		view.placement = {"x": snapped.x, "y": snapped.y, "kind": str(Recipes.ALL[placement_recipe].structure), "valid": reason.is_empty(), "reason": reason}
 
 
 func _toggle_crafting() -> void:
 	if mode not in ["solo", "host", "client"] or pause_open:
 		return
 	crafting_ui.visible = not crafting_ui.visible
+	restaurant_ui.hide()
+	room_atlas.hide()
 	chart_ui.hide()
 	island_atlas.hide()
 	context_ui.hide()
@@ -975,47 +1200,41 @@ func _toggle_crafting() -> void:
 	_update_hud()
 
 func _choose_recipe(recipe: String) -> void:
-	if not Recipes.ALL.has(recipe):
-		return
-	if str(Recipes.ALL[recipe].structure).is_empty():
+	if Recipes.ALL.has(recipe):
 		perform("craft", {"recipe": recipe})
-	else:
-		placement_recipe = recipe
-		crafting_ui.hide()
-		_toast("选择放置位置 · 右键取消")
 
 func _use_hotbar(index: int) -> void:
+	if not _modal_open():
+		_equip_index(index)
+
+func _equip_index(index: int) -> void:
 	var data := current_state()
 	if data.is_empty() or mode not in ["solo", "host", "client"]:
 		return
-	if index < 0 or index >= Inventory.BAG_SIZE or _modal_open():
-		return
-	var stack: Dictionary = data.players[local_slot].bag[index]
-	var item := str(stack.get("item", ""))
-	if item in Farming.ACTION_ITEMS.values() or Farming.CROPS.has(item):
-		_equip_farm_item(item)
-	elif item.is_empty():
-		active_tool = "hook"
-		_update_hud()
-	elif item == "freshwater":
-		perform("drink")
-	elif item in ["meal", "cooked_fish"]:
-		perform("eat", {"item": item})
-	elif item == "rod":
-		active_tool = "rod"
-	elif item == "harpoon":
-		active_tool = "harpoon"
-	elif item == "paddle":
-		active_tool = "paddle"
-	elif item == "anchor":
-		_toggle_anchor()
-	else:
-		_toggle_inventory()
+	var player: Dictionary = data.players[local_slot]
+	placement_recipe = ""
+	relocation = {}
+	held_index = index
+	var item := str(player.bag[index].get("item", "")) if index >= 0 and index < player.bag.size() else ""
+	active_tool = "hook" if item.is_empty() else item
+	if Farming.CROPS.has(item):
+		active_seed = item
+		active_tool = "plant"
+	elif item in Farming.ACTION_ITEMS.values():
+		active_tool = str(Farming.ACTION_ITEMS.find_key(item))
+	elif Recipes.ALL.has(item) and not str(Recipes.ALL[item].structure).is_empty():
+		placement_recipe = item
+	if not player.get("activity", {}).is_empty():
+		perform("cancel_activity")
+	_update_hud()
+
 
 func _toggle_pause() -> void:
 	if mode not in ["solo", "host", "client"]:
 		return
 	pause_open = not pause_open
+	restaurant_ui.hide()
+	room_atlas.hide()
 	chart_ui.hide()
 	island_atlas.hide()
 	context_ui.hide()
@@ -1040,6 +1259,8 @@ func _toggle_inventory() -> void:
 	if mode not in ["solo", "host", "client"] or pause_open:
 		return
 	inventory_ui.visible = not inventory_ui.visible
+	restaurant_ui.hide()
+	room_atlas.hide()
 	chart_ui.hide()
 	island_atlas.hide()
 	context_ui.hide()
@@ -1047,6 +1268,8 @@ func _toggle_inventory() -> void:
 	placement_recipe = ""
 	relocation = {}
 	inventory_ui.clear_selection()
+	if not inventory_ui.visible and Recipes.ALL.has(active_tool) and not str(Recipes.ALL[active_tool].structure).is_empty():
+		placement_recipe = active_tool
 	_update_hud()
 
 func _update_hud() -> void:
@@ -1056,6 +1279,8 @@ func _update_hud() -> void:
 	menu_panel.size.y = 550 if menu_status.visible else 470
 	menu_panel.position.y = (800 - menu_panel.size.y) / 2
 	var data := current_state()
+	view.state=data
+	view.local_slot=local_slot
 	hud.visible = mode in ["solo", "host", "client"] and not overlay.visible
 	if data.is_empty() or not data.get("players", {}).has(local_slot):
 		return
@@ -1074,6 +1299,8 @@ func _update_hud() -> void:
 		var kind := str(data.drift[hovered_drift].kind)
 		hover = ("漂流桶" if kind == "barrel" else str(Inventory.ITEM_NAMES.get(kind, kind))) + " · 点击打捞"
 	_sync_held_item(player)
+	hud.held_index = held_index
+	hud.placement_reason = str(view.placement.get("reason", ""))
 	hud.farm_seed = active_seed
 	hud.refresh(data, local_slot, current_options, selected_option, active_tool, toast_clock, "relocate" if not relocation.is_empty() else placement_recipe, hover)
 	if hud.prompt_box.visible:
@@ -1090,6 +1317,10 @@ func _update_hud() -> void:
 	hud.hover_label.position = Vector2(clampf(hover_at.x + 16, 12, UI_SIZE.x - hud.hover_label.size.x - 12), clampf(hover_at.y - 24, 12, UI_SIZE.y - hud.hover_label.size.y - 12))
 	var modal_open: bool = _modal_open()
 	hud.hint.visible = not modal_open
+	hud.toolbar.visible = not dialogue_ui.visible
+	if dialogue_ui.visible:
+		for button: Button in hud.quick_buttons:
+			button.hide()
 	if modal_open:
 		hud.prompt_box.hide()
 		hud.toast_box.hide()
@@ -1097,17 +1328,23 @@ func _update_hud() -> void:
 		inventory_ui.refresh(data, local_slot, rules.nearby_chest(local_slot), status.text if toast_clock > 0 else "", mode != "solo")
 	if crafting_ui.visible:
 		crafting_ui.refresh(data, local_slot)
+	if restaurant_ui.visible:
+		restaurant_ui.refresh(data,local_slot)
+	if journal_ui.visible:journal_ui.refresh(data,local_slot)
+	if room_atlas.visible:
+		room_atlas.refresh(data,local_slot)
 	if island_atlas.visible:
 		island_atlas.refresh(data, local_slot)
 	if chart_ui.visible:
 		chart_ui.refresh(data, local_slot)
 
 func _toast(message: String) -> void:
+	if is_instance_valid(restaurant_ui) and restaurant_ui.visible:restaurant_ui.result_message=message
 	if is_instance_valid(crafting_ui) and crafting_ui.visible:
 		crafting_ui.result_message = message
 	if is_instance_valid(status):
 		status.text = message
-		status.add_theme_color_override("font_color", Color("f1ac8c") if ("不足" in message or "已满" in message or "失败" in message) else UI.PAPER)
+		status.add_theme_color_override("font_color", Color("934e3d") if ("不足" in message or "已满" in message or "失败" in message) else UI.INK)
 	toast_clock = 3.5
 
 func _persist() -> bool:
@@ -1125,7 +1362,7 @@ func _persist() -> bool:
 	if file == null:
 		save_error = "无法写入存档"
 		return false
-	file.store_string(JSON.stringify({"format": "tidehaven", "version": 10, "state": world.snapshot()}, "", false, true))
+	file.store_string(JSON.stringify({"format": "tidehaven", "version": 16, "state": world.snapshot()}, "", false, true))
 	file.flush()
 	var write_error := file.get_error()
 	file.close()
@@ -1143,8 +1380,8 @@ func _persist() -> bool:
 	return true
 
 func _save_candidates() -> Array:
-	if save_path == "user://world_v10.json" and not FileAccess.file_exists(save_path) and not FileAccess.file_exists(save_path + ".bak"):
-		for previous in ["user://world_v9.json", "user://world_v8.json", "user://world_v7.json", "user://world_v6.json", "user://world_v5.json", "user://world_v4.json", "user://world_v3.json", "user://world_v2.json", "user://world_v1.json"]:
+	if save_path == "user://world_v16.json" and not FileAccess.file_exists(save_path) and not FileAccess.file_exists(save_path + ".bak"):
+		for previous in ["user://world_v15.json","user://world_v14.json","user://world_v13.json", "user://world_v12.json", "user://world_v11.json", "user://world_v10.json", "user://world_v9.json", "user://world_v8.json", "user://world_v7.json", "user://world_v6.json", "user://world_v5.json", "user://world_v4.json", "user://world_v3.json", "user://world_v2.json", "user://world_v1.json"]:
 			if FileAccess.file_exists(previous) or FileAccess.file_exists(previous + ".bak"):
 				return [previous, previous + ".bak"]
 	return [save_path, save_path + ".bak"]
@@ -1169,10 +1406,15 @@ func _load_saved() -> bool:
 		if typeof(version_value) not in [TYPE_INT, TYPE_FLOAT]:
 			continue
 		# JSON reads integer-looking values as floats; validate before converting.
-		if float(version_value) not in [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0]:
+		if float(version_value) not in [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0,15.0,16.0]:
 			continue
 		if parsed.get("format", "") == "tidehaven" and parsed.get("state") is Dictionary:
 			if world.restore(parsed.state):
+				if not world.migration_notice.is_empty():
+					var before_scene := ProjectSettings.globalize_path(path) + ".before-scene-0.11.3"
+					if not FileAccess.file_exists(before_scene) and DirAccess.copy_absolute(ProjectSettings.globalize_path(path), before_scene) != OK:
+						save_error = "旧岛屿存档备份失败，未进入游戏。"
+						return false
 				if path == save_path + ".bak":
 					restored_backup = true
 					# Keep the corrupt original for inspection before subsequent normal autosaves.
@@ -1192,6 +1434,8 @@ func _return_title() -> void:
 	pause_open = false
 	room_paused = false
 	pause_overlay.hide()
+	restaurant_ui.hide()
+	room_atlas.hide()
 	chart_ui.hide()
 	island_atlas.hide()
 	context_ui.hide()

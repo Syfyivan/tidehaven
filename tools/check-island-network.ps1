@@ -1,4 +1,4 @@
-param([string]$Godot = '')
+param([string]$Godot = '', [switch]$Homestead)
 $ErrorActionPreference = 'Stop'
 $watch = [System.Diagnostics.Stopwatch]::StartNew()
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -16,7 +16,7 @@ New-Item -ItemType Directory -Path $runRoot | Out-Null
 $testSave = Join-Path $runRoot 'world-v10.json'
 $udpProbe = [System.Net.Sockets.UdpClient]::new(0)
 try { $testPort = $udpProbe.Client.LocalEndPoint.Port } finally { $udpProbe.Dispose() }
-$baseArguments = @('--headless', '--path', ('"' + $projectRoot + '"'), '--max-fps', '30', '--', '--island-net')
+$baseArguments = @('--headless', '--path', ('"' + $projectRoot + '"'), '--max-fps', '30', '--', $(if ($Homestead) { '--homestead-net' } else { '--island-net' }))
 $processes = @{}
 
 function Show-ValidatorLogs([string]$Role) {
@@ -48,8 +48,8 @@ function Assert-Validator([string]$Role) {
     $reportPath = Join-Path $runRoot ($Role + '.json')
     if (-not (Test-Path -LiteralPath $reportPath)) { throw "$Role produced no passing report." }
     $report = Get-Content -LiteralPath $reportPath -Raw | ConvertFrom-Json
-    $minimumChecks = @{ host = 34; client = 24; resume = 6 }
-    if (-not $report.passed -or $report.role -ne $Role -or $report.version -ne 10 -or $report.checks.Count -lt $minimumChecks[$Role]) { throw "$Role report was incomplete or did not pass." }
+    $minimumChecks = if ($Homestead) { @{ host = 6; client = 5; resume = 3 } } else { @{ host = 34; client = 24; resume = 6 } }
+    if (-not $report.passed -or $report.role -ne $Role -or $report.version -ne 11 -or $report.checks.Count -lt $minimumChecks[$Role]) { throw "$Role report was incomplete or did not pass." }
 }
 
 try {

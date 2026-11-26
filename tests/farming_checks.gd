@@ -333,19 +333,19 @@ func _test_capacity_and_races() -> void:
 	_check(Inventory.count(first.bag, "veg") == 2 and Inventory.count(second.bag, "veg") == 0 and Inventory.count(first.bag, "seed") == 2 and plot.crop.is_empty(), "two harvest requests cannot duplicate one crop or its replacement seed")
 	plot = _plot(data, spots[0], "seed", 4, false, true)
 	first.bag = Inventory.empty_slots(Inventory.BAG_SIZE)
-	Inventory.add(first.bag, "wood", 240)
-	first.bag[0] = {"item": "veg", "count": 19}
-	first.bag[1] = {"item": "seed", "count": 20}
+	Inventory.add(first.bag, "wood", Inventory.BAG_SIZE * Inventory.STACK_LIMIT)
+	first.bag[0] = {"item": "veg", "count": Inventory.STACK_LIMIT - 1}
+	first.bag[1] = {"item": "seed", "count": Inventory.STACK_LIMIT}
 	var before := _snapshot(data, [first, second])
 	_act(data, first, "harvest", spots[0])
 	_check(_snapshot(data, [first, second]) == before, "a two-vegetable reward never partially fills the final available stack")
-	first.bag[0].count = 18
+	first.bag[0].count = Inventory.STACK_LIMIT - 2
 	before = _snapshot(data, [first, second])
 	_act(data, first, "harvest", spots[0])
 	_check(_snapshot(data, [first, second]) == before, "vegetables that fit do not commit if the matching replacement seed cannot fit")
-	first.bag[1].count = 19
+	first.bag[1].count = Inventory.STACK_LIMIT - 1
 	_act(data, first, "harvest", spots[0])
-	_check(Inventory.count(first.bag, "veg") == 20 and Inventory.count(first.bag, "seed") == 20 and plot.crop.is_empty() and plot.covered, "full bag can harvest when both matching stacks have exactly enough room")
+	_check(Inventory.count(first.bag, "veg") == Inventory.STACK_LIMIT and Inventory.count(first.bag, "seed") == Inventory.STACK_LIMIT and plot.crop.is_empty() and plot.covered, "full bag can harvest when both matching stacks have exactly enough room")
 	first = _player(spots[0], {"watering_can": 1})
 	second = _player(spots[1], {"watering_can": 1})
 	first.can_water = 2

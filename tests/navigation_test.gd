@@ -62,7 +62,7 @@ func _test_motion_and_relative_current() -> void:
 	var floating_drift := _drift_fixture(floating)
 	var stopped_drift := _drift_fixture(stopped)
 	var pushed_drift := _drift_fixture(pushed)
-	_check(floating.data.version == 10 and not floating.data.navigation.anchored and _anchors(floating) == 0, "fresh v7 world starts drifting without a free anchor")
+	_check(floating.data.version == 16 and not floating.data.navigation.anchored and _anchors(floating) == 0, "fresh v7 world starts drifting without a free anchor")
 	_give(stopped, "host", "anchor")
 	stopped.action("host", "drop_anchor")
 	_give(pushed, "host", "paddle")
@@ -201,13 +201,11 @@ func _test_four_edge_recycling() -> void:
 			world.tick(0.1)
 			if drift.active:
 				break
-		var enters_correctly := false
-		match sample.edge:
-			"left": enters_correctly = float(drift.x) < 0
-			"right": enters_correctly = float(drift.x) > 900
-			"top": enters_correctly = float(drift.y) < 0
-			"bottom": enters_correctly = float(drift.y) > 560
-		_check(drift.active and enters_correctly and not world.deck_rect().has_point(_point(drift)), "sustained rowing replenishes salvage from the %s upstream edge" % sample.edge)
+		# A new object's current can dominate the decaying paddle impulse. Its
+		# upstream side follows actual relative flow, not just the last paddle key.
+		var flow:Vector2=WorldState.DRIFT_CURRENT*float(drift.speed)+Navigation.CURRENT-world._travel_velocity
+		var outside:=not Rect2(0,0,900,560).has_point(_point(drift))
+		_check(drift.active and outside and (_point(drift)-Vector2(450,280)).dot(flow)<0,"rowing %s replenishes salvage upstream of its actual current" % sample.edge)
 
 func _same_navigation(first: Dictionary, second: Dictionary) -> bool:
 	if first.anchored != second.anchored:
@@ -225,7 +223,7 @@ func _test_save_and_migration() -> void:
 	world.tick(0.2)
 	var saved: Dictionary = JSON.parse_string(JSON.stringify(world.snapshot()))
 	var loaded = WorldState.new()
-	_check(loaded.restore(saved) and loaded.data.version == 10 and _same_navigation(loaded.data.navigation, world.data.navigation), "v7 JSON roundtrip preserves travel, momentum and individual cooldowns")
+	_check(loaded.restore(saved) and loaded.data.version == 16 and _same_navigation(loaded.data.navigation, world.data.navigation), "v7 JSON roundtrip preserves travel, momentum and individual cooldowns")
 	_check(loaded.data.players.host.bag == world.data.players.host.bag and loaded.data.players.guest.bag == world.data.players.guest.bag and _anchors(loaded) == 1, "sailing saves preserve both personal bags and total anchor supply")
 	loaded.join("host", "船长")
 	var distance: float = loaded.data.navigation.distance
@@ -237,6 +235,10 @@ func _test_save_and_migration() -> void:
 	_give(old_world, "host", "fish", 3)
 	var old: Dictionary = old_world.snapshot()
 	old.version = 5
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old.erase(v14_key)
+	for v14_player in old.players.values():v14_player.erase("room")
+	old.erase("threats")
+	for player in old.players.values(): player.erase("dive_status")
 	for player in old.players.values():
 		player.erase("activity")
 		player.erase("can_water")
@@ -247,7 +249,7 @@ func _test_save_and_migration() -> void:
 	old.players.host.x = 120.0
 	old.players.host.y = 100.0
 	old.entities.fish_00.active = false
-	_check(loaded.restore(JSON.parse_string(JSON.stringify(old))) and loaded.data.version == 10 and loaded.data.navigation.anchored and loaded.data.players.host.area == "water" and not loaded.data.entities.fish_00.active, "a genuine v5 underwater save migrates safely moored without resetting its harvest")
+	_check(loaded.restore(JSON.parse_string(JSON.stringify(old))) and loaded.data.version == 16 and loaded.data.navigation.anchored and loaded.data.players.host.area == "water" and not loaded.data.entities.fish_00.active, "a genuine v5 underwater save migrates safely moored without resetting its harvest")
 	loaded.join("host", "船长")
 	loaded.action("host", "raise_anchor")
 	_check(not loaded.data.navigation.anchored and Inventory.count(loaded.data.players.host.bag, "anchor") == 1 and Inventory.count(loaded.data.players.host.bag, "fish") == 3, "the one migration anchor is recoverable while preserving old belongings")

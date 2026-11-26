@@ -46,6 +46,11 @@ func _fixture() -> bool:
 	world.data.players.guest.can_water = 5
 	old_save = world.snapshot()
 	old_save.version = 9
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old_save.erase(v14_key)
+	for v14_player in old_save.players.values():v14_player.erase("room")
+	old_save.erase("threats")
+	for player in old_save.players.values(): player.erase("dive_status")
+	old_save.island.erase("homestead")
 	var buildings := _conflicts(Rect2(Map.LANDMARKS.market.bounds), "building", 2)
 	var lake := _conflicts(Rect2(Vector2(Map.WATER_FEATURES.mirror_lake.center) - Vector2.ONE * 128, Vector2.ONE * 256), "water", 1)
 	var road := _conflicts(Map.TOWN_BOUNDS, "path", 1)
@@ -128,7 +133,7 @@ func _test_conflicts_and_roundtrip() -> void:
 	if not _check(restored.restore(source), "valid v9 crop and landed-player fixture migrates to v10"):
 		return
 	_check(source == before, "migration does not mutate its original saved dictionary or nested crop records")
-	_check(int(restored.data.version) == 10 and not restored.migration_notice.is_empty(), "successful conflicting migration upgrades version and explicitly reports the moved plots")
+	_check(int(restored.data.version) == 16 and not restored.migration_notice.is_empty(), "successful conflicting migration upgrades version and explicitly reports the moved plots")
 	_check(restored.data.island.plots.size() == source.island.plots.size(), "migration neither loses nor duplicates any crop cell")
 	var reserved: Dictionary = {}
 	for key: String in stable_keys:
@@ -161,7 +166,11 @@ func _test_conflicts_and_roundtrip() -> void:
 	var resumed = WorldState.new()
 	if not _check(encoded is Dictionary and resumed.restore(encoded), "migrated v10 state including new clear_* depletion restores from actual JSON numeric types"):
 		return
-	_check(_canonical(resumed.snapshot()) == _canonical(saved), "a second save/restore keeps exact v10 world state without another relocation")
+	# Enemy attack phases intentionally reset on load; farm/economy/layout stay exact.
+	var actual_persistent:Dictionary=resumed.snapshot()
+	var expected_persistent:Dictionary=saved.duplicate(true)
+	actual_persistent.erase("threats");expected_persistent.erase("threats")
+	_check(_canonical(actual_persistent) == _canonical(expected_persistent), "a second save/restore keeps exact migrated world progress without another relocation")
 	_check(resumed.migration_notice.is_empty(), "ordinary v10 continuation produces no historical migration notice")
 	_check(int(resumed.data.island.depleted.get(clear_node, 0)) == 7 and not Island.active(resumed.data.island, clear_node, 1), "new clearing-resource progress persists without an early regrowth")
 
@@ -181,9 +190,9 @@ func _nearest_free_ring(old_key: String, new_key: String, reserved: Dictionary) 
 
 
 func _test_inflight_old_activity() -> void:
-	# This branch existed in v9. Its nearby former grass is now the bathhouse wall.
-	var node: Dictionary = Map.node("n_1_0_0")
-	var bounds: Rect2 = Map.LANDMARKS.bathhouse.bounds
+	# Use a real v9 resource now covered by the current town layout.
+	var node: Dictionary = Map.node(blocked_node)
+	var bounds := Rect2(_node_point(blocked_node)-Vector2(48,48),Vector2(96,96))
 	var start := Vector2.ZERO
 	for y in range(int(bounds.position.y), int(bounds.end.y), 8):
 		for x in range(int(bounds.position.x), int(bounds.end.x), 8):
@@ -196,6 +205,7 @@ func _test_inflight_old_activity() -> void:
 	if not _check(start != Vector2.ZERO, "a real v9 gathering position beside its target is now inside a building"):
 		return
 	var source := old_save.duplicate(true)
+	source.island.depleted.erase(node.id)
 	source.players.host.x = start.x
 	source.players.host.y = start.y
 	source.players.host.activity = {"kind": "island_gather", "id": str(node.id), "duration": float(node.duration), "remaining": float(node.duration) * 0.5, "start_x": start.x, "start_y": start.y}
@@ -260,6 +270,8 @@ func _test_rejections() -> void:
 	cases.append([bad, "invalid old player water positions cannot use the safe-dock migration shortcut"])
 	bad = old_save.duplicate(true)
 	bad.version = 10
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:bad.erase(v14_key)
+	for v14_player in bad.players.values():v14_player.erase("room")
 	cases.append([bad, "v10 cannot reuse the v9 exception to admit farmland inside current water or buildings"])
 	for entry: Array in cases:
 		_rejected(entry[0], str(entry[1]))

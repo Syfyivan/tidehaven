@@ -35,7 +35,7 @@ func _ready() -> void:
 	if not main.cli.has("save-path") or not main.cli.has("report"):
 		_fail("isolated save-path and report are required")
 		return
-	for version in range(1, 10):
+	for version in range(1, 17):
 		if ProjectSettings.globalize_path(str(main.save_path)).to_lower() == ProjectSettings.globalize_path("user://world_v%d.json" % version).to_lower():
 			_fail("never use a player default save")
 			return
@@ -75,8 +75,12 @@ func _ready() -> void:
 
 func _setup_fixture() -> void:
 	var data: Dictionary = main.world.data
-	if not _check(int(data.version) == 10 and data.entities.has(WRECK_ID) and data.entities[ORE_ID].kind == "ore", "v7 underwater ore and wreck are present"):
+	if not _check(int(data.version) == 16 and data.entities.has(WRECK_ID) and data.entities[ORE_ID].kind == "ore", "v7 underwater ore and wreck are present"):
 		return
+	# This fixture checks RPC ownership and timers, not combat. Place its ore
+	# inside the real buoy sanctuary; hostile deep-water play has its own driver.
+	data.entities[ORE_ID].x = 120.0
+	data.entities[ORE_ID].y = 140.0
 	data.deck_tiles = []
 	for gx in range(5, 10):
 		for gy in range(2, 7):

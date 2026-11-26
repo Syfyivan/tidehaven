@@ -65,19 +65,23 @@ func _held_item_edge_checks() -> void:
 	_check(main.active_tool == "water" and _player().bag[11].is_empty(), "real backpack sorting moves the can while keeping the same item equipped")
 	await _capture("held-item-island.png")
 	var owned_hoe := Inventory.count(_player().bag, "hoe")
-	await _tap(KEY_5)
-	_check(main.active_tool == "till" and Inventory.count(_player().bag, "hoe") == owned_hoe, "legacy shortcut equips a carried hoe without spending it")
+	var hoe_index:=0
+	for i in _player().bag.size():
+		if _player().bag[i].get("item")=="hoe":hoe_index=i
+	var hoe_key:Key=[KEY_1,KEY_2,KEY_3,KEY_4,KEY_5,KEY_6,KEY_7,KEY_8,KEY_9,KEY_0,KEY_MINUS,KEY_EQUAL][hoe_index]
+	await _tap(hoe_key)
+	_check(main.active_tool == "till" and Inventory.count(_player().bag, "hoe") == owned_hoe, "number key selects the actual sorted hoe slot without spending it")
 	# A host snapshot or inventory transfer can remove a held item; refresh must drop it.
 	Inventory.remove(_player().bag, "hoe", 1)
 	await _settle()
 	_check(main.active_tool == "hook", "held tool removed from the personal bag clears selection")
-	await _tap(KEY_5)
+	await _tap(hoe_key)
 	_check(main.active_tool == "hook", "shortcut cannot equip an absent hoe")
 	await _tap(KEY_N)
 	_check(main.active_seed == "winter_seed" and main.active_tool == "plant", "N cycles only among actually carried seed varieties")
 	await _click(main.hud.slots[11].button.get_global_rect().get_center())
 	_check(main.active_tool == "hook" and not main.inventory_ui.visible, "empty toolbar slot puts down the item without opening a modal")
-	await _tap(KEY_7)
+	await _select_item("watering_can")
 	_fixture_player("deck", Vector2(480, 288))
 	await _settle()
-	_check(main.active_tool == "hook" and main.hud.quick_buttons.filter(func(button): return button.visible).size() == 9, "returning to deck clears island tool selection and restores the sea toolbar")
+	_check(main.active_tool == "water" and main.hud.slots.all(func(entry):return entry.button.visible), "returning to deck preserves selected can and all twelve slots for raft planters")

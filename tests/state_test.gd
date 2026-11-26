@@ -30,14 +30,16 @@ func _world(two_players := false):
 	# Existing mechanics are checked in a migrated old world; new survival starts have their own suite.
 	var old: Dictionary = world.snapshot()
 	old.version = 2
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old.erase(v14_key)
+	for v14_player in old.players.values():v14_player.erase("room")
 	old.entities = world._new_entities(false)
-	for key in ["deck_tiles", "structures", "drift", "navigation", "chart", "island"]:
+	for key in ["deck_tiles", "structures", "drift", "navigation", "chart", "island", "threats"]:
 		old.erase(key)
 	var slots := Inventory.empty_slots(Inventory.CHEST_SIZE)
 	Inventory.add(slots, "seed", 3)
 	old.chests = {"chest_0": {"id": "chest_0", "name": "共享木箱", "x": 420.0, "y": 175.0, "slots": slots}}
 	for player in old.players.values():
-		for key in ["hunger", "thirst", "hook", "notice", "notice_id", "activity", "can_water"]:
+		for key in ["hunger", "thirst", "hook", "notice", "notice_id", "activity", "can_water", "dive_status"]:
 			player.erase(key)
 		player.x = 475.0
 		player.y = 390.0
@@ -52,6 +54,11 @@ func _place(world, slot: String, area: String, x: float, y: float) -> void:
 	world.data.players[slot].area = area
 	world.data.players[slot].x = x
 	world.data.players[slot].y = y
+	# This legacy economy fixture isolates collection from the new combat tests.
+	if area == "water":
+		for e in world.data.threats.values():
+			e.phase="repelled";e.target=""
+			e.remaining=preload("res://scripts/sea_threats.gd").DEFINITIONS[e.kind].repel
 
 
 func _bag(world, slot: String, item: String) -> int:
@@ -86,16 +93,16 @@ func _test_authority_and_capacity() -> void:
 	_check(_bag(world, "host", "fish") == 1 and _bag(world, "guest", "fish") == 0, "one fish cannot be caught twice or awarded to two players")
 	_check(not world.data.entities.fish_00.active, "caught fish becomes inactive")
 	_fill_bag(world, "host")
-	world.data.players.host.bag[0] = {"item": "fish", "count": 20}
+	world.data.players.host.bag[0] = {"item": "fish", "count": Inventory.STACK_LIMIT}
 	world.data.players.host.bag[1] = {"item": "harpoon", "count": 1}
 	var stamina: float = world.data.players.host.stamina
 	Skills.spear_fish(world, "host", "fish_01")
-	_check(world.data.entities.fish_01.active and _bag(world, "host", "fish") == 20, "full pack does not consume a fish")
+	_check(world.data.entities.fish_01.active and _bag(world, "host", "fish") == Inventory.STACK_LIMIT, "full pack does not consume a fish")
 	_check(world.data.players.host.stamina == stamina - 5.0, "launched spear spends stamina even when the fish cannot fit")
 	_place(world, "host", "deck", 420, 175)
 	world.action("host", "deposit")
 	world.action("host", "deposit")
-	_check(_stored(world, "fish") == 20 and _stored(world, "wood") == 200 and _stored(world, "harpoon") == 1, "deposit transfers exactly once, including the carried tool")
+	_check(_stored(world, "fish") == Inventory.STACK_LIMIT and _stored(world, "wood") == (Inventory.BAG_SIZE - 2) * Inventory.STACK_LIMIT and _stored(world, "harpoon") == 1, "deposit transfers exactly once, including the carried tool")
 	_check(_bag(world, "host", "fish") == 0 and _bag(world, "host", "wood") == 0, "deposit empties personal pack")
 	Inventory.add(world.data.chests.chest_0.slots, "meal", 1)
 	_fill_bag(world, "host")
@@ -106,15 +113,15 @@ func _test_authority_and_capacity() -> void:
 func _test_free_split_and_oxygen() -> void:
 	var world = _world(true)
 	_place(world, "host", "deck", 565, 175)
-	world.action("host", "plant")
+	_plant(world)
 	world.tick(10.0)
-	_check(world.data.crop.progress == 0.0, "dry crop does not grow")
-	world.action("host", "water")
+	_check(world.data.gardens.planters.legacy_garden.growth == 0, "dry crop does not grow")
+	_water(world)
 	_place(world, "guest", "deck", 720, 410)
 	world.action("guest", "dive")
 	world.tick(66.0)
 	_check(world.data.players.host.area == "deck" and world.data.players.guest.area == "water", "players independently remain on deck and underwater")
-	_check(world.data.crop.stage == 2, "watered crop grows while players are in different areas")
+	_check(world.data.gardens.planters.legacy_garden.growth == 0, "watered crops wait for nights while players remain in different areas")
 	_check(world.data.minute > 360.0, "shared clock progresses across areas")
 	for item in ["fish", "wood", "veg", "meal"]:
 		Inventory.add(world.data.players.guest.bag, item, 2 if item in ["fish", "wood"] else 1)
@@ -122,7 +129,7 @@ func _test_free_split_and_oxygen() -> void:
 	Inventory.add(world.data.chests.chest_0.slots, "fish", 3)
 	world.data.players.host.stamina = 77.0
 	world.tick(1.0)
-	_check(world.data.players.guest.area == "deck" and _bag(world, "guest", "fish") == 0, "oxygen failure rescues only that diver and loses carried fish")
+	_check(world.data.players.guest.area == "deck" and _bag(world, "guest", "fish") == 2, "oxygen failure rescues only that diver and preserves carried fish")
 	_check(_bag(world, "guest", "wood") == 2 and _bag(world, "guest", "meal") == 1, "oxygen failure preserves non-fish belongings")
 	_check(_stored(world, "fish") == 3 and world.data.players.host.stamina == 77.0, "oxygen failure preserves shared warehouse and partner")
 	world.tick(1000.0)
@@ -168,8 +175,8 @@ func _test_sleep_and_membership() -> void:
 func _test_loop_and_daily_limits() -> void:
 	var world = _world()
 	_place(world, "host", "deck", 565, 175)
-	world.action("host", "plant")
-	world.action("host", "water")
+	_plant(world)
+	_water(world)
 	_place(world, "host", "deck", 720, 410)
 	world.action("host", "dive")
 	Inventory.add(world.data.players.host.bag, "harpoon", 1)
@@ -184,19 +191,22 @@ func _test_loop_and_daily_limits() -> void:
 	world.action("host", "surface")
 	_place(world, "host", "deck", 420, 175)
 	world.action("host", "deposit")
-	world.tick(66.0)
+	for night in 4:
+		_place(world,"host","deck",565,175);_water(world);world._advance_day()
 	_place(world, "host", "deck", 565, 175)
-	world.action("host", "harvest")
-	_check(_bag(world, "host", "veg") == 3 and _bag(world, "host", "seed") == 1 and _stored(world, "seed") == 2, "harvest puts vegetables and replacement seed in personal pack")
-	world.action("host", "harvest")
-	_check(_bag(world, "host", "veg") == 3, "harvest cannot duplicate rewards")
+	world.action("host", "harvest", {"x":565,"y":175})
+	_check(_bag(world, "host", "veg") == 2 and _bag(world, "host", "seed") == 1 and _stored(world, "seed") == 2, "harvest puts vegetables and replacement seed in personal pack")
+	world.action("host", "harvest", {"x":565,"y":175})
+	_check(_bag(world, "host", "veg") == 2, "harvest cannot duplicate rewards")
 	_place(world, "host", "deck", 420, 290)
-	for index in 3:
+	for index in 2:
 		world.action("host", "cook")
 		world.tick(10.1)
 		world.action("host", "collect_output", {"id": "legacy_grill"})
-	_check(_bag(world, "host", "meal") == 3 and _stored(world, "fish") == 0 and _bag(world, "host", "veg") == 0, "recipes consume personal and shared ingredients exactly")
+	_check(_bag(world, "host", "meal") == 2 and _stored(world, "fish") == 1 and _bag(world, "host", "veg") == 0, "recipes consume personal and shared ingredients exactly")
 	_place(world, "host", "deck", 565, 290)
+	# Two harvested vegetables make two meals; one explicit extra fixture meal checks the third order cap.
+	Inventory.add(world.data.players.host.bag,"meal",1)
 	for index in 3:
 		world.action("host", "sell")
 	_check(world.data.money == 24 and world.data.orders_filled == 3, "three orders reward exactly 24 coins")
@@ -209,12 +219,12 @@ func _test_loop_and_daily_limits() -> void:
 	world.action("host", "build")
 	_check(world.data.expansion == 1 and world.data.money == 16, "unaffordable expansion is atomic")
 	_place(world, "host", "deck", 565, 175)
-	world.action("host", "plant")
-	world.action("host", "water")
+	_plant(world)
+	_water(world)
 	_place(world, "host", "deck", 230, 170)
 	world.action("host", "sleep")
 	_check(world.data.orders_filled == 0 and world.data.entities.fish_00.active and world.data.entities.wood_00.active, "next day replenishes limited orders and gathered entities")
-	_check(world.data.crop.stage == 2 and world.data.expansion == 1, "watered crop matures overnight and construction persists")
+	_check(world.data.gardens.planters.legacy_garden.growth == 1 and world.data.expansion == 1, "newly planted crop grows one watered night and construction persists")
 
 
 func _test_input_expiry() -> void:
@@ -275,7 +285,7 @@ func _test_save_roundtrip_and_rejection() -> void:
 	bad.chests.chest_0.slots[0].count = -1
 	corruptions.append(bad)
 	bad = valid.duplicate(true)
-	bad.players.guest.bag[0].count = 21
+	bad.players.guest.bag[0].count = Inventory.STACK_LIMIT + 1
 	corruptions.append(bad)
 	bad = valid.duplicate(true)
 	bad.players.host.x = INF
@@ -298,3 +308,17 @@ func _test_save_roundtrip_and_rejection() -> void:
 	for corrupted in corruptions:
 		_check(not restored.restore(corrupted), "malformed save is rejected")
 		_check(restored.snapshot() == baseline, "rejected save leaves current world unchanged")
+
+func _plant(world)->void:
+	var p:Dictionary=world.data.players.host
+	if Inventory.count(p.bag,"seed")==0:
+		Inventory.remove(world.data.chests.chest_0.slots,"seed",1);Inventory.add(p.bag,"seed",1)
+	if Inventory.count(p.bag,"watering_can")==0:Inventory.add(p.bag,"watering_can",1)
+	p.can_water=20
+	world.action("host","plant",{"x":565,"y":175,"seed":"seed"})
+func _water(world)->void:
+	var p:Dictionary=world.data.players.host
+	# This economy fixture provides a full water can, while gardens_checks exercises actual refilling.
+	if Inventory.count(p.bag,"watering_can")==0:Inventory.add(p.bag,"watering_can",1)
+	p.can_water=20
+	world.action("host","water",{"x":565,"y":175})

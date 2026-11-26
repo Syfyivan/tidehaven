@@ -75,13 +75,15 @@ static func tick(data: Dictionary, player: Dictionary, delta: float, travel_velo
 		hook.y = after.y
 		# Every phase sweeps the tip. Catching cargo never stops or redirects it.
 		var contacts: Array = []
-		var island_center := Vector2(480, 288) + Archipelago.island_position(data.chart) + Archipelago.ISLAND_BODY_OFFSET - Vector2(float(data.navigation.x), float(data.navigation.y))
+		var island_centers:Array[Vector2]=[]
+		for island_id:String in Archipelago.ISLANDS:
+			island_centers.append(Vector2(480,288)+Archipelago.island_position(data.chart,island_id)+Archipelago.ISLAND_BODY_OFFSET-Vector2(data.navigation.x,data.navigation.y))
 		for id in data.drift:
 			var item: Dictionary = data.drift[id]
 			if not item.active or reserved(data, str(id)):
 				continue
 			var point := Vector2(float(item.x), float(item.y))
-			if point.distance_to(island_center) < Archipelago.ISLAND_WORLD_RADIUS + 20:
+			if island_centers.any(func(center:Vector2):return point.distance_to(center)<Archipelago.ISLAND_WORLD_RADIUS+20):
 				continue
 			if point.distance_to(Geometry2D.get_closest_point_to_segment(point, before, after)) <= HIT_RADIUS:
 				contacts.append({"id": str(id), "distance": before.distance_squared_to(point)})

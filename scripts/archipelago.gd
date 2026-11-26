@@ -9,10 +9,10 @@ const DOCK_RECT := Rect2(130, 350, 160, 60)
 const MAP_SIZE := Vector2(1800, 1400)
 const MAP_OFFSET := Vector2(-520, -650)
 const ISLANDS := {
-	"island_home": {"id": "island_home", "name": "潮芽岛", "offset": Vector2(520, 120), "unlocked": true, "description": "海流下游的大岛。沿西岸港口入岛，潮芽镇、森林、湖河与待开垦的荒地向内陆展开。"},
-	"island_mist": {"id": "island_mist", "name": "雾岬", "offset": Vector2(1000, -410), "unlocked": false, "description": "远处可见高低交错的岛影。这里是后续海域的规划轮廓，目前尚未开放。"},
-	"island_reef": {"id": "island_reef", "name": "珊湾", "offset": Vector2(-290, 470), "unlocked": false, "description": "南边散落着一圈低矮岛礁。这里是后续海域的规划轮廓，目前尚未开放。"},
-	"island_wind": {"id": "island_wind", "name": "风栖岛", "offset": Vector2(990, 570), "unlocked": false, "description": "海图边缘的狭长岛影。这里是后续海域的规划轮廓，目前尚未开放。"},
+	"island_home": {"id": "island_home", "name": "潮芽岛", "offset": Vector2(520, 120), "unlocked": true, "description": "海流下游的大岛。沿西岸港口入岛，扩建的潮芽镇向东街与南巷展开；镇公所东南的大院可向镇长承租。森林、湖河与山麓在内陆。"},
+	"island_mist": {"id": "island_mist", "name": "雾岬", "offset": Vector2(1000, -410), "unlocked": true, "description": "山地湖岸与露天矿脉。带上石镐，沿山路寻找海商白帆；他愿意交换海上带来的物资。"},
+	"island_reef": {"id": "island_reef", "name": "珊湾", "offset": Vector2(-290, 470), "unlocked": true, "description": "沙滩与潮汐小桥，漂来旧箱和海苔。海盗赤绳在岸边歇脚，老海龟常在沙地晒太阳。"},
+	"island_wind": {"id": "island_wind", "name": "风栖岛", "offset": Vector2(990, 570), "unlocked": true, "description": "林间的旧农庄，枯枝和野菇散落在树下。若能听懂潮声，也许会听见精灵的问候。"},
 }
 const LAND_SPOTS := {
 	"dock": Vector2(210, 380),
@@ -36,7 +36,7 @@ static func restore(value: Variant) -> Dictionary:
 			return {}
 	if not value.get("visited") is bool or not value.get("destination") is String:
 		return {}
-	if str(value.destination) != "" and str(value.destination) != HOME_ID:
+	if str(value.destination) != "" and not ISLANDS.has(value.destination):
 		return {}
 	return {"origin_x": float(value.origin_x), "origin_y": float(value.origin_y), "visited": bool(value.visited), "destination": str(value.destination)}
 
@@ -57,10 +57,15 @@ static func map_rect(chart: Dictionary) -> Rect2:
 
 
 static func within_docking_range(chart: Dictionary, navigation: Dictionary, id: String = HOME_ID) -> bool:
-	if id != HOME_ID:
+	if not ISLANDS.has(id) or not ISLANDS[id].unlocked:
 		return false
 	var raft := Vector2(float(navigation.get("x", 0.0)), float(navigation.get("y", 0.0)))
 	return raft.distance_to(island_position(chart, id)) <= DOCK_RADIUS
+
+static func nearby_island(chart:Dictionary,navigation:Dictionary)->String:
+	for id:String in ISLANDS:
+		if within_docking_range(chart,navigation,id):return id
+	return ""
 
 
 static func land_polygon() -> PackedVector2Array:

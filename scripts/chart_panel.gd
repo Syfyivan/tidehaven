@@ -53,6 +53,7 @@ func _ready() -> void:
 	close_button = UI.button(self, "×", Rect2(1138, 88, 38, 38), func(): close_requested.emit())
 	close_button.tooltip_text = "合上海图 · M / Esc"
 	map_canvas = Control.new()
+	map_canvas.texture_repeat = CanvasItem.TEXTURE_REPEAT_ENABLED
 	map_canvas.position = Vector2(108, 184)
 	map_canvas.size = Vector2(740, 486)
 	map_canvas.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -125,7 +126,8 @@ func refresh(data: Dictionary, slot: String) -> void:
 		var entry: Dictionary = Archipelago.ISLANDS[id]
 		_island_labels[id].text = str(entry.name)
 		button.tooltip_text = str(entry.name) + (" · 可设为航标" if full_chart and bool(entry.unlocked) else (" · 附近可见岛岸" if not full_chart else " · 后续海域，尚未开放"))
-		_island_states[id].text = (("已登岛" if bool(chart.visited) else "可到达") if bool(entry.unlocked) else "尚未开放") if full_chart else "附近可见"
+		var visited:bool=bool(chart.visited) if id==Archipelago.HOME_ID else data.rooms.visited.has(id)
+		_island_states[id].text = (("已登岛" if visited else "可到达") if bool(entry.unlocked) else "尚未开放") if full_chart else "附近可见"
 		_island_labels[id].add_theme_color_override("font_color", UI.INK if selected_island == id else Color("486962"))
 	var raft := _raft_position()
 	var drawn_raft := _clamped_map_point(raft)
@@ -153,7 +155,7 @@ func _select_island(id: String) -> void:
 
 
 func _choose_destination() -> void:
-	if not full_chart or not _has_compass(_data, _slot) or selected_island != Archipelago.HOME_ID:
+	if not full_chart or not _has_compass(_data, _slot) or not Archipelago.ISLANDS.has(selected_island):
 		return
 	destination_selected.emit(selected_island)
 	_feedback = "已请求设置航标 · 需要亲自航行"
@@ -184,7 +186,8 @@ func _refresh_details() -> void:
 	var chart: Dictionary = _data.chart
 	title_label.text = str(entry.name)
 	description_label.text = str(entry.description)
-	status_label.text = ("已探索 · 可再次靠岸" if bool(chart.visited) else "首个可到达岛屿") if accessible else "后续海域 · 尚未开放"
+	var visited:bool=bool(chart.visited) if selected_island==Archipelago.HOME_ID else _data.rooms.visited.has(selected_island)
+	status_label.text = ("已探索 · 可再次靠岸" if visited else "可航行到达") if accessible else "后续海域 · 尚未开放"
 	status_label.add_theme_color_override("font_color", UI.ACCENT if accessible else UI.MUTED)
 	var distance := _raft_position().distance_to(Archipelago.island_position(chart, selected_island))
 	# Match the HUD's 16 navigation units per displayed metre.
@@ -234,7 +237,7 @@ func _map_point(point: Vector2) -> Vector2:
 
 func _island_map_center(id: String) -> Vector2:
 	var point := Archipelago.island_position(_data.chart, id)
-	if full_chart and id == Archipelago.HOME_ID:
+	if full_chart:
 		point += Archipelago.ISLAND_BODY_OFFSET
 	return _map_point(point)
 
@@ -270,8 +273,8 @@ func _draw_map() -> void:
 		return
 	var chart: Dictionary = _data.chart
 	var start := _clamped_map_point(_raft_position())
-	if full_chart and str(chart.get("destination", "")) == Archipelago.HOME_ID:
-		var target := _map_point(Archipelago.island_position(chart))
+	if full_chart and Archipelago.ISLANDS.has(str(chart.get("destination",""))):
+		var target := _map_point(Archipelago.island_position(chart,chart.destination))
 		_draw_route(start, target)
 	for id in Archipelago.ISLANDS:
 		if not _island_visible(str(id)):
@@ -309,6 +312,11 @@ func _draw_route(start: Vector2, target: Vector2) -> void:
 
 
 func _draw_island(center: Vector2, id: String, unlocked: bool) -> void:
+	if unlocked:
+		map_canvas.draw_set_transform(center,0,Vector2.ONE*0.28)
+		preload("res://scripts/maritime_art.gd").draw_island(map_canvas,Vector2.ZERO,-Archipelago.ISLAND_BODY_OFFSET,int(_data.get("day",1)),0.0,id)
+		map_canvas.draw_set_transform(Vector2.ZERO)
+		return
 	var silhouette := PackedVector2Array([
 		Vector2(-42, 7), Vector2(-34, -15), Vector2(-19, -20), Vector2(-11, -31),
 		Vector2(10, -32), Vector2(20, -23), Vector2(31, -23), Vector2(40, -8),
@@ -331,26 +339,15 @@ func _draw_island(center: Vector2, id: String, unlocked: bool) -> void:
 	map_canvas.draw_colored_polygon(coast, Color("b9d0ba") if unlocked else Color("a7c3b6"))
 	map_canvas.draw_colored_polygon(beach, SHORE if unlocked else Color("93aca0"))
 	map_canvas.draw_colored_polygon(grass, LAND if unlocked else Color("7f9d93"))
-	if unlocked:
-		for tree in [Vector2(-17, 0), Vector2(5, -12), Vector2(22, 2)]:
-			var at: Vector2 = center + tree
-			map_canvas.draw_rect(Rect2(at + Vector2(-1, 0), Vector2(3, 9)), Color("71644a"))
-			map_canvas.draw_colored_polygon(PackedVector2Array([at + Vector2(-8, 1), at + Vector2(-4, -5), at + Vector2(5, -7), at + Vector2(9, 0), at + Vector2(4, 5), at + Vector2(-4, 5)]), DARK_LAND)
-		map_canvas.draw_rect(Rect2(center + Vector2(-31, 15), Vector2(16, 5)), Color("947858"))
-	else:
-		var at := center + Vector2(0, -3)
-		map_canvas.draw_arc(at + Vector2(0, -4), 5, PI, TAU, 8, Color("d1dac8"), 2, false)
-		map_canvas.draw_rect(Rect2(at + Vector2(-7, -3), Vector2(14, 11)), Color("d1dac8"))
-		map_canvas.draw_rect(Rect2(at + Vector2(-1, 0), Vector2(2, 4)), Color("6c8a80"))
+	var at := center + Vector2(0, -3)
+	map_canvas.draw_arc(at + Vector2(0, -4), 5, PI, TAU, 8, Color("d1dac8"), 2, false)
+	map_canvas.draw_rect(Rect2(at + Vector2(-7, -3), Vector2(14, 11)), Color("d1dac8"))
+	map_canvas.draw_rect(Rect2(at + Vector2(-1, 0), Vector2(2, 4)), Color("6c8a80"))
 
 
 func _draw_raft(center: Vector2) -> void:
 	map_canvas.draw_circle(center, 18, Color(0.92, 0.91, 0.72, 0.60))
-	map_canvas.draw_rect(Rect2(center - Vector2(12, 9), Vector2(24, 18)), Color("6b5843"))
-	for plank in 4:
-		map_canvas.draw_rect(Rect2(center + Vector2(-11 + plank * 6, -8), Vector2(5, 16)), Color("c9ad78"))
-	map_canvas.draw_line(center + Vector2(-11, -4), center + Vector2(11, -4), Color("8b704b"), 1)
-	map_canvas.draw_line(center + Vector2(-11, 5), center + Vector2(11, 5), Color("8b704b"), 1)
+	map_canvas.draw_texture_rect(preload("res://scripts/art_catalog.gd").texture("floor"),Rect2(center-Vector2(12,12),Vector2(24,24)),false)
 	map_canvas.draw_rect(Rect2(center + Vector2(-2, -15), Vector2(3, 13)), Color("485b4d"))
 	map_canvas.draw_colored_polygon(PackedVector2Array([center + Vector2(1, -15), center + Vector2(11, -11), center + Vector2(1, -7)]), Color("a5634e"))
 

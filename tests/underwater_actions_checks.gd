@@ -119,7 +119,7 @@ func _test_gather_capacity_and_race() -> void:
 	var data := _data()
 	var player := _player()
 	Inventory.add(player.bag, "wood", Inventory.BAG_SIZE * Inventory.STACK_LIMIT)
-	player.bag[0] = {"item": "stone", "count": 19}
+	player.bag[0] = {"item": "stone", "count": Inventory.STACK_LIMIT - 1}
 	var slots: Array = player.bag.duplicate(true)
 	Actions.start(data, player, "mine", {"id": "stone_00"})
 	Actions.tick(data, player, 12.0)

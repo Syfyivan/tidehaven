@@ -1,6 +1,7 @@
 extends Control
 
 signal command(verb: String, args: Dictionary)
+signal equip_requested(index: int)
 signal close_requested
 
 const Inventory = preload("res://scripts/inventory.gd")
@@ -8,11 +9,12 @@ const SlotButton = preload("res://scripts/inventory_slot.gd")
 const Art = preload("res://scripts/art_catalog.gd")
 const UI = preload("res://scripts/ui_style.gd")
 const SLOT_SIZE := 72
-const SLOT_PITCH := 84
+const SLOT_PITCH := 80
 
 var bag_buttons: Array = []
 var chest_buttons: Array = []
 var selected: Dictionary = {}
+var moving: Dictionary = {}
 var chest_id := ""
 var data: Dictionary = {}
 var slot := "host"
@@ -46,6 +48,10 @@ var source_label: Label
 var _usage_heading: Label
 var _source_heading: Label
 var _capacity_note: Label
+var header_icon: TextureRect
+var header_rule: ColorRect
+var detail_rule: ColorRect
+var footer_rule: ColorRect
 
 func _ready() -> void:
 	size = Vector2(1280, 800)
@@ -54,7 +60,11 @@ func _ready() -> void:
 	shade.color = UI.SHADE
 	add_child(shade)
 	paper = UI.panel(self, Rect2())
-	title_label = UI.label(self, "随身物品", Rect2(), 26)
+	header_icon = UI.icon(self, UI.symbol("bag"), Rect2())
+	header_rule = UI.rule(self, Rect2())
+	detail_rule = UI.rule(self, Rect2())
+	footer_rule = UI.rule(self, Rect2())
+	title_label = UI.label(self, "随身物品", Rect2(), 28)
 	vitals = UI.label(self, "", Rect2(), 16, UI.MUTED)
 	bag_title = UI.label(self, "背包", Rect2(), 20)
 	chest_title = UI.label(self, "木箱", Rect2(), 20)
@@ -64,6 +74,8 @@ func _ready() -> void:
 		chest_buttons.append(_slot_button("chest", index))
 	detail_icon = UI.icon(self, null, Rect2())
 	selection_note = UI.label(self, "选择物品", Rect2(), 22, UI.MUTED)
+	selection_note.clip_text = true
+	selection_note.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_usage_heading = UI.label(self, "用途", Rect2(), 14, UI.MUTED)
 	usage_label = UI.label(self, "", Rect2(), 17)
 	usage_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -75,14 +87,17 @@ func _ready() -> void:
 	_capacity_note = UI.label(self, "", Rect2(), 15, UI.MUTED)
 	sort_bag_button = UI.button(self, "整理", Rect2(), func():
 		selected = {}
+		moving = {}
 		command.emit("sort_inventory", {"container": "bag"}))
 	open_button = UI.button(self, "打开宝箱", Rect2(), _open_treasure, true)
 	discard_button = UI.button(self, "丢弃", Rect2(), _confirm_discard)
 	deposit_button = UI.button(self, "存入木箱", Rect2(), func():
 		selected = {}
+		moving = {}
 		command.emit("deposit", {"container": chest_id}))
 	sort_chest = UI.button(self, "整理木箱", Rect2(), func():
 		selected = {}
+		moving = {}
 		command.emit("sort_inventory", {"container": chest_id}))
 	close_button = UI.button(self, "×", Rect2(), func(): close_requested.emit())
 	close_button.tooltip_text = "关闭背包 · B / Esc"
@@ -98,42 +113,46 @@ func _ready() -> void:
 
 func _apply_layout(with_chest: bool) -> void:
 	_with_chest = with_chest
-	var left := 128.0 if with_chest else 256.0
-	var width := 1024.0 if with_chest else 768.0
+	var left := 96.0 if with_chest else 248.0
+	var width := 1088.0 if with_chest else 784.0
 	var bag_left := left + 32.0
-	var chest_left := left + 668.0
-	var detail_left := left + 388.0
-	var detail_width := 248.0 if with_chest else 348.0
-	_set_rect(paper, Rect2(left, 80, width, 640))
-	_set_rect(title_label, Rect2(bag_left, 106, width - 132, 36))
-	_set_rect(close_button, Rect2(left + width - 68, 106, 36, 34))
-	_set_rect(vitals, Rect2(bag_left, 151, width - 64, 23))
-	_set_rect(bag_title, Rect2(bag_left, 190, 324, 27))
-	_set_rect(chest_title, Rect2(chest_left, 190, 324, 27))
+	var chest_left := left + 384.0
+	var detail_left := left + (736.0 if with_chest else 400.0)
+	var detail_width := width - (detail_left - left) - 32.0
+	_set_rect(paper, Rect2(left, 92, width, 632))
+	_set_rect(header_icon, Rect2(bag_left, 122, 32, 32))
+	_set_rect(title_label, Rect2(bag_left + 48, 116, width - 180, 40))
+	_set_rect(close_button, Rect2(left + width - 68, 116, 36, 36))
+	_set_rect(vitals, Rect2(bag_left + 48, 163, width - 112, 23))
+	_set_rect(header_rule, Rect2(bag_left, 200, width - 64, 2))
+	_set_rect(detail_rule, Rect2(detail_left - 24, 220, 2, 420))
+	_set_rect(footer_rule, Rect2(bag_left, 669, width - 64, 2))
+	_set_rect(bag_title, Rect2(bag_left, 216, 312, 27))
+	_set_rect(chest_title, Rect2(chest_left, 216, 312, 27))
 	chest_title.visible = with_chest
 	for index in bag_buttons.size():
-		_set_rect(bag_buttons[index], Rect2(bag_left + (index % 4) * SLOT_PITCH, 228 + floori(index / 4.0) * SLOT_PITCH, SLOT_SIZE, SLOT_SIZE))
+		_set_rect(bag_buttons[index], Rect2(bag_left + (index % 4) * SLOT_PITCH, 256 + floori(index / 4.0) * SLOT_PITCH, SLOT_SIZE, SLOT_SIZE))
 	for index in chest_buttons.size():
-		_set_rect(chest_buttons[index], Rect2(chest_left + (index % 4) * SLOT_PITCH, 228 + floori(index / 4.0) * SLOT_PITCH, SLOT_SIZE, SLOT_SIZE))
+		_set_rect(chest_buttons[index], Rect2(chest_left + (index % 4) * SLOT_PITCH, 256 + floori(index / 4.0) * SLOT_PITCH, SLOT_SIZE, SLOT_SIZE))
 		chest_buttons[index].visible = with_chest
-	_set_rect(detail_icon, Rect2(detail_left, 224, 64, 64))
-	_set_rect(selection_note, Rect2(detail_left, 300, detail_width, 32))
-	_set_rect(_usage_heading, Rect2(detail_left, 351, detail_width, 22))
-	_set_rect(usage_label, Rect2(detail_left, 379, detail_width, 66))
-	_set_rect(_source_heading, Rect2(detail_left, 461, detail_width, 22))
-	_set_rect(source_label, Rect2(detail_left, 489, detail_width, 54))
-	_set_rect(detail_hint, Rect2(detail_left, 563, detail_width, 47))
-	_set_rect(sort_bag_button, Rect2(bag_left, 494, 92, 40))
-	_set_rect(_capacity_note, Rect2(bag_left, 547, 324, 25))
-	_set_rect(open_button, Rect2(detail_left, 628, 140, 40))
-	_set_rect(discard_button, Rect2(detail_left + 152, 628, 96, 40))
-	_set_rect(deposit_button, Rect2(chest_left, 576, 156, 40))
-	_set_rect(sort_chest, Rect2(chest_left + 168, 576, 156, 40))
+	_set_rect(detail_icon, Rect2(detail_left, 230, 64, 64))
+	_set_rect(selection_note, Rect2(detail_left, 310, detail_width, 34))
+	_set_rect(_usage_heading, Rect2(detail_left, 363, detail_width, 20))
+	_set_rect(usage_label, Rect2(detail_left, 393, detail_width, 56))
+	_set_rect(_source_heading, Rect2(detail_left, 465, detail_width, 20))
+	_set_rect(source_label, Rect2(detail_left, 495, detail_width, 48))
+	_set_rect(detail_hint, Rect2(detail_left, 557, detail_width, 45))
+	_set_rect(sort_bag_button, Rect2(bag_left, 507, 96, 40))
+	_set_rect(_capacity_note, Rect2(bag_left, 564, 312, 25))
+	_set_rect(open_button, Rect2(detail_left, 615, 148, 40))
+	_set_rect(discard_button, Rect2(detail_left + detail_width - 108, 615, 108, 40))
+	_set_rect(deposit_button, Rect2(chest_left, 586, 148, 40))
+	_set_rect(sort_chest, Rect2(chest_left + 164, 586, 148, 40))
 	deposit_button.visible = with_chest
 	sort_chest.visible = with_chest
-	_set_rect(feedback, Rect2(bag_left, 589, 324, 55))
+	_set_rect(feedback, Rect2(bag_left, 600, 312, 52))
 	feedback.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_set_rect(footer_note, Rect2(bag_left, 684, width - 64, 23))
+	_set_rect(footer_note, Rect2(bag_left, 687, width - 64, 23))
 
 func _build_discard_confirmation() -> void:
 	discard_dialog = Control.new()
@@ -160,6 +179,7 @@ func refresh(state: Dictionary, player_slot: String, nearby: String, message: St
 	slot = player_slot
 	if nearby != chest_id:
 		selected = {}
+		moving = {}
 		hovered = {}
 	chest_id = nearby
 	var with_chest := not chest_id.is_empty()
@@ -167,15 +187,15 @@ func refresh(state: Dictionary, player_slot: String, nearby: String, message: St
 		_apply_layout(with_chest)
 	var bag: Array = data.players[slot].bag
 	var player: Dictionary = data.players[slot]
-	vitals.text = "水下 · 氧气 %d / 100" % int(player.oxygen) if player.area == "water" else ("潮芽岛" if player.area == "island" else "甲板") + " · 饱食 %d · 饮水 %d" % [int(player.get("hunger", 100)), int(player.get("thirst", 100))]
+	vitals.text = "水下 · 氧气 %d / 100" % int(player.oxygen) if player.area == "water" else (preload("res://scripts/rooms.gd").room_name(player.room) if player.area=="room" else "潮芽岛" if player.area == "island" else "甲板") + " · 饱食 %d · 饮水 %d" % [int(player.get("hunger", 100)), int(player.get("thirst", 100))]
 	if player.area == "water" and Inventory.count(player.bag, "fins") > 0:
 		vitals.text += " · 脚蹼"
 	vitals.add_theme_color_override("font_color", Color("b45e49") if player.area == "water" and float(player.oxygen) < 25 else UI.MUTED)
 	bag_title.text = "背包   %d / %d 格" % [Inventory.used(bag), bag.size()]
 	_capacity_note.text = "每格最多 %d 件 · 剩余 %d 格" % [Inventory.STACK_LIMIT, bag.size() - Inventory.used(bag)]
 	_capacity_note.add_theme_color_override("font_color", Color("b45543") if Inventory.used(bag) == bag.size() else UI.MUTED)
-	var chest_slots: Array = data.chests[chest_id].slots if with_chest else []
-	chest_title.text = "%s   %d / %d 格" % [data.chests[chest_id].name, Inventory.used(chest_slots), chest_slots.size()] if with_chest else ""
+	var chest_slots: Array = Inventory.container(data,slot,chest_id).slots if with_chest else []
+	chest_title.text = "%s   %d / %d 格" % [Inventory.container(data,slot,chest_id).name, Inventory.used(chest_slots), chest_slots.size()] if with_chest else ""
 	for index in bag_buttons.size():
 		bag_buttons[index].show_stack(bag[index], selected.get("container") == "bag" and int(selected.get("index", -1)) == index)
 	for index in chest_buttons.size():
@@ -190,6 +210,7 @@ func refresh(state: Dictionary, player_slot: String, nearby: String, message: St
 
 func clear_selection() -> void:
 	selected = {}
+	moving = {}
 	hovered = {}
 	if is_instance_valid(discard_dialog):
 		discard_dialog.hide()
@@ -203,6 +224,7 @@ func _slot_button(container: String, index: int) -> Button:
 	var button = SlotButton.new()
 	button.size = Vector2(SLOT_SIZE, SLOT_SIZE)
 	add_child(button)
+	button.set_drag_forwarding(_drag_start.bind(container, index), _can_drop.bind(container, index), _drop_stack.bind(container, index))
 	button.gui_input.connect(func(event: InputEvent):
 		if event is InputEventMouseButton and event.pressed and event.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 			_clicked(container, index, event.button_index == MOUSE_BUTTON_RIGHT)
@@ -221,11 +243,18 @@ func _refresh_details() -> void:
 		return
 	var item := ""
 	var amount := 0
+	if not selected.is_empty() and not data.is_empty():
+		var contents: Array = data.players[slot].bag if selected.container == "bag" else Inventory.container(data,slot,str(selected.container)).get("slots", [])
+		if int(selected.index) >= contents.size() or contents[int(selected.index)].get("item", "") != selected.item:
+			selected = {}
+			moving = {}
+		else:
+			selected.amount = mini(int(selected.amount), int(contents[int(selected.index)].count))
 	if not selected.is_empty():
 		item = str(selected.item)
 		amount = int(selected.amount)
 	elif not hovered.is_empty() and not data.is_empty():
-		var contents: Array = data.players[slot].bag if hovered.container == "bag" else (data.chests[chest_id].slots if not chest_id.is_empty() else [])
+		var contents: Array = data.players[slot].bag if hovered.container == "bag" else (Inventory.container(data,slot,chest_id).slots if not chest_id.is_empty() else [])
 		var index: int = int(hovered.index)
 		if index >= 0 and index < contents.size() and not contents[index].is_empty():
 			item = str(contents[index].item)
@@ -238,7 +267,7 @@ func _refresh_details() -> void:
 	_source_heading.visible = not item.is_empty()
 	usage_label.text = SlotButton.item_usage(item) if not item.is_empty() else "悬停或选择一格，\n查看用途与获得方式。"
 	source_label.text = SlotButton.item_source(item) if not item.is_empty() else ""
-	detail_hint.text = "点击目标格移动\n右键放 1 件 · 原格取消" if not selected.is_empty() else "左键整堆 · 右键拆分\n点击空格移动或叠放。"
+	detail_hint.text = "拆分中：左键放所选量\n右键放1件 · 原格取消" if not moving.is_empty() else "单击选持 · B返回使用\n拖动整理 · 右键拆分"
 	open_button.visible = item == "treasure"
 	open_button.disabled = selected.get("container") != "bag" or selected.get("item") != "treasure"
 	discard_button.disabled = selected.is_empty() or selected.get("container") != "bag"
@@ -248,23 +277,63 @@ func _clicked(container: String, index: int, right: bool) -> void:
 	var resolved := chest_id if container == "chest" else "bag"
 	if resolved.is_empty() or data.is_empty() or discard_dialog.visible:
 		return
-	var contents: Array = data.players[slot].bag if resolved == "bag" else data.chests[resolved].slots
+	var contents: Array = data.players[slot].bag if resolved == "bag" else Inventory.container(data,slot,resolved).slots
 	var stack: Dictionary = contents[index]
-	if selected.is_empty():
-		if not stack.is_empty():
-			selected = {"container": resolved, "index": index, "item": stack.item, "amount": int(ceil(float(stack.count) / 2.0)) if right else int(stack.count)}
-	elif selected.container == resolved and int(selected.index) == index:
-		selected = {}
+	if not moving.is_empty():
+		if moving.container == resolved and int(moving.index) == index:
+			moving = {}
+		else:
+			var request := {"from_container": moving.container, "from_index": moving.index, "to_container": resolved, "to_index": index, "amount": 1 if right else moving.amount, "expected_item": moving.item}
+			moving = {}
+			selected = {}
+			command.emit("inventory_move", request)
+	elif not stack.is_empty():
+		selected = {"container": resolved, "index": index, "item": stack.item, "amount": int(ceil(float(stack.count) / 2)) if right else int(stack.count)}
+		if right:
+			moving = selected.duplicate()
+		elif resolved == "bag":
+			equip_requested.emit(index)
 	else:
-		var request := {"from_container": selected.container, "from_index": selected.index, "to_container": resolved, "to_index": index, "amount": 1 if right else selected.amount, "expected_item": selected.item}
 		selected = {}
-		command.emit("inventory_move", request)
+		if resolved == "bag" and not right:
+			equip_requested.emit(index)
 	_refresh_details()
+
+func _drag_start(_at: Vector2, container: String, index: int) -> Variant:
+	if discard_dialog.visible or data.is_empty():
+		return null
+	var resolved := chest_id if container == "chest" else "bag"
+	var contents: Array = data.players[slot].bag if resolved == "bag" else Inventory.container(data,slot,resolved).get("slots", [])
+	if index >= contents.size() or contents[index].is_empty():
+		return null
+	var stack: Dictionary = contents[index]
+	moving = {}
+	var preview := TextureRect.new()
+	preview.texture = Art.item_icon(str(stack.item))
+	preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	preview.size = Vector2(48, 48)
+	get_slot_button(container, index).set_drag_preview(preview)
+	return {"from_container": resolved, "from_index": index, "amount": int(stack.count), "expected_item": str(stack.item)}
+
+func _can_drop(_at: Vector2, value: Variant, container: String, _index: int) -> bool:
+	return not discard_dialog.visible and value is Dictionary and value.has_all(["from_container", "from_index", "amount", "expected_item"]) and (container == "bag" or not chest_id.is_empty())
+
+func _drop_stack(_at: Vector2, value: Variant, container: String, index: int) -> void:
+	if not _can_drop(_at, value, container, index):
+		return
+	var args: Dictionary = value.duplicate()
+	args.to_container = chest_id if container == "chest" else "bag"
+	args.to_index = index
+	selected = {}
+	moving = {}
+	command.emit("inventory_move", args)
 
 func _open_treasure() -> void:
 	if selected.get("container") == "bag" and selected.get("item") == "treasure":
 		var index := int(selected.index)
 		selected = {}
+		moving = {}
 		command.emit("open_treasure", {"index": index})
 
 func _confirm_discard() -> void:

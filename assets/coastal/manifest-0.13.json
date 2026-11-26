@@ -1,0 +1,29 @@
+{
+  "canopy-0.13.png": {
+    "sha256": "42b8e0477ab630f3c613d111d7cb6089ad9f578feff5bfbc5cd2bb4f0f547bfb",
+    "bytes": 555238,
+    "canvas": [
+      1086,
+      1448
+    ],
+    "origin": "Built-in imagegen 2026-10-16; original output unchanged"
+  },
+  "hatch-0.13.png": {
+    "sha256": "a181d694733fa01e84874d319e8243720b5cd6b1cbedd348e0a469cea87337f0",
+    "bytes": 1060800,
+    "canvas": [
+      1024,
+      1536
+    ],
+    "origin": "Built-in imagegen 2026-10-16; original output unchanged"
+  },
+  "sea_chest-0.13.png": {
+    "sha256": "a964d56be53f3496d0a54587a8205e41491b5fc6ae44de532671a5419941a717",
+    "bytes": 706945,
+    "canvas": [
+      1586,
+      992
+    ],
+    "origin": "Built-in imagegen 2026-10-16; original output unchanged"
+  }
+}

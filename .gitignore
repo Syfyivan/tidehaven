@@ -16,9 +16,15 @@ build/
 
 # Generated Godot import metadata
 *.import
+__pycache__/
+*.pyc
 
 # PIPOYA prohibits redistribution of raw assets; restore locally from its pack.
 /assets/vendor/pipoya/*.png
 /assets/vendor/**/*.zip
 /assets/vendor/**/*.7z
+
+# Friend-authorized archive raw assets stay local; restore via tools/import-*.py
+/assets/vendor/stardew-island/**/*.png
+/assets/vendor/stardew-island/**/*.tmx
 

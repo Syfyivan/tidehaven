@@ -5,7 +5,9 @@ extends Node
 
 const Inventory = preload("res://scripts/inventory.gd")
 const Recipes = preload("res://scripts/recipes.gd")
-const DEADLINE_SECONDS := 480.0
+const Archipelago = preload("res://scripts/archipelago.gd")
+const DiveThreats = preload("res://scripts/sea_threats.gd")
+const DEADLINE_SECONDS := 660.0
 const MOVE_KEYS := [KEY_W, KEY_A, KEY_S, KEY_D]
 const CENTER := Vector2(480, 288)
 
@@ -31,15 +33,16 @@ func _ready() -> void:
 	_run.call_deferred()
 
 func _process(_delta: float) -> void:
-	if not finished and _seconds() > DEADLINE_SECONDS:
-		_fail("Normal-input survival opening exceeded 480 real seconds")
+	var deadline:=DEADLINE_SECONDS if main.cli.has("playthrough") and not main.cli.has("core-survival") else 480.0
+	if not finished and _seconds() > deadline:
+		_fail("Normal-input survival opening exceeded %d real seconds"%int(deadline))
 
 func _run() -> void:
 	for argument in ["save-path", "report", "evidence-dir"]:
 		if not main.cli.has(argument):
 			_fail("Missing isolated test argument: " + argument)
 			return
-	for filename in ["world_v1.json", "world_v2.json", "world_v3.json", "world_v4.json", "world_v5.json", "world_v6.json", "world_v7.json", "world_v8.json", "world_v9.json", "world_v10.json"]:
+	for filename in ["world_v1.json", "world_v2.json", "world_v3.json", "world_v4.json", "world_v5.json", "world_v6.json", "world_v7.json", "world_v8.json", "world_v9.json", "world_v10.json", "world_v11.json", "world_v12.json", "world_v13.json", "world_v14.json", "world_v15.json", "world_v16.json"]:
 		if ProjectSettings.globalize_path(str(main.save_path)) == ProjectSettings.globalize_path("user://" + filename):
 			_fail("Refusing to use the player's default save")
 			return
@@ -50,12 +53,12 @@ func _run() -> void:
 	await _click(main.new_game_button.get_global_rect().get_center())
 	if not (await _until(func() -> bool: return str(main.mode) == "solo" and not main.overlay.visible, "new solo title button", 4.0)):
 		return
-	if not _check(int(_state().version) == 10 and _state().deck_tiles.size() == 9 and _state().chests.is_empty() and _state().structures.size() == 1 and Inventory.total_count(_bag()) == 0, "Fresh opening must be nine raft cells, one bedroll and an empty backpack"):
+	if not _check(int(_state().version) == 16 and _state().deck_tiles.size() == 9 and _state().chests.is_empty() and _state().structures.size() == 1 and Inventory.total_count(_bag()) == 0, "Fresh opening must be nine raft cells, one bedroll and an empty backpack"):
 		return
 	_record("Started the real nine-cell survival opening with no granted resources")
 	if not (await _capture("01-opening.png")):
 		return
-	await _tap(KEY_1)
+	await _tap(KEY_H)
 	if not (await _gather({"wood": 24, "leaf": 14, "plastic": 8, "scrap": 4})):
 		return
 	_record("Mouse-hooked drifting supplies for tools, three facilities, fuel and a new floor")
@@ -71,10 +74,16 @@ func _run() -> void:
 		return
 	var sailing_start := Vector2(float(_state().navigation.x), float(_state().navigation.y))
 	var stamina_start: float = float(_player().stamina)
-	await _tap(KEY_3)
-	await _click_world(Vector2(480, 120))
+	# Gathering may drift us all the way to the first island. Aim away from
+	# its body so the shore collision cannot cancel an otherwise valid stroke.
+	var island_body: Vector2 = Archipelago.island_position(_state().chart) + Archipelago.ISLAND_BODY_OFFSET
+	var sailing_direction := (sailing_start - island_body).normalized()
+	var player_at: Vector2 = main.view.world_to_screen(Vector2(float(_player().x), float(_player().y)), "deck")
+	await _equip_tool("paddle")
+	await _click_world(player_at + sailing_direction * 180.0)
 	await _settle(0.9)
-	if not _check(float(_state().navigation.y) < sailing_start.y and float(_player().stamina) == stamina_start - 2, "Paddle mouse input moves the raft north and costs exactly two stamina"):
+	var sailed := Vector2(float(_state().navigation.x), float(_state().navigation.y)) - sailing_start
+	if not _check(sailed.dot(sailing_direction) > 1.0 and float(_player().stamina) == stamina_start - 2, "Paddle mouse input moves the raft toward open water and costs exactly two stamina"):
 		return
 	if not (await _capture("02a-paddling.png")):
 		return
@@ -89,8 +98,8 @@ func _run() -> void:
 	if not _check(not bool(_state().navigation.anchored) and _count("anchor") == 1, "G retrieves exactly one anchor"):
 		return
 	await _tap(KEY_G)
-	await _tap(KEY_1)
-	_record("Crafted a paddle and reusable anchor, steered north, anchored, retrieved and redeployed through normal input")
+	await _tap(KEY_H)
+	_record("Crafted a paddle and reusable anchor, steered toward open water, anchored, retrieved and redeployed through normal input")
 
 	if not (await _place("purifier", Vector2(544, 224), true)):
 		return
@@ -136,7 +145,7 @@ func _run() -> void:
 
 	if not (await _walk(Vector2(480, 365), "open bottom edge for fishing")):
 		return
-	await _tap(KEY_2)
+	await _equip_tool("rod")
 	if not (await _fish_until_caught()):
 		return
 	if not (await _walk(Vector2(500, 335), "grill approach")):
@@ -171,7 +180,9 @@ func _run() -> void:
 		return
 	if not (await _inventory_round_trip()):
 		return
-	if not (await _exploration_loop()):
+	# Explicit basic survival target; the default retains the full advanced route.
+	# Current hostile diving has its own natural-input encounter playthrough.
+	if not main.cli.has("core-survival") and not (await _exploration_loop()):
 		return
 
 	expected_save = _saved_progress()
@@ -200,51 +211,66 @@ func _run() -> void:
 	get_tree().quit(0)
 
 func _exploration_loop() -> bool:
-	await _tap(KEY_1)
-	if not (await _gather({"wood": 11, "leaf": 8, "plastic": 4, "scrap": 4})):
+	await _tap(KEY_H)
+	if not (await _gather({"wood": 22, "leaf": 14, "plastic": 6, "scrap": 6})):
 		return false
-	for index in 4:
+	for index in 7:
 		if not (await _craft_item("rope")):
 			return false
+	# Incidental seeds/treasure can fill the bag before tool crafting, not just diving.
+	if not (await _store_dry_tools()):
+		return false
 	if not (await _craft_item("harpoon")):
 		return false
 	_record("Gathered the additional wood, scrap and rope and crafted a personal harpoon for the underwater fish")
+	if not (await _place("foundation", Vector2(608, 288))) or not (await _place("workbench", Vector2(608, 288), true)):
+		return false
+	_record("Hand-built a workbench on an expanded cell using only collected resources")
+	if not (await _capture("08b-workbench.png")):
+		return false
 	if not (await _walk(Vector2(416, 288), "edge for mining dive")) or not (await _act("dive")):
 		return false
 	if not (await _until(func() -> bool: return _player().area == "water", "diving from the raft", 3.0)):
 		return false
-	for kind in ["stone", "ore"]:
-		var needed: int = 6 if kind == "stone" else 4
-		while _count(kind) < needed and not finished:
-			var nearest := ""
-			var distance: float = INF
-			var at := Vector2(float(_player().x), float(_player().y))
-			for id in _state().entities:
-				var node: Dictionary = _state().entities[id]
-				var point := Vector2(float(node.x), float(node.y))
-				if node.kind == kind and node.active and point.distance_to(at) < distance:
-					nearest = str(id)
-					distance = point.distance_to(at)
-			if not _check(not nearest.is_empty(), "No natural mineral deposit for " + kind):
+	# Two west-side deposits supply four stone. Approach from their western edge,
+	# outside the animals' territory, before attempting the exposed deposits.
+	for id in ["stone_00", "stone_04"]:
+		var deposit: Dictionary = _state().entities[id]
+		if not (await _collect_in_dive(id, "mine", 12.0, Vector2(deposit.x - 48, deposit.y))):
+			return false
+	if not _check(_count("stone") == 4 and _count("pickaxe") == 0, "Two natural bare-hand stone deposits supply the first pickaxe"):
+		return false
+	if not (await _return_and_rest("first stone expedition")):
+		return false
+	var before_pickaxe: Array = _bag().duplicate(true)
+	if not (await _craft_item("pickaxe")):
+		return false
+	if not _check(_count("pickaxe") == 1 and _count("stone") == 1 and _count("wood") == Inventory.count(before_pickaxe, "wood") - 3 and _count("rope") == Inventory.count(before_pickaxe, "rope") - 1, "Normal crafting spends three gathered stone, three wood and one rope on a pickaxe"):
+		return false
+	_record("Returned with naturally mined stone, rested at the bedroll and hand-crafted the first pickaxe")
+	if not (await _walk(Vector2(416, 288), "edge for equipped mining dive")) or not (await _act("dive")):
+		return false
+	if not (await _until(func() -> bool: return _player().area == "water", "second normal mining dive", 3.0)):
+		return false
+	for id in ["stone_01", "stone_02", "stone_05", "ore_00", "ore_03", "ore_01", "ore_02"]:
+		if float(_player().stamina) < 35 or float(_player().oxygen) < 30:
+			if not (await _return_and_rest("mining resupply")):
 				return false
-			var deposit: Dictionary = _state().entities[nearest]
-			if not (await _walk(Vector2(float(deposit.x), float(deposit.y)), "swim to " + nearest)):
+			if not (await _walk(Vector2(416, 288), "edge after mining rest")) or not (await _act("dive")):
 				return false
-			var before: int = _count(kind)
-			if not (await _act("mine", nearest)):
-				return false
-			var duration: float = 12.0 if kind == "stone" else 16.0
-			if not _check(_player().activity.get("kind", "") == "gather" and is_equal_approx(float(_player().activity.get("duration", 0)), duration), "Bare mineral collection must start its real work timer"):
-				return false
-			if not (await _until(func() -> bool: return _count(kind) > before and not _state().entities[nearest].active and _player().activity.is_empty(), "collecting " + nearest + " over its natural work duration", duration + 3.0)):
-				return false
+		var deposit: Dictionary = _state().entities[id]
+		var point := Vector2(deposit.x, deposit.y)
+		# Work at the eastern edge of this rock, away from the moray's home.
+		if id == "stone_05": point += Vector2(50, 35)
+		if not (await _collect_in_dive(id, "mine", 3.0 if deposit.kind == "stone" else 4.0, point)):
+			return false
 	if not (await _capture("09-mining.png")):
 		return false
-	if not (await _walk(Vector2(120, 90), "return buoy")) or not (await _act("surface")):
+	if not _check(_count("stone") == 7 and _count("ore") == 4, "Pickaxe gathers the furnace material and four natural ore deposits"):
 		return false
-	if not (await _until(func() -> bool: return _player().area == "deck", "return from mineral dive", 3.0)):
+	if not (await _return_and_rest("equipped mineral expedition")):
 		return false
-	_record("Swam to natural deposits and returned with six stone and four ore")
+	_record("Protected each exposed timed collection with actual harpoon use, then returned with seven stone and four ore")
 	if not (await _place("furnace", Vector2(480, 416))):
 		return false
 	var furnace := _structure_id("furnace")
@@ -276,6 +302,8 @@ func _exploration_loop() -> bool:
 			return false
 		if not (await _until(func() -> bool: return _count("ingot") == batch + 1, "claiming the smelted ingot", 3.0)):
 			return false
+	if not (await _walk(Vector2(560, 288), "workbench for equipment")):
+		return false
 	if not (await _select_recipe("fins")) or not (await _capture("11-exploration-recipes.png")):
 		return false
 	await _tap(KEY_C)
@@ -293,8 +321,14 @@ func _exploration_loop() -> bool:
 			cup_index = index
 	if not _check(not chest_id.is_empty() and cup_index >= 0, "Chest and reusable cup are required before relocation"):
 		return false
-	await _click(_slot_center(false, cup_index))
-	await _click(_slot_center(true, 0))
+	var cup_destination := -1
+	for index in _state().chests[chest_id].slots.size():
+		if _state().chests[chest_id].slots[index].is_empty():
+			cup_destination = index
+			break
+	if not _check(cup_destination >= 0,"chest has room for relocation test cup"):
+		return false
+	await _drag(_slot_center(false, cup_index), _slot_center(true, cup_destination))
 	await _tap(KEY_B)
 	var chest_contents: Array = _state().chests[chest_id].slots.duplicate(true)
 	if not (await _act("relocate", chest_id)):
@@ -320,7 +354,7 @@ func _exploration_loop() -> bool:
 		return false
 	if not (await _walk(Vector2(120, 90), "upgraded dive return")) or not (await _act("surface")):
 		return false
-	await _tap(KEY_1)
+	await _tap(KEY_H)
 	var remote_retrieved: bool = false
 	var hook_deadline: int = Time.get_ticks_msec() + 60000
 	while not remote_retrieved and not finished and Time.get_ticks_msec() < hook_deadline:
@@ -401,19 +435,150 @@ func _exploration_loop() -> bool:
 	return true
 
 
+func _swim_work_route(point: Vector2, label: String) -> bool:
+	if not _check(_player().area == "water", "Still diving before " + label):
+		return false
+	# Travel along the visible shallow strip, then descend to the work site.
+	# The far eastern approach stays outside the moray's home on the way down.
+	var at := Vector2(float(_player().x), float(_player().y))
+	if at.distance_to(point)<=3.5:
+		return true
+	var lane_x := minf(850, point.x + 16) if point.x > 800 else point.x
+	for waypoint in [Vector2(at.x, 120), Vector2(lane_x, 120), Vector2(lane_x, point.y), point]:
+		if not (await _walk(waypoint, label)):
+			return false
+		if not _check(_player().area == "water", "No involuntary rescue while " + label):
+			return false
+	return true
+
+func _return_and_rest(label: String) -> bool:
+	if not (await _swim_work_route(Vector2(120, 90), label + " buoy return")) or not (await _act("surface")):
+		return false
+	if not (await _until(func() -> bool: return _player().area == "deck", label + " surface onto raft", 3.0)):
+		return false
+	if not (await _walk(Vector2(462, 236), label + " bedroll approach")) or not (await _act("rest")):
+		return false
+	if not (await _until(func() -> bool: return float(_player().stamina) >= 95, label + " actual resting recovery", 22.0)):
+		return false
+	if not (await _act("wake")):
+		return false
+	_record("Returned normally and rested without skipping a day: " + label)
+	return true
+
+func _work_exposed(kind: String, point: Vector2) -> bool:
+	var spec: Dictionary = DiveThreats.DEFINITIONS[kind]
+	return not DiveThreats.safe(point) and point.distance_to(spec.home) <= float(spec.leash)
+
+func _work_window_ready(point: Vector2, seconds: float) -> bool:
+	for kind: String in _state().threats:
+		if not _work_exposed(kind, point):
+			continue
+		var enemy: Dictionary = _state().threats[kind]
+		if enemy.phase != "repelled" or float(enemy.remaining) < seconds + 2.0:
+			return false
+	return true
+
+func _repel_for_work(kind: String, required_seconds: float) -> bool:
+	for attempt in 3:
+		if not _check(_player().area == "water" and float(_player().stamina) >= 10, "Enough stamina and still underwater to repel " + kind):
+			return false
+		var enemy: Dictionary = _state().threats[kind]
+		if enemy.phase == "repelled":
+			if float(enemy.remaining) >= required_seconds + 1.0:
+				return true
+			# A short old window cannot be extended by shooting an invulnerable animal.
+			if not (await _until(func() -> bool: return _state().threats[kind].phase != "repelled", "wait for previous " + kind + " repel to expire", float(enemy.remaining) + 2.0)):
+				return false
+		await _equip_tool("harpoon")
+		if not (await _until(func() -> bool: return _player().activity.is_empty(), "finish previous spear recovery", 3.0)):
+			return false
+		var at := Vector2(float(_player().x), float(_player().y))
+		if at.distance_to(Vector2(enemy.x, enemy.y)) > 140:
+			var approach := Vector2(clampf(float(enemy.x), 80, 820), clampf(float(enemy.y) - 100, 180, 330)) if kind == "shark" else Vector2(maxf(480, float(enemy.x) - 95), float(enemy.y))
+			if not (await _swim_work_route(approach, "approach " + kind + " with crafted harpoon")):
+				return false
+		if not (await _until(func() -> bool: return _state().threats[kind].phase == "windup", kind + " telegraph before work", 12.0)):
+			return false
+		var before: Array = _bag().duplicate(true)
+		await _click_world(Vector2(enemy.x, enemy.y))
+		var deadline := Time.get_ticks_msec() + 2500
+		var dodged := false
+		while not finished and enemy.phase != "repelled" and Time.get_ticks_msec() < deadline:
+			if enemy.phase == "charge" and not dodged:
+				var origin := Vector2(float(_player().x), float(_player().y))
+				var cross := Vector2(-float(enemy.dy), float(enemy.dx)) * 80
+				var escape := (origin + cross).clamp(Vector2(45, 40), Vector2(855, 515))
+				if escape.distance_to(origin) < 60: escape = (origin - cross).clamp(Vector2(45, 40), Vector2(855, 515))
+				dodged = true
+				if not (await _walk(escape, "dodge missed " + kind + " shot")):
+					return false
+			await _settle(0.05)
+		if enemy.phase == "repelled":
+			if not _check(_bag() == before, "Repelling " + kind + " does not grant invented loot"):
+				return false
+			if not (await _until(func() -> bool: return _player().activity.is_empty(), "real spear cooldown before mining", 3.0)):
+				return false
+			_record("Repelled " + kind + " with the crafted harpoon to make a timed mining window")
+			return true
+		_record("Work-site spear missed; dodged and observed the next attack before retrying " + kind)
+	_fail("Could not repel " + kind + " for a safe collection after three normal shots")
+	return false
+
+func _protect_dive_work(point: Vector2, seconds: float) -> bool:
+	for attempt in 3:
+		if _work_window_ready(point, seconds):
+			return true
+		for kind: String in _state().threats:
+			if not _work_exposed(kind, point):
+				continue
+			var enemy: Dictionary = _state().threats[kind]
+			if enemy.phase == "repelled" and float(enemy.remaining) >= seconds + 2.0:
+				continue
+			if not (await _repel_for_work(kind, seconds + 2.0)):
+				return false
+		if not (await _swim_work_route(point, "return to protected work site")):
+			return false
+	if not _check(_work_window_ready(point, seconds), "Actual repel window must cover the entire collection"):
+		return false
+	return true
+
+func _collect_in_dive(id: String, verb: String, seconds: float, point: Vector2) -> bool:
+	var node: Dictionary = _state().entities[id]
+	var item: String = "treasure" if node.kind == "wreck" else str(node.kind)
+	if not _check(node.active and point.distance_to(Vector2(node.x, node.y)) <= 64, "Natural active deposit and legal approach for " + id):
+		return false
+	if not (await _swim_work_route(point, "swim to natural " + id)):
+		return false
+	var before := _count(item)
+	for attempt in 3:
+		if not (await _protect_dive_work(point, seconds)):
+			return false
+		if verb == "mine" and _count("pickaxe") > 0:
+			await _equip_tool("pickaxe")
+		else:
+			await _tap(KEY_H)
+		if not (await _act(verb, id)):
+			return false
+		if not _check(_player().activity.get("kind", "") == "gather" and is_equal_approx(float(_player().activity.get("duration", 0)), seconds), "Actual collection duration for " + id + " is " + str(seconds)):
+			return false
+		var began := float(_state().elapsed)
+		if not (await _until(func() -> bool: return _player().activity.is_empty(), "natural timed collection or visible interruption at " + id, seconds + 3.0)):
+			return false
+		if not node.active:
+			return _check(_count(item) == before + (2 if item == "stone" else 1) and float(_state().elapsed) - began >= seconds - 0.35, "Timed " + id + " awards exact resources once")
+		if not _check(_count(item) == before and _player().area == "water", "Interrupted work neither awards resources nor hides a rescue"):
+			return false
+		_record("Enemy interrupted " + id + "; target remained intact, preparing a new real window")
+	_fail("Natural collection repeatedly interrupted at " + id)
+	return false
+
 func _seabed_search() -> bool:
 	var wreck: Dictionary = _state().entities.wreck_00
-	if not (await _walk(Vector2(float(wreck.x), float(wreck.y)), "natural seabed chest")):
+	if not (await _collect_in_dive("wreck_00", "search_wreck", 7.0, Vector2(float(wreck.x) - 48, float(wreck.y)))):
 		return false
 	if not (await _capture("13-seabed-chest.png")):
 		return false
-	var before: int = _count("treasure")
-	if not (await _act("search_wreck", "wreck_00")):
-		return false
-	if not _check(_player().activity.get("kind", "") == "gather" and is_equal_approx(float(_player().activity.get("duration", 0)), 7.0), "Seabed search must start a seven-second activity"):
-		return false
-	if not (await _until(func() -> bool: return _count("treasure") == before + 1 and not _state().entities.wreck_00.active and _player().activity.is_empty(), "searching a real seabed chest for seven seconds", 10.0)):
-		return false
+	var before: int = _count("treasure") - 1
 	await _tap(KEY_B)
 	var treasure_index := -1
 	for index in _bag().size():
@@ -440,7 +605,7 @@ func _seabed_search() -> bool:
 func _spear_fish(preferred: String) -> bool:
 	if not _check(_count("harpoon") > 0 and _player().area == "water", "Spearfishing needs the normally crafted personal harpoon underwater"):
 		return false
-	await _tap(KEY_4)
+	await _equip_tool("harpoon")
 	var caught_before: int = _count("fish")
 	for attempt in 6:
 		var fish_id: String = preferred
@@ -473,7 +638,7 @@ func _spear_fish(preferred: String) -> bool:
 		if _count("fish") > caught_before:
 			break
 		_record("Directional spear missed the moving fish; adjusted the next shot")
-	await _tap(KEY_1)
+	await _tap(KEY_H)
 	return _check(_count("fish") == caught_before + 1, "A directional spear collision must add exactly one natural fish")
 
 
@@ -493,16 +658,7 @@ func _gather(targets: Dictionary) -> bool:
 			var point := Vector2(float(object.x), float(object.y))
 			if not main.view.surface_is_clear(point):
 				continue
-			# A player cannot target drift hidden under an interactive HUD button.
-			var on_screen: Vector2 = main.view.get_global_transform_with_canvas() * point
-			var covered := false
-			var buttons: Array = [main.hud.bag_button, main.hud.crafting_button, main.hud.menu_button, main.hud.anchor_button, main.hud.map_button]
-			buttons.append_array(main.hud.quick_buttons)
-			for button in buttons:
-				if button.visible and button.get_global_rect().grow(12).has_point(on_screen):
-					covered = true
-					break
-			if covered:
+			if _hook_aim_covered(point):
 				continue
 			var rewards: Dictionary = {"wood": 2, "leaf": 2, "plastic": 2, "scrap": 1, "seed": 1} if object.kind == "barrel" else {str(object.kind): 1 if object.kind == "scrap" else 2}
 			var benefit: float = 0
@@ -543,6 +699,10 @@ func _gather(targets: Dictionary) -> bool:
 		var flight := player_at.distance_to(destination) / 160.0
 		var wind: Vector2 = preload("res://scripts/salvage_hook.gd").wind(float(_state().elapsed))
 		var aim := destination + (velocity - wind) * flight
+		# Predicted interception can move onto the toolbar even when the item was clear.
+		if _hook_aim_covered(aim):
+			await _settle(0.25)
+			continue
 		await _click_world(aim)
 		if not (await _until(func() -> bool: return not _player().hook.is_empty(), "mouse click launches hook at " + candidate, 2.0)):
 			return false
@@ -556,6 +716,15 @@ func _gather(targets: Dictionary) -> bool:
 		else:
 			_record("Directional hook missed; observed drift and retried")
 	return not finished
+
+func _hook_aim_covered(point: Vector2) -> bool:
+	var on_screen: Vector2 = main.view.get_global_transform_with_canvas() * point
+	if not get_viewport().get_visible_rect().has_point(on_screen): return true
+	var buttons: Array = [main.hud.bag_button, main.hud.crafting_button, main.hud.menu_button, main.hud.anchor_button, main.hud.map_button]
+	buttons.append_array(main.hud.quick_buttons)
+	for button in buttons:
+		if button.visible and button.get_global_rect().grow(12).has_point(on_screen): return true
+	return false
 
 func _pull_hook() -> bool:
 	if not (await _until(func() -> bool: return not _player().hook.is_empty() and str(_player().hook.phase) != "out", "hook completes its uninterrupted outward flight", 3.5)):
@@ -643,7 +812,13 @@ func _craft_item(id: String) -> bool:
 	return await _until(func() -> bool: return not main.crafting_ui.visible, "closing crafting", 2.0)
 
 func _place(id: String, preferred: Vector2, recipe_shot: bool = false) -> bool:
-	if not (await _walk(CENTER, "central build aisle")):
+	var approach := CENTER
+	if id in Recipes.WORKBENCH_RECIPES:
+		var bench: Dictionary = _state().structures.get(_structure_id("workbench"), {})
+		if not _check(not bench.is_empty(), "A built workbench must precede advanced placement"):
+			return false
+		approach = Vector2(float(bench.x) - 48, float(bench.y))
+	if not (await _walk(approach, "workbench or central build aisle")):
 		return false
 	var target: Vector2 = preferred
 	if not main.world.can_place("host", id, target.x, target.y):
@@ -666,6 +841,8 @@ func _place(id: String, preferred: Vector2, recipe_shot: bool = false) -> bool:
 		return false
 	var before_count: int = _state().deck_tiles.size() if id == "foundation" else (_state().chests.size() if id == "chest" else _state().structures.size())
 	await _click(main.crafting_ui.make_button.get_global_rect().get_center())
+	await _tap(KEY_C)
+	await _equip_tool(id)
 	if not (await _until(func() -> bool: return str(main.placement_recipe) == id and not main.crafting_ui.visible, "recipe enters world placement", 3.0)):
 		return false
 	await _click_world(target)
@@ -747,14 +924,12 @@ func _inventory_round_trip() -> bool:
 			break
 	if not _check(cup_index >= 0 and target_index >= 0, "A returned cup and an empty chest slot are required"):
 		return false
-	await _click(_slot_center(false, cup_index))
-	await _click(_slot_center(true, target_index))
+	await _drag(_slot_center(false, cup_index), _slot_center(true, target_index))
 	if not (await _until(func() -> bool: return _count("cup") == 0 and Inventory.count(_state().chests[chest_id].slots, "cup") == 1, "manual cup deposit", 3.0)):
 		return false
 	if not (await _capture("06-inventory.png")):
 		return false
-	await _click(_slot_center(true, target_index))
-	await _click(_slot_center(false, cup_index))
+	await _drag(_slot_center(true, target_index), _slot_center(false, cup_index))
 	if not (await _until(func() -> bool: return _bag() == before_bag and _state().chests[chest_id].slots == before_chest, "manual retrieval preserves exact slots", 3.0)):
 		return false
 	await _tap(KEY_ESCAPE)
@@ -762,6 +937,32 @@ func _inventory_round_trip() -> bool:
 		return false
 	_record("Stored and retrieved the reusable cup through actual inventory slots")
 	return true
+
+func _store_dry_tools() -> bool:
+	# Barrel/fishing rewards vary. Make room through the same chest UI as a player.
+	if not (await _walk(Vector2(453,337),"stow dry tools before diving")) or not (await _act("open_chest")):
+		return false
+	if not (await _until(func() -> bool: return main.inventory_ui.visible,"chest inventory before dive",3.0)):
+		return false
+	var chest_id: String = str(main.inventory_ui.chest_id)
+	for index in _bag().size():
+		var stack: Dictionary = _bag()[index]
+		if stack.get("item", "") not in ["rod","paddle","seed","treasure"]:
+			continue
+		var target := -1
+		for slot_index in _state().chests[chest_id].slots.size():
+			if _state().chests[chest_id].slots[slot_index].is_empty():
+				target = slot_index
+				break
+		if not _check(target>=0,"a free chest slot remains for dry equipment"):
+			return false
+		var expected: Dictionary = stack.duplicate(true)
+		await _drag(_slot_center(false,index), _slot_center(true,target))
+		if not _check(_bag()[index].is_empty() and _state().chests[chest_id].slots[target]==expected,"manual deposit preserves entire stack"):
+			return false
+	await _tap(KEY_ESCAPE)
+	_record("Manually stowed dry tools and incidental loot in the built chest before diving")
+	return await _until(func() -> bool: return not main.inventory_ui.visible,"close chest before dive",3.0)
 
 func _walk(target: Vector2, label: String) -> bool:
 	if _player().area != "deck":
@@ -944,6 +1145,34 @@ func _click(at: Vector2, target: Viewport = null) -> void:
 	viewport.push_input(up, true)
 	await _settle(0.14)
 
+func _equip_tool(item: String) -> void:
+	for index in _bag().size():
+		if _bag()[index].get("item", "") == item:
+			await _click(main.hud.slots[index].button.get_global_rect().get_center())
+			return
+	_fail("Missing carried item to equip: " + item)
+
+func _drag(from: Vector2, to: Vector2) -> void:
+	var viewport := get_viewport()
+	var motion := InputEventMouseMotion.new()
+	motion.position=from;motion.global_position=from
+	viewport.push_input(motion,true)
+	await get_tree().process_frame
+	var e:=InputEventMouseButton.new()
+	e.position=from;e.global_position=from;e.button_index=MOUSE_BUTTON_LEFT;e.button_mask=MOUSE_BUTTON_MASK_LEFT;e.pressed=true
+	viewport.push_input(e,true)
+	await get_tree().process_frame
+	var previous:=from
+	for i in range(1,9):
+		var at:=from.lerp(to,i/8.0)
+		motion=InputEventMouseMotion.new();motion.position=at;motion.global_position=at;motion.relative=at-previous;motion.button_mask=MOUSE_BUTTON_MASK_LEFT
+		viewport.push_input(motion,true);previous=at
+		await _settle(0.04)
+	e=InputEventMouseButton.new();e.position=to;e.global_position=to;e.button_index=MOUSE_BUTTON_LEFT;e.pressed=false
+	viewport.push_input(e,true)
+	inputs.append({"type":"drag","from":str(from),"to":str(to),"seconds":_seconds()})
+	await _settle(0.14)
+
 func _save_and_title() -> bool:
 	await _tap(KEY_ESCAPE)
 	if not (await _until(func() -> bool: return bool(main.pause_open) and main.pause_overlay.visible, "Esc opens pause", 3.0)):
@@ -964,10 +1193,12 @@ func _until(predicate: Callable, label: String, timeout: float) -> bool:
 
 func _settle(seconds: float) -> void:
 	await get_tree().create_timer(seconds).timeout
+	RenderingServer.force_draw(false)
 
 func _capture(filename: String) -> bool:
 	await _settle(0.15)
-	await RenderingServer.frame_post_draw
+	await get_tree().process_frame
+	RenderingServer.force_draw(false)
 	if finished:
 		return false
 	var directory := ProjectSettings.globalize_path(str(main.cli["evidence-dir"]))

@@ -2,9 +2,9 @@ extends RefCounted
 
 const BAG_SIZE := 12
 const CHEST_SIZE := 16
-const STACK_LIMIT := 20
-const ITEMS := ["fish", "wood", "veg", "meal", "seed", "treasure", "leaf", "plastic", "scrap", "rope", "cup", "saltwater", "freshwater", "cooked_fish", "rod", "stone", "ore", "ingot", "fins", "reinforced_hook", "paddle", "anchor", "harpoon", "axe", "pickaxe", "compass", "fiber", "hoe", "scythe", "watering_can", "canopy", "summer_seed", "autumn_seed", "winter_seed"]
-const ITEM_NAMES := {"fish": "鱼", "wood": "木板", "veg": "蔬菜", "meal": "料理", "seed": "春萝卜种子", "treasure": "物资宝箱", "leaf": "棕榈叶", "plastic": "塑料", "scrap": "废金属", "rope": "绳子", "cup": "空杯", "saltwater": "一杯海水", "freshwater": "一杯淡水", "cooked_fish": "烤鱼", "rod": "钓竿", "stone": "石料", "ore": "金属矿石", "ingot": "金属锭", "fins": "脚蹼", "reinforced_hook": "强化打捞钩", "paddle": "船桨", "anchor": "简易锚", "harpoon": "鱼叉", "axe": "石斧", "pickaxe": "石镐", "compass": "罗盘", "fiber": "植物纤维", "hoe": "锄头", "scythe": "镰刀", "watering_can": "浇水壶", "canopy": "暖棚套件", "summer_seed": "玉米种子", "autumn_seed": "南瓜种子", "winter_seed": "雪根种子"}
+const STACK_LIMIT := 999
+const ITEMS := ["cabin", "mushroom", "rice", "seaweed", "sashimi", "maki", "salad", "fish", "wood", "veg", "meal", "seed", "treasure", "leaf", "plastic", "scrap", "rope", "cup", "saltwater", "freshwater", "cooked_fish", "rod", "stone", "ore", "ingot", "fins", "reinforced_hook", "paddle", "anchor", "harpoon", "axe", "pickaxe", "compass", "fiber", "hoe", "scythe", "watering_can", "canopy", "summer_seed", "autumn_seed", "winter_seed", "chest", "workbench", "purifier", "grill", "garden", "bed", "foundation", "furnace"]
+const ITEM_NAMES := {"cabin":"船屋套件", "mushroom":"林菇", "rice":"大米", "seaweed":"海苔", "sashimi":"鲜鱼刺身", "maki":"海苔鱼卷", "salad":"田园沙拉", "fish": "鱼", "wood": "木板", "veg": "蔬菜", "meal": "料理", "seed": "春萝卜种子", "treasure": "物资宝箱", "leaf": "棕榈叶", "plastic": "塑料", "scrap": "废金属", "rope": "绳子", "cup": "空杯", "saltwater": "一杯海水", "freshwater": "一杯淡水", "cooked_fish": "烤鱼", "rod": "钓竿", "stone": "石料", "ore": "金属矿石", "ingot": "金属锭", "fins": "脚蹼", "reinforced_hook": "强化打捞钩", "paddle": "船桨", "anchor": "简易锚", "harpoon": "鱼叉", "axe": "石斧", "pickaxe": "石镐", "compass": "罗盘", "fiber": "植物纤维", "hoe": "锄头", "scythe": "镰刀", "watering_can": "浇水壶", "canopy": "暖棚套件", "summer_seed": "玉米种子", "autumn_seed": "南瓜种子", "winter_seed": "雪根种子", "chest": "储物木箱", "workbench": "工作台", "purifier": "简易净水器", "grill": "烤架", "garden": "种植箱", "bed": "叶子床", "foundation": "木筏地板", "furnace": "熔炉"}
 
 
 static func empty_slots(size: int) -> Array:
@@ -101,8 +101,10 @@ static func move(source: Array, source_index: int, target: Array, target_index: 
 		source[source_index] = to.duplicate()
 		target[target_index] = from.duplicate()
 		return true
-	if not to.is_empty() and int(to.count) + moved > STACK_LIMIT:
-		return false
+	if not to.is_empty():
+		moved = mini(moved, STACK_LIMIT - int(to.count))
+		if moved <= 0:
+			return false
 	if to.is_empty():
 		target[target_index] = {"item": from.item, "count": moved}
 	else:
@@ -145,3 +147,11 @@ static func normalize(slots: Array) -> Array:
 		if not slots[index].is_empty():
 			result[index] = {"item": str(slots[index].item), "count": int(slots[index].count)}
 	return result
+
+
+static func container(data:Dictionary,slot:String,id:String)->Dictionary:
+	if id=="bag":return {"name":"背包","slots":data.players[slot].bag}
+	if id=="restaurant_stock":return {"name":"备料柜","slots":data.restaurant.stock}
+	for prop:Dictionary in data.get("housing",{}).get("furniture",[]):
+		if prop.id==id and prop.item=="chest":return {"name":"家中木箱","slots":prop.slots}
+	return data.chests.get(id,{"name":"木箱","slots":[]})

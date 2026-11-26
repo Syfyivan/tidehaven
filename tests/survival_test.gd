@@ -50,7 +50,7 @@ func _count(world, slot: String, item: String) -> int:
 
 func _test_start_and_hook() -> void:
 	var world = _world(true)
-	_check(world.data.version == 10 and world.data.deck_tiles.size() == 9 and world.data.chests.is_empty() and world.data.structures.size() == 1 and world.data.structures.bedroll_0.kind == "bedroll", "new raft starts with nine tiles and only a bedroll")
+	_check(world.data.version == 16 and world.data.deck_tiles.size() == 9 and world.data.chests.is_empty() and world.data.structures.size() == 1 and world.data.structures.bedroll_0.kind == "bedroll", "new raft starts with nine tiles and only a bedroll")
 	_check(Inventory.total_count(world.data.players.host.bag) == 0 and world.data.players.host.x == 480.0 and world.data.players.guest.x == 520.0, "new players have empty individual packs and safe raft spawns")
 	Skills.stage_drift(world, "drift_06")
 	world.action("host", "hook", {"x": 1.0, "y": 0.0})
@@ -167,7 +167,7 @@ func _test_processing_and_consumption() -> void:
 	var before: Dictionary = world.snapshot()
 	world.action("host", "collect_output", {"id": "structure_1"})
 	_check(world.snapshot() == before and world.data.structures.structure_1.output == "cooked_fish", "full pack leaves the cooked fish in the grill")
-	Inventory.remove(world.data.players.host.bag, "cup", 20)
+	Inventory.remove(world.data.players.host.bag, "cup", Inventory.STACK_LIMIT)
 	world.action("host", "collect_output", {"id": "structure_1"})
 	world.data.players.host.hunger = 20.0
 	world.data.players.host.stamina = 20.0
@@ -222,6 +222,10 @@ func _test_restore_and_migration() -> void:
 	_check(_count(loaded, "host", "freshwater") == 1, "restored processing completes and can be claimed exactly once")
 	var old: Dictionary = _world().snapshot()
 	old.version = 2
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old.erase(v14_key)
+	for v14_player in old.players.values():v14_player.erase("room")
+	old.erase("threats")
+	for legacy_player in old.players.values(): legacy_player.erase("dive_status")
 	old.entities = WorldState.new()._new_entities(false)
 	for key in ["deck_tiles", "structures", "drift", "navigation", "chart", "island"]:
 		old.erase(key)

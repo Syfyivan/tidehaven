@@ -27,12 +27,17 @@ func _world():
 	var world = WorldState.new()
 	world.join("host", "船长")
 	world.join("guest", "伙伴")
+	# Isolate inventory/resource transactions from encounters; interruptions have their own regression.
+	for enemy in world.data.threats.values():
+		enemy.phase="repelled";enemy.remaining=preload("res://scripts/sea_threats.gd").DEFINITIONS[enemy.kind].repel
 	return world
 
 
 func _place(world, slot: String, area: String, point: Vector2) -> void:
 	if area == "water":
 		world.data.navigation.anchored = true
+		for enemy in world.data.threats.values():
+			enemy.phase="repelled";enemy.remaining=preload("res://scripts/sea_threats.gd").DEFINITIONS[enemy.kind].repel
 	world.data.players[slot].area = area
 	world.data.players[slot].x = point.x
 	world.data.players[slot].y = point.y
@@ -170,6 +175,10 @@ func _test_wreck_search() -> void:
 func _v4_snapshot(world) -> Dictionary:
 	var saved: Dictionary = world.snapshot()
 	saved.version = 4
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:saved.erase(v14_key)
+	for v14_player in saved.players.values():v14_player.erase("room")
+	saved.erase("threats")
+	for legacy_player in saved.players.values(): legacy_player.erase("dive_status")
 	saved.erase("navigation")
 	saved.erase("chart")
 	saved.erase("island")
@@ -194,7 +203,7 @@ func _test_save_migration() -> void:
 	Inventory.add(old.players.host.bag, "fins", 1)
 	old.structures.furnace_0 = {"id": "furnace_0", "kind": "furnace", "x": 480.0, "y": 224.0, "remaining": 8.0, "output": "ingot"}
 	var loaded = WorldState.new()
-	_check(loaded.restore(JSON.parse_string(JSON.stringify(old))) and loaded.data.version == 10 and loaded.data.entities.has("wreck_00") and loaded.data.entities.has("wreck_01"), "a real v4 shape migrates by adding the two wrecks")
+	_check(loaded.restore(JSON.parse_string(JSON.stringify(old))) and loaded.data.version == 16 and loaded.data.entities.has("wreck_00") and loaded.data.entities.has("wreck_01"), "a real v4 shape migrates by adding the two wrecks")
 	_check(not loaded.data.entities.ore_00.active and not loaded.data.entities.fish_00.active and loaded.data.structures.furnace_0.remaining == 8.0 and _count(loaded, "host", "fins") == 1, "v4 migration preserves depleted nodes, in-progress processing and equipment")
 	_check(not loaded.data.drift.drift_00.active and loaded.data.drift.drift_00.respawn == 3.0 and _point(loaded.data.drift.drift_00) == _point(old.drift.drift_00) and loaded.data.drift.drift_00.has_all(["speed", "phase", "sway"]), "v4 drift gains motion metadata while preserving collected status, delay and inactive position")
 	var heights: Dictionary = {}
@@ -208,6 +217,10 @@ func _test_save_migration() -> void:
 	_check(_point(loaded.data.drift.drift_04) == _point(old.drift.drift_04) and _point(loaded.data.drift.drift_06) == _point(old.drift.drift_06) and loaded.data.players.host.hook.is_empty() and loaded.data.players.guest.hook.is_empty() and loaded.data.drift.drift_04.active and loaded.data.drift.drift_06.active, "migration cancels old in-flight hooks while preserving both targeted resources and their positions")
 	var old_v3 := _v4_snapshot(world)
 	old_v3.version = 3
+	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories"]:old_v3.erase(v14_key)
+	for v14_player in old_v3.players.values():v14_player.erase("room")
+	old_v3.erase("threats")
+	for legacy_player in old_v3.players.values(): legacy_player.erase("dive_status")
 	old_v3.entities = world._new_entities(false)
 	var migrated_v3 = WorldState.new()
 	var v3_valid: bool = migrated_v3.restore(old_v3)

@@ -1,4 +1,4 @@
-param([string]$Godot = '')
+param([string]$Godot = '', [switch]$Workbench, [switch]$Interaction, [switch]$Chopping, [switch]$Threats, [switch]$P1, [switch]$Remaining, [switch]$Stories)
 $ErrorActionPreference = 'Stop'
 $watch = [System.Diagnostics.Stopwatch]::StartNew()
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -16,7 +16,16 @@ New-Item -ItemType Directory -Path $runRoot | Out-Null
 $testSave = Join-Path $runRoot 'world-v7.json'
 $udpProbe = [System.Net.Sockets.UdpClient]::new(0)
 try { $testPort = $udpProbe.Client.LocalEndPoint.Port } finally { $udpProbe.Dispose() }
-$baseArguments = @('--headless', '--path', ('"' + $projectRoot + '"'), '--max-fps', '30', '--', '--progression-net')
+$baseArguments = @('--headless', '--max-fps', '30', '--', '--progression-net')
+# Official exported binaries read their embedded pack and disallow --path.
+if ((Split-Path -Leaf $Godot) -like 'Godot*') { $baseArguments = @('--path', ('"' + $projectRoot + '"')) + $baseArguments }
+if ($Workbench) { $baseArguments[-1] = '--workbench-net' }
+if ($Interaction) { $baseArguments[-1] = '--interaction-net' }
+if ($Chopping) { $baseArguments[-1] = '--chopping-net' }
+if ($Threats) { $baseArguments[-1] = '--threats-net' }
+if ($P1) { $baseArguments[-1] = '--p1-net' }
+if ($Remaining) { $baseArguments[-1] = '--remaining-net' }
+if ($Stories) { $baseArguments[-1] = '--stories-net' }
 $processes = @{}
 
 function Show-ValidatorLogs([string]$Role) {
@@ -30,6 +39,7 @@ function Start-Validator([string]$Role, [string]$SavePath) {
     if ($watch.Elapsed.TotalSeconds -ge 88) { throw 'Progression network deadline reached before launch.' }
     $arguments = $baseArguments + @(('--test-role=' + $Role), ('--save-path="' + $SavePath + '"'), ('--port=' + $testPort), ('--report="' + (Join-Path $runRoot ($Role + '.json')) + '"'))
     $process = Start-Process -FilePath $Godot -ArgumentList $arguments -PassThru -WindowStyle Hidden -RedirectStandardOutput (Join-Path $runRoot ($Role + '.log')) -RedirectStandardError (Join-Path $runRoot ($Role + '.err'))
+    $null = $process.Handle
     $processes[$Role] = $process
     return $process
 }

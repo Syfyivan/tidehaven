@@ -1,48 +1,62 @@
 extends RefCounted
-## Quiet canvas, ink and timber surfaces. Gameplay does not live here.
-const INK := Color("3d3930")
-const MUTED := Color("807869")
-const PAPER := Color("e9e1c9")
-const ACCENT := Color("597966")
-const SHADE := Color(0.07, 0.13, 0.14, 0.48)
+## Shared pixel skin: fixed corners, warm paper and sea-green selection.
+const INK := Color("514332")
+const MUTED := Color("857256")
+const PAPER := Color("f3e6c9")
+const ACCENT := Color("3f715f")
+const SHADE := Color(0.07, 0.14, 0.13, 0.56)
 static var _textures: Dictionary = {}
 
-static func box(tone: String = "paper") -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	var fills := {
-		"paper": Color("e9e1c9"), "wood": Color("665949"),
-		"dark": Color(0.10, 0.19, 0.20, 0.90), "hud": Color(0.10, 0.18, 0.18, 0.76),
-		"clear": Color.TRANSPARENT, "button": Color("d7ceb5"),
-		"button_hover": Color("e3dac1"), "button_pressed": Color("bcb598"),
-		"primary": Color("597966"), "primary_hover": Color("6b8b75"),
-		"disabled": Color("d4cfbf"), "slot": Color("d5cbb1"),
-		"slot_hover": Color("e2d8bc"), "slot_selected": Color("bfcca9"),
-		"quick": Color(0.80, 0.82, 0.70, 0.06),
-		"quick_hover": Color(0.80, 0.82, 0.70, 0.18),
-		"quick_selected": Color(0.80, 0.82, 0.70, 0.24),
-	}
-	style.bg_color = fills.get(tone, PAPER)
-	style.border_color = Color("aaa084")
-	style.set_border_width_all(1)
-	if tone in ["paper", "wood"]:
-		style.border_color = Color("62584a")
-		style.shadow_color = Color(0.05, 0.10, 0.10, 0.25)
-		style.shadow_size = 5
-		style.shadow_offset = Vector2(0, 4)
-	elif tone in ["hud", "dark", "clear", "quick", "quick_hover"]:
-		style.set_border_width_all(0)
-	elif tone in ["primary", "primary_hover"]:
-		style.border_color = Color("425c50")
-	elif tone in ["slot_selected", "quick_selected"]:
-		style.border_color = Color("c7cba2") if tone == "quick_selected" else ACCENT
-		style.border_width_bottom = 3
-	style.set_corner_radius_all(2)
-	style.anti_aliasing = false
+static var _styles: Dictionary = {}
+
+static func box(tone: String = "paper") -> StyleBox:
+	if _styles.has(tone):
+		return _styles[tone]
+	var style: StyleBox
+	if tone in ["clear", "reply"]:
+		style = StyleBoxEmpty.new()
+	elif tone in ["map_hover", "map_selected"]:
+		var outline := StyleBoxFlat.new()
+		outline.draw_center = false
+		outline.border_color = ACCENT if tone == "map_selected" else Color("a0744f")
+		outline.set_border_width_all(3 if tone == "map_selected" else 2)
+		style = outline
+	elif tone in ["paper", "wood", "hud", "button", "button_hover", "button_pressed", "primary", "primary_hover", "disabled", "quick", "quick_hover", "quick_selected", "slot", "slot_hover", "slot_selected", "reply_hover"]:
+		var textured := StyleBoxTexture.new()
+		if tone == "reply_hover":
+			textured.texture = atlas("cursors", Rect2(375, 357, 3, 3))
+			textured.set_texture_margin_all(1)
+		elif tone in ["quick", "quick_hover", "quick_selected", "slot", "slot_hover", "slot_selected"]:
+			# Menu tiles 10 and 56 are the original inventory recess and selected outline.
+			textured.texture = atlas("menu", Rect2(0, 896, 64, 64) if tone in ["quick_selected", "slot_selected"] else Rect2(128, 128, 64, 64))
+			textured.set_texture_margin_all(12)
+			textured.modulate_color = Color("fff0c9") if tone in ["quick_hover", "slot_hover"] else Color.WHITE
+		else:
+			textured.texture = atlas("menu", Rect2(0, 256, 60, 60))
+			textured.set_texture_margin_all(20 if tone in ["paper", "wood"] else 10)
+			textured.modulate_color = {"wood": Color("deba88"), "hud": Color("405a52"), "button_hover": Color("fff5ca"), "button_pressed": Color("dfb77c"), "primary": Color("d9e5b4"), "primary_hover": Color("ebf6c7"), "disabled": Color("c3b18d")}.get(tone, Color.WHITE)
+		style = textured
+	else:
+		var skin: String = {"hud": "dark", "quick": "slot", "quick_hover": "slot_hover", "quick_selected": "slot_selected"}.get(tone, tone)
+		var textured := StyleBoxTexture.new()
+		textured.texture = _texture("res://assets/ui/" + skin + ".svg")
+		textured.set_texture_margin_all(10 if skin == "paper" else 8)
+		style = textured
 	style.content_margin_left = 12
 	style.content_margin_right = 12
 	style.content_margin_top = 7
 	style.content_margin_bottom = 9
+	_styles[tone] = style
 	return style
+
+static func rule(parent: Node, rect: Rect2) -> ColorRect:
+	var result := ColorRect.new()
+	result.position = rect.position
+	result.size = rect.size
+	result.color = Color("d7c3a0")
+	result.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(result)
+	return result
 
 static func _texture(path: String) -> Texture2D:
 	if not _textures.has(path):
@@ -52,12 +66,23 @@ static func _texture(path: String) -> Texture2D:
 static func symbol(key: String) -> Texture2D:
 	return _texture("res://assets/ui/icon_" + key + ".svg")
 
+static func atlas(sheet: String, region: Rect2) -> AtlasTexture:
+	var key := "%s:%s" % [sheet, region]
+	if not _textures.has(key):
+		var result := AtlasTexture.new()
+		result.atlas = _texture("res://assets/vendor/stardew-island/ui/" + ("Cursors.png" if sheet == "cursors" else "MenuTiles.png"))
+		result.region = region
+		result.filter_clip = true
+		_textures[key] = result
+	return _textures[key]
+
 static func panel(parent: Node, rect: Rect2, tone: String = "paper") -> Panel:
 	var result := Panel.new()
 	result.position = rect.position
 	result.size = rect.size
 	result.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	result.add_theme_stylebox_override("panel", box(tone))
+	result.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(result)
 	return result
 
@@ -78,12 +103,13 @@ static func button(parent: Node, value: String, rect: Rect2, callback: Callable,
 	result.position = rect.position
 	result.size = rect.size
 	result.focus_mode = Control.FOCUS_NONE
+	result.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	result.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	result.add_theme_font_size_override("font_size", 18)
 	for appearance in ["normal", "hover", "pressed", "disabled"]:
 		var tone: String = {"normal": "primary" if primary else "button", "hover": "primary_hover" if primary else "button_hover", "pressed": "button_pressed", "disabled": "disabled"}[appearance]
 		result.add_theme_stylebox_override(appearance, box(tone))
-		result.add_theme_color_override("font_" + appearance + "_color" if appearance != "normal" else "font_color", PAPER if primary and appearance in ["normal", "hover"] else (MUTED if appearance == "disabled" else INK))
+		result.add_theme_color_override("font_" + appearance + "_color" if appearance != "normal" else "font_color", MUTED if appearance == "disabled" else INK)
 	result.pressed.connect(callback)
 	parent.add_child(result)
 	return result

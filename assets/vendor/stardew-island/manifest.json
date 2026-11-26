@@ -1,0 +1,304 @@
+{
+  "repository": "https://github.com/ffffhx/stardew-valley-assets",
+  "commit": "0c31854d40fcc1f6b60b35ac07b7c9686b82b226",
+  "permission_basis": "User explicitly confirmed permission in this conversation on 2026-10-12; not a claim of a public open-source license.",
+  "files": {
+    "crops.png": {
+      "source": "assets/TileSheets/crops.png",
+      "sha256": "e816720d80a67b2ba94e89194d455c5407ce6b6cda1f5c04e30dfaa7ebac7433",
+      "bytes": 84050,
+      "canvas": [
+        256,
+        1024
+      ]
+    },
+    "fall_outdoorsTileSheet.png": {
+      "source": "assets/Maps/fall_outdoorsTileSheet.png",
+      "sha256": "4f3067ec3941d278918f6f1d3be9a43cb68ad56bbc0660c5cbf8da35865ff922",
+      "bytes": 406889,
+      "canvas": [
+        400,
+        1264
+      ]
+    },
+    "fall_town.png": {
+      "source": "assets/Maps/fall_town.png",
+      "sha256": "5768348e0cb7d1157cd8cb5ef4fe0e7388d2ed157038c49fbe8561b9e2fe7051",
+      "bytes": 292242,
+      "canvas": [
+        512,
+        1152
+      ]
+    },
+    "Fence1.png": {
+      "source": "assets/LooseSprites/Fence1.png",
+      "sha256": "cff78264b927c5f4e0ec3563c8196cdf21067b2cfd7a1fa48a12943a39a8aba8",
+      "bytes": 4883,
+      "canvas": [
+        48,
+        352
+      ]
+    },
+    "grass.png": {
+      "source": "assets/TerrainFeatures/grass.png",
+      "sha256": "0d9f7bdd52a69f8e015bb8fc1a0942aa2dc2f2646ef91b6018802cd2fd211bc8",
+      "bytes": 15132,
+      "canvas": [
+        66,
+        240
+      ]
+    },
+    "hoeDirt.png": {
+      "source": "assets/TerrainFeatures/hoeDirt.png",
+      "sha256": "070555241e4f9fd6f2a903de152a3cc0f8dbd73ae91188c39e5d67cd7451cc4c",
+      "bytes": 10301,
+      "canvas": [
+        192,
+        64
+      ]
+    },
+    "Log Cabin.png": {
+      "source": "assets/Buildings/Log Cabin.png",
+      "sha256": "9c1d19ce58198af09981bc5f47dc00e0c6f1d006020ad1f106d06f960867ee14",
+      "bytes": 20366,
+      "canvas": [
+        240,
+        112
+      ]
+    },
+    "springobjects.png": {
+      "source": "assets/Maps/springobjects.png",
+      "sha256": "2cc844a42b69e7aa245fdcdc840e5414d88958025ce82b49f45ad0e78251dc73",
+      "bytes": 257822,
+      "canvas": [
+        384,
+        624
+      ]
+    },
+    "spring_outdoorsTileSheet.png": {
+      "source": "assets/Maps/spring_outdoorsTileSheet.png",
+      "sha256": "67a3efbb31e4bde04ed29c789f34994292e9b4e1dbe01c57ad27d3693d305e92",
+      "bytes": 423794,
+      "canvas": [
+        400,
+        1264
+      ]
+    },
+    "spring_town.png": {
+      "source": "assets/Maps/spring_town.png",
+      "sha256": "464d869131635b89ce2499efc471efd7f0d74a518a9158ebe358705719a525c1",
+      "bytes": 288053,
+      "canvas": [
+        512,
+        1152
+      ]
+    },
+    "summer_outdoorsTileSheet.png": {
+      "source": "assets/Maps/summer_outdoorsTileSheet.png",
+      "sha256": "29440027f18c8ef50f210faf6d07465272315d6d32f0e509b78ac040d6b81f76",
+      "bytes": 428677,
+      "canvas": [
+        400,
+        1264
+      ]
+    },
+    "summer_town.png": {
+      "source": "assets/Maps/summer_town.png",
+      "sha256": "4f61fb6d2affc561c88d0518f310de14b4938d116f15d6843a4cf336a9f39b63",
+      "bytes": 303453,
+      "canvas": [
+        512,
+        1152
+      ]
+    },
+    "tree1_fall.png": {
+      "source": "assets/TerrainFeatures/tree1_fall.png",
+      "sha256": "bb220bcfd23d724ee7118979e8c1dadf469b7e4e9c98d5e3f5cf61122d53a63f",
+      "bytes": 9351,
+      "canvas": [
+        144,
+        160
+      ]
+    },
+    "tree1_spring.png": {
+      "source": "assets/TerrainFeatures/tree1_spring.png",
+      "sha256": "5715ef8f77f8e890b08cb752f1b6572f8abddb2435c0d23b77ec053aff064973",
+      "bytes": 10188,
+      "canvas": [
+        144,
+        160
+      ]
+    },
+    "tree1_summer.png": {
+      "source": "assets/TerrainFeatures/tree1_summer.png",
+      "sha256": "6d903f278514fcc3988760bdf5edada49269d543a1e776f76235bdb4a8427f51",
+      "bytes": 9256,
+      "canvas": [
+        144,
+        160
+      ]
+    },
+    "tree1_winter.png": {
+      "source": "assets/TerrainFeatures/tree1_winter.png",
+      "sha256": "c15ae6820c45b2be30619e6c8fab621862f07d8a5c3699e561faf7a15d47e7ae",
+      "bytes": 4405,
+      "canvas": [
+        48,
+        160
+      ]
+    },
+    "winter_outdoorsTileSheet.png": {
+      "source": "assets/Maps/winter_outdoorsTileSheet.png",
+      "sha256": "282ff1a7896df287ecb580060d94f1be8e05f6f928917d5ef3297f035dbb0e1e",
+      "bytes": 320053,
+      "canvas": [
+        400,
+        1264
+      ]
+    },
+    "winter_town.png": {
+      "source": "assets/Maps/winter_town.png",
+      "sha256": "08191898a090aa7a4c60a3799849d90c9730d6e3d3c88b625555ed515d0587e9",
+      "bytes": 287800,
+      "canvas": [
+        512,
+        1152
+      ]
+    },
+    "characters/Alex.png": {
+      "source": "assets/Characters/Alex.png",
+      "sha256": "b407c7fc5a293114151dda9af326ff8ecb9446327f807bef220b8b3dd7e7927e",
+      "bytes": 16520,
+      "canvas": [
+        64,
+        416
+      ]
+    },
+    "characters/Caroline.png": {
+      "source": "assets/Characters/Caroline.png",
+      "sha256": "67367a282240a4de4c47e593393f57c77b374f8f4baa1d300398ffc5ea1f736f",
+      "bytes": 8390,
+      "canvas": [
+        64,
+        224
+      ]
+    },
+    "characters/Clint.png": {
+      "source": "assets/Characters/Clint.png",
+      "sha256": "85cb700ce8ab4540ea6ecaa96699b0fc247cfca9bc5c93fb6d0c1f43513067e1",
+      "bytes": 12312,
+      "canvas": [
+        64,
+        352
+      ]
+    },
+    "characters/Evelyn.png": {
+      "source": "assets/Characters/Evelyn.png",
+      "sha256": "d76c67a7381035d29621da55d3f012af12daa79ed89932989cb50d25b45cdab6",
+      "bytes": 5444,
+      "canvas": [
+        64,
+        192
+      ]
+    },
+    "characters/Gus.png": {
+      "source": "assets/Characters/Gus.png",
+      "sha256": "386e1e6607369362a2b0f24b040c5927c8a0ab8899319d291497ccf7fdb88e19",
+      "bytes": 9846,
+      "canvas": [
+        64,
+        224
+      ]
+    },
+    "characters/Harvey.png": {
+      "source": "assets/Characters/Harvey.png",
+      "sha256": "229200eac40dea226b69f22a235cd53502b7c2962741e685bb61952a5b4558b1",
+      "bytes": 19261,
+      "canvas": [
+        64,
+        448
+      ]
+    },
+    "characters/Leah.png": {
+      "source": "assets/Characters/Leah.png",
+      "sha256": "c6bcd29e9f9af911173c18fcd984fca3a0823f6ed1bedbae84b5031a2f94bd1a",
+      "bytes": 15950,
+      "canvas": [
+        64,
+        416
+      ]
+    },
+    "characters/Lewis.png": {
+      "source": "assets/Characters/Lewis.png",
+      "sha256": "e29b9177d4b4c85663ea81c96d62b5cccae41afd87523503b42aba76119f013e",
+      "bytes": 10456,
+      "canvas": [
+        64,
+        256
+      ]
+    },
+    "characters/Marnie.png": {
+      "source": "assets/Characters/Marnie.png",
+      "sha256": "35e575eec090e38c91a2a246be2507095ff4a1adbefd704393fd5374bd0841cc",
+      "bytes": 13106,
+      "canvas": [
+        64,
+        288
+      ]
+    },
+    "characters/Robin.png": {
+      "source": "assets/Characters/Robin.png",
+      "sha256": "e000051e8fd204b31deef9852409f0b1ac8ad43676ca35204ac7d7fb31971658",
+      "bytes": 12104,
+      "canvas": [
+        64,
+        320
+      ]
+    },
+    "characters/Willy.png": {
+      "source": "assets/Characters/Willy.png",
+      "sha256": "3dfce1349a16d88b32d3ae5d457da2bd6b6279559006a76a5b5221eba081f87c",
+      "bytes": 11850,
+      "canvas": [
+        64,
+        352
+      ]
+    },
+    "Craftables.png": {
+      "source": "assets/TileSheets/Craftables.png",
+      "sha256": "c799b887cbccd07fe518120788606c439f5d902a515210e18e31274bbf7ff2bb",
+      "bytes": 138086,
+      "canvas": [
+        128,
+        1472
+      ]
+    },
+    "tools.png": {
+      "source": "assets/TileSheets/tools.png",
+      "sha256": "44f109091a9c35986d49b58ac0d8c1e8698a3741a65b72c115a0b41fe6dbfca2",
+      "bytes": 34517,
+      "canvas": [
+        336,
+        384
+      ]
+    },
+    "weapons.png": {
+      "source": "assets/TileSheets/weapons.png",
+      "sha256": "18b7d572ce8047a38ea5788690f7b238fb5482beb8282c83f02aa73a32087312",
+      "bytes": 13962,
+      "canvas": [
+        128,
+        144
+      ]
+    },
+    "AquariumFish.png": {
+      "source": "assets/TileSheets/AquariumFish.png",
+      "sha256": "3b4bfc7f3ac56f7769d3deed04e80a4b06044fe7a4dcb03c06cfeec9c8c36e95",
+      "bytes": 58975,
+      "canvas": [
+        480,
+        304
+      ]
+    }
+  }
+}

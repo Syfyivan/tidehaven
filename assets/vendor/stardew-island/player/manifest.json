@@ -1,0 +1,48 @@
+{
+  "repository": "ffffhx/stardew-valley-assets",
+  "commit": "0c31854d40fcc1f6b60b35ac07b7c9686b82b226",
+  "files": {
+    "farmer_base.png": {
+      "source": "assets/Characters/Farmer/farmer_base.png",
+      "git_blob": "452c0a444cb5c54de71fd6ef656b6ca16668c513",
+      "sha256": "618d250fa6786167816e4b800d83efda145f29ce4f5be83628c5001636195e42",
+      "bytes": 48739
+    },
+    "farmer_girl_base.png": {
+      "source": "assets/Characters/Farmer/farmer_girl_base.png",
+      "git_blob": "20b1188a37656d9254dd44faa6bf3791a811bad4",
+      "sha256": "09f14f2489c638a72f516b70bcfa7c59eb3b1e6be3632d6a3aa7ea06f78cf33e",
+      "bytes": 47908
+    },
+    "hairstyles.png": {
+      "source": "assets/Characters/Farmer/hairstyles.png",
+      "git_blob": "044c628fc887a13f536e9990cae595862e5a7ab4",
+      "sha256": "d1ed9c6afe271ad467118f76168630194db6ce17e4df27cbd4a938f80075e2c3",
+      "bytes": 28837
+    },
+    "shirts.png": {
+      "source": "assets/Characters/Farmer/shirts.png",
+      "git_blob": "c0e823b78b7cc931827bfeadb1adec3096da9be8",
+      "sha256": "15c4ba90946be78be468d387afb7b20bfb2382e65acef88ddf22b8509f864fc8",
+      "bytes": 136534
+    },
+    "pants.png": {
+      "source": "assets/Characters/Farmer/pants.png",
+      "git_blob": "18103e3734aaf1d58d9abe94423abb7d623ccbcc",
+      "sha256": "a9bd341673056bd1e3457c7f23e57f2986c5ca5fa594e2bb39252faa4e8b324c",
+      "bytes": 235819
+    },
+    "skinColors.png": {
+      "source": "assets/Characters/Farmer/skinColors.png",
+      "git_blob": "9ffa51a100b8f332eb1936447186f7fbc16d9850",
+      "sha256": "adf6478f34fe474821534ddfb4b9f8534d36e5bf68dcf062e3e104757d24427a",
+      "bytes": 382
+    },
+    "shoeColors.png": {
+      "source": "assets/Characters/Farmer/shoeColors.png",
+      "git_blob": "f7868852f5b95b776766930c706ec793a1414ad0",
+      "sha256": "21cd6b0a828563b834a99d9496daeb5f5659fe537800f51220599b0709cc1d26",
+      "bytes": 380
+    }
+  }
+}

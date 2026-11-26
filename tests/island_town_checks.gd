@@ -30,19 +30,25 @@ func _check(condition: bool, label: String) -> void:
 
 
 func _data(minute := 720.0, money := 100, day := 1) -> Dictionary:
-	return {"minute": minute, "money": money, "day": day, "chests": {"ignored": {"slots": [{"item": "fish", "count": 20}]}}}
+	var data:Dictionary=preload("res://scripts/world_state.gd").new().data
+	data.minute=minute;data.money=money;data.day=day
+	data.chests={"ignored":{"slots":[{"item":"fish","count":20}]}}
+	return data
 
 
 func _player(npc_id := "lin_sui", minute := 720.0, items: Dictionary = {}) -> Dictionary:
-	var at: Vector2 = Town.position(npc_id, minute)
-	var player := {"online": true, "area": "island", "x": at.x, "y": at.y, "bag": Inventory.empty_slots(Inventory.BAG_SIZE), "stamina": 40.0, "hunger": 60.0, "thirst": 65.0, "resting": false, "sleep_ready": false, "activity": {}, "hook": {}, "fishing": {}}
+	var at: Vector2 = Vector2(400,560) if npc_id=="tang_he" else Town.position(npc_id, minute)
+	var player := {"online": true, "area": Town.location(npc_id,minute).area, "room":Town.location(npc_id,minute).room, "x": at.x, "y": at.y, "bag": Inventory.empty_slots(Inventory.BAG_SIZE), "stamina": 40.0, "hunger": 60.0, "thirst": 65.0, "resting": false, "sleep_ready": false, "activity": {}, "hook": {}, "fishing": {}}
 	for item: String in items:
 		Inventory.add(player.bag, item, int(items[item]))
 	return player
 
 
 func _snapshot(data: Dictionary, player: Dictionary) -> Dictionary:
-	return {"data": data.duplicate(true), "player": player.duplicate(true)}
+	# These service regressions assert trade/activity isolation. Daily friendship
+	# has separate checks below and must not conceal any inventory or time changes.
+	var business:=data.duplicate(true);business.erase("journal")
+	return {"data": business, "player": player.duplicate(true)}
 
 
 func _trade(data: Dictionary, player: Dictionary, npc_id: String, offer: String) -> String:
@@ -53,7 +59,7 @@ func _test_residents_and_hours() -> void:
 	var data := _data()
 	var original := data.duplicate(true)
 	var rows: Dictionary = Town.residents(data)
-	_check(rows.size() == 8, "eight independent residents are available")
+	_check(rows.size() == 18, "eighteen independent residents are available")
 	var names: Dictionary = {}
 	var roles: Dictionary = {}
 	var variants: Dictionary = {}
@@ -65,14 +71,14 @@ func _test_residents_and_hours() -> void:
 		roles[row.role] = true
 		variants[row.variant] = true
 		_check(Map.LANDMARKS.has(row.landmark) and row.id == npc_id and row.talk.length() > 20 and row.hours.length() > 8, "resident has a real landmark, name, practical dialogue and hours: " + npc_id)
-		_check(row.sprite_slot in ["host", "guest"] and row.variant >= 0 and row.variant < 8 and row.color is Color, "resident appearance only selects existing authorized character variants: " + npc_id)
+		_check(preload("res://scripts/character_art.gd").NPC_SHEETS.has(npc_id) and row.variant >= 0 and row.variant < 18, "resident appearance only selects existing authorized character variants: " + npc_id)
 		_check(Town.open_at(npc_id, float(meta.start)) and not Town.open_at(npc_id, float(meta.start) - 0.01) and not Town.open_at(npc_id, float(meta.end)), "opening is inclusive and closing exclusive: " + npc_id)
 		var at_work: Vector2 = Town.position(npc_id, float(meta.start))
 		var after_work: Vector2 = Town.position(npc_id, float(meta.end))
-		_check(at_work == Map.LANDMARKS[row.landmark].door and Map.walkable(at_work), "working resident stands at its actual accessible doorway: " + npc_id)
-		_check(after_work == Map.LANDMARKS.plaza.door + Town.PLAZA_OFFSETS[int(row.variant)] and Map.walkable(after_work), "off-duty resident uses an accessible distinct plaza point: " + npc_id)
-		off_duty_positions[after_work] = true
-	_check(names.size() == 8 and roles.size() == 8 and variants.size() == 8 and off_duty_positions.size() == 8, "names, professions, appearance indexes and plaza positions are distinct")
+		_check(Town.location(npc_id,float(meta.start)).room == preload("res://scripts/resident_routes.gd").work_room(meta), "working resident is at its actual workplace: " + npc_id)
+		_check(Town.location(npc_id,float(meta.end)+0.01).moving, "closing resident starts a walking route: " + npc_id)
+		off_duty_positions[preload("res://scripts/resident_routes.gd").home(npc_id,meta)+str(preload("res://scripts/resident_routes.gd").home_point(npc_id,meta))] = true
+	_check(names.size() == 18 and roles.size() == 18 and variants.size() == 18 and off_duty_positions.size() == 18, "names, professions, appearance indexes and resting positions are distinct")
 	_check(data == original and rows == Town.residents(data), "resident positions are deterministic without adding save data")
 	rows.lin_sui.name = "fixture edit"
 	_check(Town.residents(data).lin_sui.name == "林穗", "returned resident dictionaries cannot mutate definitions")
@@ -83,14 +89,14 @@ func _test_options_and_distance() -> void:
 	var data := _data()
 	var player := _player()
 	var available: Array = Town.options(data, player)
-	_check(available.size() == 3 and available[0].action == "town_talk", "market presents talk first and two explicit paid/trade choices")
+	_check(available.size() == 7 and available[0].action == "town_talk" and available[1].action=="town_personal_open", "market presents talk, one personal story, errand/gift and three trade choices")
 	for entry: Dictionary in available:
 		_check(entry.has_all(["action", "label", "args"]) and entry.args.id == "lin_sui", "nearby service targets a real resident without ambiguous nearest selection")
 	var before := _snapshot(data, player)
 	var line: String = Town.action(data, player, "town_talk", {"id": "lin_sui"})
-	_check(line.contains("林穗") and line.contains("种子") and _snapshot(data, player) == before, "talk supplies personal guidance without changing any state")
+	_check(line.contains("林穗") and line.contains("种子") and _snapshot(data, player) == before and data.journal.guest.friendship.lin_sui==2, "talk adds daily friendship without changing trade or player state")
 	player.x += Town.REACH
-	_check(Town.options(data, player).size() == 3, "service reach includes exactly 64 pixels")
+	_check(Town.options(data, player).size() == 7, "all seven options include exactly 64 pixels")
 	player.x += 0.01
 	before = _snapshot(data, player)
 	_trade(data, player, "lin_sui", "buy_seed")
@@ -115,7 +121,7 @@ func _test_options_and_distance() -> void:
 			market_actions.append(entry.action)
 	before = _snapshot(data, player)
 	_trade(data, player, "lin_sui", "buy_seed")
-	_check(market_actions == ["town_talk"] and _snapshot(data, player) == before, "off-duty market resident cannot sell from the plaza")
+	_check(market_actions == ["town_talk","town_personal_open"] and _snapshot(data, player) == before, "off-duty market resident can talk about her story but cannot sell from the plaza")
 	player.x = Map.LANDMARKS.market.door.x
 	player.y = Map.LANDMARKS.market.door.y
 	before = _snapshot(data, player)

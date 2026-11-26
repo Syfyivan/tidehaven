@@ -1,5 +1,6 @@
 extends RefCounted
 
+const Threats = preload("res://scripts/sea_threats.gd")
 const Inventory = preload("res://scripts/inventory.gd")
 const REACH := 64.0
 const MOVE_CANCEL := 8.0
@@ -120,6 +121,9 @@ static func _tick_spear(data: Dictionary, player: Dictionary, delta: float) -> S
 			var direction := Vector2(float(activity.dx), float(activity.dy))
 			var to := from + direction * distance
 			var hit := _swept_fish(data.get("entities", {}), from, to)
+			var enemy_hit := Threats.swept(data, from, to)
+			if not enemy_hit.is_empty() and (hit.is_empty() or float(enemy_hit.fraction) <= float(hit.fraction)):
+				hit = enemy_hit
 			if not hit.is_empty():
 				var fraction := float(hit.fraction)
 				activity.x = from.lerp(to, fraction).x
@@ -127,7 +131,9 @@ static func _tick_spear(data: Dictionary, player: Dictionary, delta: float) -> S
 				activity.distance = minf(SPEAR_RANGE, float(activity.distance) + distance * fraction)
 				left -= consumed * fraction
 				var bag: Array = player.bag.duplicate(true)
-				if Inventory.add(bag, "fish", 1) != 0:
+				if hit.get("threat", false):
+					notice = Threats.repel(data, str(hit.id))
+				elif Inventory.add(bag, "fish", 1) != 0:
 					notice = "背包已满，鱼仍留在水中。"
 				else:
 					player.bag = bag

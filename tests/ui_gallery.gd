@@ -6,6 +6,7 @@ const IslandState = preload("res://scripts/island_state.gd")
 var main: Node
 var folder := ""
 var shots: int = 0
+var checks: int = 0
 
 func _ready() -> void:
 	main = get_parent()
@@ -18,9 +19,17 @@ func _ready() -> void:
 
 func _run() -> void:
 	await _shot("01-title.png")
-	main._start("solo", false)
+	await _click(main.new_game_button.get_global_rect().get_center())
+	if not _check(main.mode == "solo", "normal menu click starts the packaged game"):
+		return
 	main.toast_clock = 0
 	await _shot("02-deck.png")
+	for notice: String in ["已放好，里面的物品和加工进度都保留。", "材料不足，先去收集木材。"]:
+		main._toast(notice)
+		await get_tree().process_frame
+		if not _check(main.status.text == notice and main.status.get_theme_color("font_color").get_luminance() < 0.4, "readable notification ink on paper"):
+			return
+		await _shot("notice-%d.png" % checks)
 	await get_tree().create_timer(2.0).timeout
 	await _shot("10-deck-current.png")
 	for item in {"wood": 16, "leaf": 9, "plastic": 7, "scrap": 3, "rope": 2, "cup": 1, "fish": 4, "seed": 5}:
@@ -29,6 +38,15 @@ func _run() -> void:
 	await _shot("03-bag.png")
 	main.inventory_ui._clicked("bag", 0, false)
 	await _shot("03a-wood-detail.png")
+	var before_discard: Array = main.world.data.players.host.bag.duplicate(true)
+	await _click(main.inventory_ui.discard_button.get_global_rect().get_center())
+	await _tap(KEY_C)
+	if not _check(main.inventory_ui.visible and main.inventory_ui.discard_dialog.visible and not main.crafting_ui.visible, "packaged discard confirmation owns menu shortcuts"):
+		return
+	await _shot("03b-discard-confirmation.png")
+	await _tap(KEY_ESCAPE)
+	if not _check(main.inventory_ui.visible and not main.inventory_ui.discard_dialog.visible and main.world.data.players.host.bag == before_discard, "packaged Escape cancels only discard without losing items"):
+		return
 	main._toggle_inventory()
 	var contents := Inventory.empty_slots(16)
 	Inventory.add(contents, "wood", 12)
@@ -79,7 +97,7 @@ func _run() -> void:
 	main.world.data.players.guest.x = 505.0
 	main.world.data.players.guest.y = 302.0
 	await _shot("13-partners.png")
-	for shape in [Vector2i(1280, 800), Vector2i(1280, 720), Vector2i(1024, 768), Vector2i(1440, 600)]:
+	for shape in [Vector2i(960, 600), Vector2i(1280, 800), Vector2i(1280, 720), Vector2i(1024, 768), Vector2i(1440, 600)]:
 		get_window().size = shape
 		await get_tree().create_timer(0.2).timeout
 		await _shot("14-deck-%dx%d.png" % [shape.x, shape.y])
@@ -100,8 +118,48 @@ func _run() -> void:
 		main.world.data.players.guest.x = 505.0
 		main.world.data.players.guest.y = 302.0
 	await _gallery_07()
-	print("UI GALLERY: %d visual fixtures captured at %s" % [shots, folder])
+	var expected_bag: Array = main.world.data.players.host.bag.duplicate(true)
+	var expected_structures: Dictionary = main.world.data.structures.duplicate(true)
+	var expected_chests: Dictionary = main.world.data.chests.duplicate(true)
+	await _click(main.return_title_button.get_global_rect().get_center())
+	if not _check(main.mode == "menu" and not main.continue_button.disabled, "packaged save and return to title"):
+		return
+	await _click(main.continue_button.get_global_rect().get_center())
+	if not _check(main.mode == "solo" and main.world.data.players.host.bag == expected_bag and main.world.data.structures == expected_structures and main.world.data.chests == expected_chests, "packaged continue preserves bag, facilities and chest contents"):
+		return
+	await _shot("33-continued.png")
+	if not (await _homestead_gallery()):
+		return
+	print("UI GALLERY: %d visual fixtures, %d checks passed at %s" % [shots, checks, folder])
 	get_tree().quit()
+
+func _check(condition: bool, description: String) -> bool:
+	checks += 1
+	if not condition:
+		printerr("FAIL GALLERY: ", description)
+		get_tree().quit(1)
+	return condition
+
+func _click(point: Vector2) -> void:
+	for down in [true, false]:
+		var event := InputEventMouseButton.new()
+		event.position = point
+		event.global_position = point
+		event.button_index = MOUSE_BUTTON_LEFT
+		event.pressed = down
+		get_viewport().push_input(event, true)
+		await get_tree().process_frame
+	await get_tree().create_timer(0.2).timeout
+
+func _tap(code: int) -> void:
+	for down in [true, false]:
+		var event := InputEventKey.new()
+		event.keycode = code
+		event.physical_keycode = code
+		event.pressed = down
+		get_viewport().push_input(event, true)
+		await get_tree().process_frame
+	await get_tree().create_timer(0.2).timeout
 
 func _gallery_07() -> void:
 	# Keep all original 27 fixtures above. These cases are visual arrangements,
@@ -191,6 +249,15 @@ func _gallery_07() -> void:
 	main.world.data.chart.visited = true
 	main.world.data.island = IslandState.create()
 	await _shot("27-first-island-landing.png")
+	await _tap(KEY_M)
+	await _click(main.island_atlas.region_buttons.harbor.get_global_rect().get_center())
+	var page_button: Button = main.island_atlas.page_buttons["1,0"]
+	await _click(page_button.get_global_rect().get_center())
+	var page_outline: StyleBox = page_button.get_theme_stylebox("normal")
+	if not _check(main.island_atlas.visible and page_outline is StyleBoxFlat and not page_outline.draw_center, "packaged selected island page preserves the geography below its outline"):
+		return
+	await _shot("27a-island-map-outline.png")
+	await _tap(KEY_ESCAPE)
 	player.x = 466.0
 	player.y = 365.0
 	main.world.data.island.plots["15,10"] = {"crop": "seed", "growth": 4, "watered": false, "covered": false, "dead": false}
@@ -231,3 +298,61 @@ func _shot(filename: String) -> void:
 		get_tree().quit(1)
 	else:
 		shots += 1
+
+
+func _homestead_gallery() -> bool:
+	var town = preload("res://scripts/island_town.gd")
+	var map = preload("res://scripts/island_map.gd")
+	main.set_physics_process(false)
+	var player: Dictionary = main.world.data.players.host
+	player.area = "island"
+	player.bag = Inventory.empty_slots(12)
+	main.world.data.minute = 720.0
+	main.world.data.chart.visited = true
+	var coast: Vector2 = Archipelago.island_position(main.world.data.chart)
+	main.world.data.navigation.x = coast.x
+	main.world.data.navigation.y = coast.y
+	main.world.data.navigation.anchored = true
+	var at: Vector2 = town.position("xu_an", 720)
+	player.x = at.x
+	player.y = at.y + 30
+	main.active_tool = "hook"
+	main._update_hud()
+	await get_tree().process_frame
+	await _click(main.view.get_global_transform_with_canvas() * main.view.world_to_screen(at, "island"))
+	if not _check(main.dialogue_ui.visible and main.dialogue_ui.choice_button.visible, "packaged mayor opens rental dialogue by click"):
+		return false
+	await _shot("34-mayor.png")
+	await _click(main.dialogue_ui.choice_button.get_global_rect().get_center())
+	await _click(main.dialogue_ui.choice_button.get_global_rect().get_center())
+	if not _check(main.world.data.island.homestead.rented and main.world.data.island.homestead.claimed.host and Inventory.count(player.bag, "seed") == 6, "packaged rental and personal gift settle through two explicit choices"):
+		return false
+	await _shot("35-gift.png")
+	await _tap(KEY_ESCAPE)
+	player.x = map.YARD_GATE.x + 50
+	player.y = map.YARD_GATE.y
+	await _shot("36-yard.png")
+	for spot in [{"name":"39-native-market","at":Vector2(960,820)},{"name":"40-native-workshops","at":Vector2(1400,1260)},{"name":"41-native-fishery","at":Vector2(1400,430)},{"name":"42-native-dock","at":map.DOCK}]:
+		player.x=spot.at.x
+		player.y=spot.at.y
+		await _shot(spot.name+".png")
+	player.x=map.YARD_GATE.x+50
+	player.y=map.YARD_GATE.y
+
+	await _tap(KEY_M)
+	await _click(main.island_atlas.region_buttons.harbor.get_global_rect().get_center())
+	await _shot("37-yard-map.png")
+	await _tap(KEY_ESCAPE)
+	var home: Dictionary = main.world.data.island.homestead.duplicate(true)
+	await _tap(KEY_ESCAPE)
+	await _click(main.return_title_button.get_global_rect().get_center())
+	if not _check(main.mode == "menu", "packaged leased yard saves through pause menu"):
+		return false
+	var saved: Variant = JSON.parse_string(FileAccess.get_file_as_string(main.save_path))
+	if not _check(saved.version == 16 and saved.state.version == 16, "save envelope and world both use v16"):
+		return false
+	await _click(main.continue_button.get_global_rect().get_center())
+	if not _check(main.mode == "solo" and main.world.data.island.homestead == home and Inventory.count(main.world.data.players.host.bag, "seed") == 6, "packaged Continue retains lease and exactly one personal gift"):
+		return false
+	await _shot("38-yard-continued.png")
+	return true

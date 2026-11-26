@@ -94,9 +94,9 @@ func _chart_checks() -> void:
 	await _settle()
 	_check(main.chart_ui.full_chart and main.chart_ui.island_buttons["island_mist"].visible, "a compass in the local bag exposes the full chart")
 	await _click(main.chart_ui.island_buttons["island_mist"].get_global_rect().get_center())
-	_check(main.chart_ui.selected_island == "island_mist" and main.chart_ui.destination_button.disabled, "full chart still cannot unlock the unplayable island")
+	_check(main.chart_ui.selected_island == "island_mist" and not main.chart_ui.destination_button.disabled, "full chart offers the newly playable island")
 	await _click(main.chart_ui.destination_button.get_global_rect().get_center())
-	_check(str(chart.destination).is_empty(), "locked island cannot acquire a waypoint through its disabled control")
+	_check(str(chart.destination)=="island_mist" and is_equal_approx(float(navigation.x),home.x-401.0), "waypoint marks the new island without teleporting")
 	await _click(main.chart_ui.island_buttons[Archipelago.HOME_ID].get_global_rect().get_center())
 	var navigation_before: Dictionary = navigation.duplicate(true)
 	await _click(main.chart_ui.destination_button.get_global_rect().get_center())
@@ -108,8 +108,7 @@ func _chart_checks() -> void:
 	var compass_index: int = _item_index("compass")
 	_check(compass_index >= 0, "local compass remains a real inventory stack")
 	if compass_index >= 0:
-		await _click(main.inventory_ui.bag_buttons[compass_index].get_global_rect().get_center())
-		await _click(main.inventory_ui.chest_buttons[0].get_global_rect().get_center())
+		await _drag_slot(main.inventory_ui.bag_buttons[compass_index],main.inventory_ui.chest_buttons[0])
 	_check(Inventory.count(_player().bag, "compass") == 0 and Inventory.count(main.world.data.chests.chest_0.slots, "compass") == 2, "actual slot clicks store the compass without duplicating it")
 	await _tap(KEY_ESCAPE)
 	await _tap(KEY_M)
@@ -223,3 +222,11 @@ func _check(condition: bool, description: String) -> void:
 	if not condition:
 		failures += 1
 		printerr("FAIL ", description)
+
+func _drag_slot(source:Button,target:Button)->void:
+	var a:=source.get_global_rect().get_center();var b:=target.get_global_rect().get_center()
+	var motion:=InputEventMouseMotion.new();motion.position=a;motion.global_position=a;root.push_input(motion,true);await process_frame
+	var press:=InputEventMouseButton.new();press.position=a;press.global_position=a;press.button_index=MOUSE_BUTTON_LEFT;press.button_mask=MOUSE_BUTTON_MASK_LEFT;press.pressed=true;root.push_input(press,true);await process_frame
+	for i in range(1,9):
+		motion=InputEventMouseMotion.new();motion.position=a.lerp(b,i/8.0);motion.global_position=motion.position;motion.relative=(b-a)/8;motion.button_mask=MOUSE_BUTTON_MASK_LEFT;root.push_input(motion,true);await process_frame
+	var release:=InputEventMouseButton.new();release.position=b;release.global_position=b;release.button_index=MOUSE_BUTTON_LEFT;release.pressed=false;root.push_input(release,true);await _settle()

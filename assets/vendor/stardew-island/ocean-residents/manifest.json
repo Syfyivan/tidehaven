@@ -1,0 +1,30 @@
+{
+  "commit": "0c31854d40fcc1f6b60b35ac07b7c9686b82b226",
+  "files": [
+    {
+      "source": "assets/Animals/turtle.png",
+      "file": "ocean-residents/turtle.png",
+      "sha256": "9918d371e497adf1992349de730167901284b4a06c04ea0d0a9d109e71d6f633"
+    },
+    {
+      "source": "assets/Characters/Junimo.png",
+      "file": "ocean-residents/Junimo.png",
+      "sha256": "56fb3f4c3046ef2496bfc6e37d8b2e0ebdd8f54a3aa468a1c9944ecc6ac1fed4"
+    },
+    {
+      "source": "assets/Characters/SeaMonsterKrobus.png",
+      "file": "ocean-residents/SeaMonsterKrobus.png",
+      "sha256": "baf78ad45752a4cc4c65e47bcf1500716b3f3024846527e58b1a75994ed26a71"
+    },
+    {
+      "source": "assets/Maps/mermaid_house_tiles.png",
+      "file": "ocean-residents/mermaid_house_tiles.png",
+      "sha256": "8640e470972d235fe94c01f130ee143353d362d7813ef61cf85933fe6c62c577"
+    },
+    {
+      "source": "assets/Maps/pirates_tilesheet.png",
+      "file": "ocean-residents/pirates_tilesheet.png",
+      "sha256": "8cda03c9551d151ca9c11322e53efee075d3bcb4be99cdcf7b8d883e535d8e28"
+    }
+  ]
+}

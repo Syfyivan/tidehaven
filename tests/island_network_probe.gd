@@ -75,7 +75,7 @@ func _ready() -> void:
 
 func _setup_fixture() -> void:
 	var data: Dictionary = main.world.data
-	if not _check(int(data.version) == 10 and data.island.depleted.is_empty() and data.island.plots.is_empty(), "fresh v10 chart has sparse empty island progress"):
+	if not _check(int(data.version) == 11 and data.island.depleted.is_empty() and data.island.plots.is_empty(), "fresh v10 chart has sparse empty island progress"):
 		return
 	if not _check(IslandMap.tillable(FARM_POINT) and IslandMap.water_near(FRESHWATER), "controlled farm clearing and freshwater bank are valid map locations"):
 		return
@@ -506,7 +506,7 @@ func _client() -> void:
 				_next("saved")
 		"saved":
 			if server_stage == "saved" and _count(data, "guest", "leaf") == 2:
-				if not _check(int(data.version) == 10 and bool(data.chart.visited) and int(data.day) == 2 and int(_plot(data).growth) == 1 and not bool(_plot(data).watered) and int(player.can_water) == 19 and int(data.players.host.can_water) == 20 and _count(data, "guest", "wood") == 3 and _count(data, "guest", "seed") == 1 and bool(data.navigation.anchored) and not bool(data.navigation.moored), "client receives exact v10 island, daily farming, independent water and final salvage state before exit"):
+				if not _check(int(data.version) == 11 and bool(data.chart.visited) and int(data.day) == 2 and int(_plot(data).growth) == 1 and not bool(_plot(data).watered) and int(player.can_water) == 19 and int(data.players.host.can_water) == 20 and _count(data, "guest", "wood") == 3 and _count(data, "guest", "seed") == 1 and bool(data.navigation.anchored) and not bool(data.navigation.moored), "client receives exact v10 island, daily farming, independent water and final salvage state before exit"):
 					return
 				_finish()
 
@@ -596,7 +596,7 @@ func _finish() -> void:
 	if report == null:
 		_fail("cannot write passing report")
 		return
-	report.store_string(JSON.stringify({"passed": true, "role": role, "version": 10, "fixture": "controlled starting tools/supplies, dock and actor positions, one staged drift object; actual ENet actions, timed collection and one real shared-sleep day; not a normal-progression playthrough", "checks": checks, "elapsed_ms": Time.get_ticks_msec() - start_ms}, "\t"))
+	report.store_string(JSON.stringify({"passed": true, "role": role, "version": 16, "fixture": "controlled starting tools/supplies, dock and actor positions, one staged drift object; actual ENet actions, timed collection and one real shared-sleep day; not a normal-progression playthrough", "checks": checks, "elapsed_ms": Time.get_ticks_msec() - start_ms}, "\t"))
 	report.close()
 	finished = true
 	set_process(false)

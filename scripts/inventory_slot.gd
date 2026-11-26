@@ -4,11 +4,17 @@ const Art = preload("res://scripts/art_catalog.gd")
 const Inventory = preload("res://scripts/inventory.gd")
 const UI = preload("res://scripts/ui_style.gd")
 const ITEM_HELP := {
+	"mushroom":["用于寿司屋沙拉或供货。","风语林地采摘"],
+	"rice":["搭配鲜鱼和海苔制作鱼卷。","超市购买"],
+	"seaweed":["制作海苔鱼卷。","渔铺购买"],
+	"sashimi":["选持后给点单的顾客上菜，也可食用。","寿司屋切配台：鱼×2"],
+	"maki":["选持后给点单的顾客上菜，也可食用。","寿司屋切配台：鱼、大米、海苔"],
+	"salad":["选持后给点单的顾客上菜，也可食用。","寿司屋切配台：蔬菜×2、林菇"],
 	"fiber": ["制作绳子与暖棚的植物纤维。", "岛上用镰刀割取杂草"],
-	"hoe": ["岛上按5开垦一格；点击埋藏痕迹可挖掘。", "手工制作：木板、石料、绳"],
-	"scythe": ["随身携带后点击杂草割纤维，也能清理枯苗。", "手工制作：木板、废金属、绳"],
-	"watering_can": ["按7浇一格，容量20；淡水池边P补水。", "手工制作：塑料、废金属"],
-	"canopy": ["岛上按8给一格搭暖棚；可跨季，仍需每天浇水。", "手工制作：木板、纤维、塑料"],
+	"hoe": ["选中后点击空地开垦；点击埋藏痕迹可挖掘。", "手工制作：木板、石料、绳"],
+	"scythe": ["选中后点击杂草割纤维，也能清理枯苗。", "手工制作：木板、废金属、绳"],
+	"watering_can": ["选中后点击一格浇水，容量20；淡水池边P补水。", "手工制作：塑料、废金属"],
+	"canopy": ["选中后点击一格耕地搭暖棚；可跨季，仍需每天浇水。", "手工制作：木板、纤维、塑料"],
 	"summer_seed": ["玉米：夏秋可种，浇水过夜7天成熟。", "岛上挖掘埋藏种子"],
 	"autumn_seed": ["南瓜：秋季可种，浇水过夜10天成熟。", "岛上挖掘埋藏种子"],
 	"winter_seed": ["雪根：冬季可种，浇水过夜6天成熟。", "岛上挖掘埋藏种子"],
@@ -32,9 +38,9 @@ const ITEM_HELP := {
 	"ingot": ["用于脚蹼和强化打捞钩等装备。", "熔炉：矿石 + 木板"],
 	"fins": ["随身携带：游泳速度 +30%，不叠加。", "制作手册 · 探索与升级"],
 	"reinforced_hook": ["随身携带：钩得更远、收钩更快。", "制作手册 · 探索与升级"],
-	"paddle": ["按 3 选船桨，点击海面划向目标方向。", "手工制作：木板、塑料、绳子"],
+	"paddle": ["选中船桨，点击海面划向目标方向。", "手工制作：木板、塑料、绳子"],
 	"anchor": ["在甲板按 G 抛锚或收锚；下潜前须停船。", "手工制作：木板、废金属、绳子"],
-	"harpoon": ["水下按 4 选鱼叉，朝游鱼发射；命中才收获。", "手工制作：木板 ×3、废金属 ×2、绳子 ×1"],
+	"harpoon": ["选中鱼叉，朝游鱼发射；命中才收获。", "手工制作：木板 ×3、废金属 ×2、绳子 ×1"],
 	"axe": ["岛上砍树和枯枝必需；也能加快水下采木。", "手工制作：木板 ×3、石料 ×2、绳子 ×1"],
 	"pickaxe": ["岛上采石和矿石必需；也能加快水下开采。", "手工制作：木板 ×3、石料 ×3、绳子 ×1"],
 	"compass": ["随身携带：M 查看完整海图，并可设置航标。", "手工制作：废金属 ×3、塑料 ×2、绳子 ×1"],
@@ -50,15 +56,12 @@ func _ready() -> void:
 	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	item_icon = UI.icon(self, null, Rect2(12, 8, 48, 48))
-	count_background = UI.panel(self, Rect2(39, 48, 27, 20), "paper")
-	var count_style := UI.box("paper")
-	count_style.set_border_width_all(0)
-	count_style.shadow_size = 0
-	count_style.bg_color = Color(UI.PAPER, 0.94)
-	count_background.add_theme_stylebox_override("panel", count_style)
+	count_background = UI.panel(self, Rect2(28, 48, 38, 20), "clear")
 	count_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	caption = UI.label(count_background, "", Rect2(1, -1, 25, 22), 16)
-	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	caption = UI.label(count_background, "", Rect2(1, -1, 37, 22), 16)
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	caption.add_theme_color_override("font_outline_color", UI.PAPER)
+	caption.add_theme_constant_override("outline_size", 3)
 	_update_appearance()
 
 func show_stack(value: Dictionary, is_selected: bool) -> void:
@@ -78,9 +81,11 @@ func _update_appearance() -> void:
 	item_icon.visible = not stack.is_empty()
 	count_background.visible = not stack.is_empty()
 	caption.text = str(stack.count) if not stack.is_empty() else ""
-	tooltip_text = "%s ×%d\n%s\n来源：%s\n左键整堆 · 右键拆分" % [Inventory.ITEM_NAMES.get(item, item), int(stack.count), item_usage(item), item_source(item)] if not stack.is_empty() else ""
+	tooltip_text = "%s ×%d\n%s\n来源：%s\n单击选持 · 拖动整理 · 右键拆分" % [Inventory.ITEM_NAMES.get(item, item), int(stack.count), item_usage(item), item_source(item)] if not stack.is_empty() else ""
 
 static func item_usage(item: String) -> String:
+	if item in ["chest", "workbench", "purifier", "grill", "garden", "bed", "foundation", "furnace"]:
+		return "选中后预览放置；可放甲板或已租荒院空地。" if item == "chest" else "选中后在甲板预览放置；成功才消耗1件。"
 	return str(ITEM_HELP.get(item, ["可用于制作或甲板生活。", "探索海面和水下"])[0])
 
 static func item_source(item: String) -> String:

@@ -1,0 +1,9 @@
+{
+  "Name": "Tidehaven Feasibility Slice",
+  "Author": "Syfyivan",
+  "Version": "0.1.0",
+  "Description": "Isolated native deck and networked side-view dive experiment. Not a migration.",
+  "UniqueID": "Syfyivan.TidehavenSpike",
+  "EntryDll": "TidehavenSpike.dll",
+  "MinimumApiVersion": "4.2.1"
+}

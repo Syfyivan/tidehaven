@@ -15,6 +15,10 @@ var phase_ms := 0
 var talk_minute := 0.0
 var bath_start_ms := 0
 var early_bath_checked := false
+var bath_elapsed := 0.0
+var bath_first_remaining := 0.0
+var bath_last_remaining := 0.0
+var bath_progress_samples := 0
 var checks: Array[String] = []
 var original_host_bag: Array = []
 var expected: Dictionary = {}
@@ -88,7 +92,7 @@ func _setup_fixture() -> void:
 	Inventory.add(data.players.host.bag, "wood", 1)
 	Inventory.add(data.players.guest.bag, "veg", 2)
 	original_host_bag = data.players.host.bag.duplicate(true)
-	_check(int(data.version) == 10 and Town.open_at("lin_sui", float(data.minute)) and Archipelago.within_docking_range(data.chart, data.navigation), "fixture starts a valid v10 docked town visit with two vegetables and eleven shared coins")
+	_check(int(data.version) == 16 and Town.open_at("lin_sui", float(data.minute)) and Archipelago.within_docking_range(data.chart, data.navigation), "fixture starts a valid v10 docked town visit with two vegetables and eleven shared coins")
 
 
 func _process(_delta: float) -> void:
@@ -302,6 +306,9 @@ func _client() -> void:
 			if player.activity.get("kind") == "town_bath":
 				if not _check(float(player.activity.remaining) > 7 and int(data.money) == 4 and float(player.stamina) == 20, "client sees pending eight-second bath rather than an injected completion reward"):
 					return
+				bath_elapsed = float(data.elapsed)
+				bath_first_remaining = float(player.activity.remaining)
+				bath_last_remaining = bath_first_remaining
 				client_stage.rpc_id(1, "bath_started")
 				_next("bath_running")
 		"bath_running":
@@ -309,9 +316,17 @@ func _client() -> void:
 				if float(player.stamina) != 20 or int(data.money) != 4:
 					_fail("client observed premature bath reward or fee")
 					return
-				if _age() > 2 and not early_bath_checked:
+				if float(player.activity.remaining) < bath_last_remaining:
+					bath_progress_samples += 1
+					bath_last_remaining = float(player.activity.remaining)
+				# Judge progress using the timestamp of the received host snapshot;
+				# local wall time can precede its next 80ms snapshot at the 2s boundary.
+				if float(data.elapsed)-bath_elapsed >= 2 and not early_bath_checked:
 					early_bath_checked = true
-					_check(float(player.activity.remaining) < 6 and float(player.activity.remaining) > 0, "multiple real host snapshots advance bath progress while coins and stamina remain unchanged")
+					_check(bath_progress_samples >= 3 and bath_last_remaining <= bath_first_remaining-1.8 and bath_last_remaining > 0, "multiple distinct host snapshots advance bath progress without early payment or recovery")
+				if _age() > 4 and not early_bath_checked:
+					_fail("host bath progress snapshots stalled for four wall seconds")
+					return
 			elif float(player.stamina) == 80 and int(data.money) == 1:
 				if not _check(Time.get_ticks_msec() - bath_start_ms >= 7800 and early_bath_checked and float(player.thirst) > 65, "client receives exactly one completed bath after eight real seconds"):
 					return
@@ -328,11 +343,11 @@ func _resume() -> void:
 	var data: Dictionary = main.world.data
 	if not _check(_json(_persistent_fields(data)) == _json(expected), "independent process restores exact v10 positions, bags, shared money, town recovery and island progress"):
 		return
-	if not _check(int(data.version) == 10 and int(data.money) == 1 and _count(data, "host", "axe") == 1 and _count(data, "guest", "seed") == 1 and _count(data, "guest", "veg") == 0, "saved purchases and completed sale income survive a normal solo load"):
+	if not _check(int(data.version) == 16 and int(data.money) == 1 and _count(data, "host", "axe") == 1 and _count(data, "guest", "seed") == 1 and _count(data, "guest", "veg") == 0, "saved purchases and completed sale income survive a normal solo load"):
 		return
 	if not _check(float(data.players.guest.stamina) == 80 and data.players.host.activity.is_empty() and data.players.guest.activity.is_empty(), "paid bath recovery survives without replaying an activity or charging again"):
 		return
-	if not _check(data.players.host.online and not data.players.guest.online and data.players.host.area == "island" and data.players.guest.area == "deck", "solo restore keeps host town position and the safely disconnected guest offline"):
+	if not _check(data.players.host.online and not data.players.guest.online and data.players.host.area == "room" and data.players.guest.area == "deck", "solo restore keeps host town position and the safely disconnected guest offline"):
 		return
 	_finish()
 
@@ -354,13 +369,17 @@ func _count(data: Dictionary, slot: String, item: String) -> int:
 
 
 func _at_npc(player: Dictionary, npc_id: String, data: Dictionary) -> bool:
-	return player.area == "island" and Vector2(float(player.x), float(player.y)).is_equal_approx(Town.position(npc_id, float(data.minute)))
+	var location:=Town.location(npc_id,float(data.minute))
+	var at:Vector2=Vector2(400,560) if npc_id=="tang_he" else location.at
+	return player.area==location.area and player.room==location.room and Vector2(player.x,player.y).distance_to(at)<3
 
 
 func _place(slot: String, npc_id: String) -> void:
 	var player: Dictionary = main.world.data.players[slot]
-	var at: Vector2 = Town.position(npc_id, float(main.world.data.minute))
-	player.area = "island"
+	var location:=Town.location(npc_id,float(main.world.data.minute))
+	var at:Vector2=Vector2(400,560) if npc_id=="tang_he" else location.at
+	player.area=location.area;player.room=location.room
+	if player.area=="room":main.world.data.rooms.visited[player.room]=true
 	player.x = at.x
 	player.y = at.y
 	player.resting = false
@@ -417,7 +436,7 @@ func _write_report(passed: bool, reason: String) -> bool:
 	var report := FileAccess.open(str(main.cli.report), FileAccess.WRITE)
 	if report == null:
 		return false
-	report.store_string(JSON.stringify({"passed": passed, "role": role, "version": 10, "fixture": "controlled dock/town actor positions, 2 guest vegetables, host fish/wood, 11 shared coins and starting vitals; real ENet actions and eight-second host bath timer; not normal progression or cross-computer evidence", "phase": phase, "reason": reason, "checks": checks, "elapsed_ms": Time.get_ticks_msec() - start_ms}, "\t"))
+	report.store_string(JSON.stringify({"passed": passed, "role": role, "version": 16, "fixture": "controlled dock/town actor positions, 2 guest vegetables, host fish/wood, 11 shared coins and starting vitals; real ENet actions and eight-second host bath timer; not normal progression or cross-computer evidence", "phase": phase, "reason": reason, "checks": checks, "elapsed_ms": Time.get_ticks_msec() - start_ms}, "\t"))
 	report.close()
 	return true
 

@@ -7,18 +7,49 @@ const SHOP := Vector2(640, 395)
 const DOCK := Vector2(210, 380)
 const CAMP := Vector2(305, 385)
 static func create() -> Dictionary:
-	return {"depleted": {}, "plots": {}}
+	return {"depleted": {}, "plots": {}, "homestead": {"rented": false, "claimed": {"host": false, "guest": false}}}
 
-static func active(island: Dictionary, id: String, day: int) -> bool:
+static func active(island: Dictionary, id: String, day: int, chests: Dictionary = {}) -> bool:
 	var node: Dictionary = Map.node(id)
 	if node.is_empty() or int(island.depleted.get(id, 0)) > day:
 		return false
-	if not Map.walkable(Vector2(float(node.x), float(node.y))):
+	var at := Vector2(float(node.x), float(node.y))
+	for chest in chests.values():
+		if chest.get("area", "deck") == "island" and absf(float(chest.x)-at.x) < 40 and absf(float(chest.y)-at.y) < 40:
+			return false
+	# New maintained streets suppress old wild nodes without changing their saved ids.
+	if Map.TOWN_BOUNDS.has_point(at) and Map.terrain(at) in ["path", "bridge"]:
+		return false
+	if not Map.walkable(at):
 		return false
 	return not island.plots.has(Farming.plot_key(Vector2(float(node.x), float(node.y))))
 
-static func restore(value: Variant, version: int = 10, day: int = 1) -> Dictionary:
-	if not value is Dictionary or value.size() != 2:
+
+static func blockers(island: Dictionary, day: int, from: Vector2, to: Vector2, chests: Dictionary = {}) -> Array[Rect2]:
+	var result: Array[Rect2] = []
+	var search := Rect2(from, Vector2.ZERO).expand(to).grow(28)
+	for resource: Dictionary in Map.nodes_near(from).values():
+		var at := Vector2(resource.x, resource.y)
+		if resource.kind not in ["tree", "stone", "ore"] or not search.has_point(at):
+			continue
+		if active(island, str(resource.id), day, chests):
+			# Only ground-level solids block movement, never a tree's whole canopy.
+			result.append(Rect2(at + Vector2(-8,-9),Vector2(16,14)) if resource.kind == "tree" else Rect2(at + Vector2(-12,-12),Vector2(24,20)))
+	return result
+
+
+static func feet_clear(from: Vector2, to: Vector2, solids: Array[Rect2]) -> bool:
+	var feet := Rect2(to - Vector2(6,3),Vector2(12,6))
+	for solid: Rect2 in solids:
+		if feet.intersects(solid):
+			# Old saves / regrowth can surround a player: allow movement out, not deeper in.
+			var previous := Rect2(from - Vector2(6,3),Vector2(12,6))
+			if not previous.intersects(solid) or to.distance_squared_to(solid.get_center()) <= from.distance_squared_to(solid.get_center()):
+				return false
+	return true
+
+static func restore(value: Variant, version: int = 11, day: int = 1) -> Dictionary:
+	if not value is Dictionary or value.size() != (3 if version >= 11 else 2):
 		return {}
 	if version < 9:
 		return _migrate(value, day)
@@ -30,14 +61,23 @@ static func restore(value: Variant, version: int = 10, day: int = 1) -> Dictiona
 		if not id is String or Map.node(id).is_empty() or typeof(number) not in [TYPE_INT, TYPE_FLOAT] or not is_finite(float(number)) or floorf(float(number)) != float(number) or float(number) < 1 or float(number) > 1000010:
 			return {}
 		depleted[id] = int(number)
-	var plots: Variant = Farming.restore_plots(value.get("plots"), version == 9)
+	var plots: Variant = Farming.restore_plots(value.get("plots"), version == 9, version == 10)
 	if plots == null:
 		return {}
-	if version == 9:
+	if version <= 13:
 		plots = _fit_old_plots(plots)
 		if plots == null:
 			return {}
-	return {"depleted": depleted, "plots": plots}
+	var home: Dictionary = create().homestead
+	if version >= 11:
+		var saved: Variant = value.get("homestead")
+		if not saved is Dictionary or saved.size() != 2 or not saved.get("rented") is bool or not saved.get("claimed") is Dictionary or saved.claimed.size() != 2:
+			return {}
+		for slot in ["host", "guest"]:
+			if not saved.claimed.get(slot) is bool or (saved.claimed[slot] and not saved.rented):
+				return {}
+		home = saved.duplicate(true)
+	return {"depleted": depleted, "plots": plots, "homestead": home}
 
 static func _fit_old_plots(plots: Dictionary) -> Variant:
 	# Keep all unaffected cells exactly where they were. Only new buildings/water
