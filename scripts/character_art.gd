@@ -2,29 +2,28 @@ extends RefCounted
 ## Players share native matched appearance layers across idle/walk/tool actions.
 ## Residents retain their complete original sheets.
 const Player=preload("res://scripts/player_art.gd")
-const ROOT := "res://assets/vendor/stardew-island/characters/"
 const HOST: Texture2D = Player.MALE
 const GUEST: Texture2D = Player.FEMALE
 const HARBOR_ROOT := "res://assets/characters/harbor/"
 const NPC_SHEETS := {
-	"lu_zhou":preload(ROOT + "Alex.png"),
+	"lu_zhou":preload(HARBOR_ROOT + "lu_zhou.png"),
 	"mu_tong":preload(HARBOR_ROOT + "mu_tong.png"),
-	"gu_xing":preload(ROOT + "Maru.png"),
-	"xu_mian":preload(ROOT + "Emily.png"),
-	"chen_yu":preload(ROOT + "Elliott.png"),
-	"wen_zhi":preload(ROOT + "Penny.png"),
-	"qiao_xin":preload(ROOT + "Sam.png"),
-	"shi_xun":preload(ROOT + "Linus.png"),
-	"sen_ke":preload(ROOT + "Kent.png"),
-	"xu_an":preload(ROOT + "Lewis.png"),
-	"lin_sui":preload(ROOT + "Caroline.png"),
-	"su_qin":preload(ROOT + "Harvey.png"),
-	"tang_he":preload(ROOT + "Gus.png"),
-	"he_mu":preload(ROOT + "Robin.png"),
+	"gu_xing":preload(HARBOR_ROOT + "gu_xing.png"),
+	"xu_mian":preload(HARBOR_ROOT + "xu_mian.png"),
+	"chen_yu":preload(HARBOR_ROOT + "chen_yu.png"),
+	"wen_zhi":preload(HARBOR_ROOT + "wen_zhi.png"),
+	"qiao_xin":preload(HARBOR_ROOT + "qiao_xin.png"),
+	"shi_xun":preload(HARBOR_ROOT + "shi_xun.png"),
+	"sen_ke":preload(HARBOR_ROOT + "sen_ke.png"),
+	"xu_an":preload(HARBOR_ROOT + "xu_an.png"),
+	"lin_sui":preload(HARBOR_ROOT + "lin_sui.png"),
+	"su_qin":preload(HARBOR_ROOT + "su_qin.png"),
+	"tang_he":preload(HARBOR_ROOT + "tang_he.png"),
+	"he_mu":preload(HARBOR_ROOT + "he_mu.png"),
 	"yan_zhen":preload(HARBOR_ROOT + "yan_zhen.png"),
-	"zhou_chao":preload(ROOT + "Willy.png"),
-	"tian_qing":preload(ROOT + "Marnie.png"),
-	"lu_yao":preload(ROOT + "Evelyn.png"),
+	"zhou_chao":preload(HARBOR_ROOT + "zhou_chao.png"),
+	"tian_qing":preload(HARBOR_ROOT + "tian_qing.png"),
+	"lu_yao":preload(HARBOR_ROOT + "lu_yao.png"),
 }
 const STEP_FRAMES := [0, 1, 2, 3]
 const DIRECTION_ROWS := [0,3,1,2] # Game down/left/right/up -> atlas down/right/up/left.

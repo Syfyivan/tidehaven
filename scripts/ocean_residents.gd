@@ -4,6 +4,7 @@ const Journal=preload("res://scripts/journal.gd")
 const Inventory=preload("res://scripts/inventory.gd")
 const Farming=preload("res://scripts/farming.gd")
 const PersonalStories=preload("res://scripts/resident_stories.gd")
+const LongStories=preload("res://scripts/long_stories.gd")
 const NPCS:={
 	"bai_fan":{"name":"白帆","role":"海商","room":"island_mist","magic":false,"talk":"海上没有固定的路。木板、绳子都留一点，修筏的时候就不慌。需要换补给，或愿意帮我修帆，都可以聊聊。"},
 	"chi_sheng":{"name":"赤绳","role":"海盗","room":"island_reef","magic":false,"talk":"船长也得吃饭。你要是带了两份热料理，我愿意拿金币换，今天不谈打打杀杀。"},
@@ -36,6 +37,9 @@ static func options(data:Dictionary,player:Dictionary,slot:String)->Array:
 		var npc:Dictionary=NPCS[id]
 		result.append(Rooms.option("ocean_talk",str(npc.name)+" · "+str(npc.role),id,position(id)))
 		if npc.magic and not data.journal.tide_speech:continue
+		for choice:Dictionary in LongStories.entries(data,id):
+			choice.action=str(choice.action).replace("town_","ocean_")
+			choice.target_x=position(id).x;choice.target_y=position(id).y;result.append(choice)
 		for choice:Dictionary in PersonalStories.entries(data,slot,id):
 			choice.action=str(choice.action).replace("town_","ocean_")
 			choice.target_x=position(id).x;choice.target_y=position(id).y;result.append(choice)
@@ -45,12 +49,15 @@ static func options(data:Dictionary,player:Dictionary,slot:String)->Array:
 		if id=="bai_fan":result.append(Rooms.option("ocean_trade","换两杯淡水 · 塑料2",id,position(id)))
 	return result
 static func action(data:Dictionary,player:Dictionary,slot:String,verb:String,args:Dictionary)->String:
-	var keys:Array=["id","story","step","reply"] if verb=="ocean_personal_reply" else ["id","story","step"] if verb=="ocean_personal_open" else ["id"]
+	var keys:Array=["id","story","step","reply"] if verb=="ocean_personal_reply" else ["id","story","step"] if verb=="ocean_personal_open" else ["id","arc","step","reply"] if verb=="ocean_chronicle_reply" else ["id","arc","step"] if verb=="ocean_chronicle_open" else ["id"]
 	if args.size()!=keys.size() or not args.has_all(keys) or not args.get("id") is String or not NPCS.has(args.id) or not near(player,args.id):return "走近这位海上伙伴再交谈。"
 	if not player.activity.is_empty() or not player.hook.is_empty() or not player.fishing.is_empty():return "先完成手上的动作，或右键取消。"
 	var id:String=args.id
 	var npc:Dictionary=NPCS[id]
 	if npc.magic and not data.journal.tide_speech:return str(npc.name)+"：你听见轻轻的潮声，却还不能理解。岛上的温知也许知道它的来历。"
+	if verb in ["ocean_chronicle_open","ocean_chronicle_reply"]:
+		if player.get("resting",false) or player.get("sleep_ready",false):return "先起身再聊吧。"
+		return str(npc.name)+"："+(LongStories.open(data,str(npc.name),args) if verb=="ocean_chronicle_open" else LongStories.action(data,player,slot,args))
 	if verb in ["ocean_personal_open","ocean_personal_reply"]:
 		if player.get("resting",false) or player.get("sleep_ready",false):return "先起身再聊吧。"
 		return str(npc.name)+"："+(PersonalStories.open(data,slot,args) if verb=="ocean_personal_open" else PersonalStories.action(data,player,slot,args))

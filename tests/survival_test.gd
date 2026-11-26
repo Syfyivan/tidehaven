@@ -50,7 +50,7 @@ func _count(world, slot: String, item: String) -> int:
 
 func _test_start_and_hook() -> void:
 	var world = _world(true)
-	_check(world.data.version == 17 and world.data.deck_tiles.size() == 9 and world.data.chests.is_empty() and world.data.structures.size() == 1 and world.data.structures.bedroll_0.kind == "bedroll", "new raft starts with nine tiles and only a bedroll")
+	_check(world.data.version == 18 and world.data.deck_tiles.size() == 9 and world.data.chests.is_empty() and world.data.structures.size() == 1 and world.data.structures.bedroll_0.kind == "bedroll", "new raft starts with nine tiles and only a bedroll")
 	_check(Inventory.total_count(world.data.players.host.bag) == 0 and world.data.players.host.x == 480.0 and world.data.players.guest.x == 520.0, "new players have empty individual packs and safe raft spawns")
 	Skills.stage_drift(world, "drift_06")
 	world.action("host", "hook", {"x": 1.0, "y": 0.0})

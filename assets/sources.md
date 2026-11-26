@@ -1,5 +1,9 @@
 # Tidehaven artwork sources
 
+## 0.20 全镇18位居民近代海港像素与肖像补齐（2026-11-26）
+
+- **新增16位潮芽镇居民海港肖像与世界行走表**（`assets/portraits/harbor/<id>.png`、`assets/characters/harbor/<id>.png`，覆盖 `xu_an`、`he_mu`、`lin_sui`、`su_qin`、`tang_he`、`zhou_chao`、`tian_qing`、`lu_yao`、`chen_yu`、`wen_zhi`、`qiao_xin`、`shi_xun`、`sen_ke`、`lu_zhou`、`gu_xing`、`xu_mian`）：肖像由内置 `image_gen` 生成原创像素半身母稿后经 `tools/build-020-art.py` 量化为严格二值透明 `64×64` 原生画布；世界行走精灵表由 `tools/build-020-art.py` 按职业服饰与发式绘制为原创 `16×32` 四向四帧网格（`64×128`，固定脚点 `(8,31)`）。至此 18 位镇民全部使用项目自有可公开分发的海港资产，不再加载 `vendor/stardew-island/{characters,portraits}` 原始角色图。逐文件尺寸与 SHA256 见对应目录 `manifest.json` 与 `SOURCE.md`。
+
 ## 0.19 海港人物样板、海上伙伴肖像与原创基础音效（2026-11-26）
 
 - **5位海上伙伴肖像与近代中国海港人物肖像**（`assets/portraits/ocean/*.png`、`assets/portraits/harbor/*.png`）：由内置 `image_gen` 生成原创像素画母稿，再经 `tools/build-019-art.py` 统一量化为严格二值透明 `64×64` 原生像素画布；不含任何商业游戏解包图。逐文件尺寸与 SHA256 见对应目录 `manifest.json` 与 `SOURCE.md`。

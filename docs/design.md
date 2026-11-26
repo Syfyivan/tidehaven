@@ -1,3 +1,8 @@
+## 0.20 全镇近代海港化与三条核心长篇故事（2026-11-26）
+
+- **全镇 18 位居民近代海港视觉**：`CharacterArt` 与 `PortraitArt` 将全部 18 位潮芽镇居民切换至 `assets/{characters,portraits}/harbor/`，保持 `16×32 → 32×64` 世界尺寸、固定脚点 `(16,62)` 与 `64×64 → 128×128` 肖像尺度；日程、碰撞与交互半径不变。
+- **四条核心长线收官（`LongStories` / `world_v18.json`）**：`chronicles` 现完整覆盖 `hou_chao_yuan`、`liu_yi_wan`、`kao_an`、`hai_lin_ju`，`v1～v17` 旧档只读迁移（保留已完成《候潮院》进度并补齐新三条默认空记录）。新增 `OceanResidents` 海上长线动作 `ocean_chronicle_open` / `ocean_chronicle_reply`（校验停泊岛屿/洞穴房间、距离与潮语条件），新增 `Restaurant` 的 `shop_inspect` / `shop_style` 及 `WorldState` 的 `dock_inspect` / `dock_style` / `coast_inspect` / `coast_style`。曾实际开店结算的旧档在《今晚留一碗》田青节点自动免蔬菜材料；已解锁潮语与法术的旧档在《海里也有邻居》完整保留现有技能。详细脚本见 [narrative/jin-wan-liu-yi-wan.md](narrative/jin-wan-liu-yi-wan.md)、[narrative/chong-xin-you-ren-kao-an.md](narrative/chong-xin-you-ren-kao-an.md)、[narrative/hai-li-ye-you-lin-ju.md](narrative/hai-li-ye-you-lin-ju.md)。
+
 ## 0.19 海港人物样板、基础音效与《候潮院》长线（2026-11-26）
 
 - **单主线工程**：锁定 Godot 4.7.1 独立游戏为唯一主工程，`experiments/stardew-spike` 封存为历史技术对照。

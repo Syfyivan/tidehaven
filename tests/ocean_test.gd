@@ -203,7 +203,7 @@ func _test_save_migration() -> void:
 	Inventory.add(old.players.host.bag, "fins", 1)
 	old.structures.furnace_0 = {"id": "furnace_0", "kind": "furnace", "x": 480.0, "y": 224.0, "remaining": 8.0, "output": "ingot"}
 	var loaded = WorldState.new()
-	_check(loaded.restore(JSON.parse_string(JSON.stringify(old))) and loaded.data.version == 17 and loaded.data.entities.has("wreck_00") and loaded.data.entities.has("wreck_01"), "a real v4 shape migrates by adding the two wrecks")
+	_check(loaded.restore(JSON.parse_string(JSON.stringify(old))) and loaded.data.version == 18 and loaded.data.entities.has("wreck_00") and loaded.data.entities.has("wreck_01"), "a real v4 shape migrates by adding the two wrecks")
 	_check(not loaded.data.entities.ore_00.active and not loaded.data.entities.fish_00.active and loaded.data.structures.furnace_0.remaining == 8.0 and _count(loaded, "host", "fins") == 1, "v4 migration preserves depleted nodes, in-progress processing and equipment")
 	_check(not loaded.data.drift.drift_00.active and loaded.data.drift.drift_00.respawn == 3.0 and _point(loaded.data.drift.drift_00) == _point(old.drift.drift_00) and loaded.data.drift.drift_00.has_all(["speed", "phase", "sway"]), "v4 drift gains motion metadata while preserving collected status, delay and inactive position")
 	var heights: Dictionary = {}

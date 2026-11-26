@@ -5,7 +5,7 @@ const Routes=preload("res://scripts/resident_routes.gd")
 const Rooms=preload("res://scripts/rooms.gd")
 const Map=preload("res://scripts/island_map.gd")
 const Art=preload("res://scripts/character_art.gd")
-const NEW_RESIDENTS:={"lu_zhou":"Alex.png","mu_tong":"Leah.png","gu_xing":"Maru.png","xu_mian":"Emily.png"}
+const NEW_RESIDENTS:={"lu_zhou":"lu_zhou.png","mu_tong":"mu_tong.png","gu_xing":"gu_xing.png","xu_mian":"xu_mian.png"}
 var checks:=0
 var failures:=0
 

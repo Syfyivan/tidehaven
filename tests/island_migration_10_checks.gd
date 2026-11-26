@@ -133,7 +133,7 @@ func _test_conflicts_and_roundtrip() -> void:
 	if not _check(restored.restore(source), "valid v9 crop and landed-player fixture migrates to v10"):
 		return
 	_check(source == before, "migration does not mutate its original saved dictionary or nested crop records")
-	_check(int(restored.data.version) == 17 and not restored.migration_notice.is_empty(), "successful conflicting migration upgrades version and explicitly reports the moved plots")
+	_check(int(restored.data.version) == 18 and not restored.migration_notice.is_empty(), "successful conflicting migration upgrades version and explicitly reports the moved plots")
 	_check(restored.data.island.plots.size() == source.island.plots.size(), "migration neither loses nor duplicates any crop cell")
 	var reserved: Dictionary = {}
 	for key: String in stable_keys:

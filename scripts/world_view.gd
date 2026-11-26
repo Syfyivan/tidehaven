@@ -24,6 +24,7 @@ const Gardens = preload("res://scripts/gardens.gd")
 const Housing=preload("res://scripts/housing.gd")
 const OceanResidents=preload("res://scripts/ocean_residents.gd")
 const OceanArt=preload("res://scripts/ocean_resident_art.gd")
+const LongStories=preload("res://scripts/long_stories.gd")
 const INK := Color("363b3b")
 const CREAM := Color("eddfb9")
 const MINT := Color("a3c5a0")
@@ -591,6 +592,18 @@ func _draw_customer(customer:Dictionary)->void:
 	elif customer.phase=="eat":_sprite(customer.recipe,at+Vector2(0,-23),Vector2(24,24))
 
 func _draw_restaurant_counters()->void:
+	var lyw:Dictionary=state.get("chronicles",{}).get("liu_yi_wan",{})
+	var lyw_step:=int(lyw.get("step",0))
+	var lyw_style:=str(lyw.get("style",""))
+	if lyw_step>=5:
+		var c_at:=Restaurant.counter()
+		var banner_col:=Color("c97b38") if lyw_style=="home" else (Color("5d8c5a") if lyw_style=="season" else Color("365985"))
+		var banner_txt:="家常暖锅席" if lyw_style=="home" else ("时令鲜蔬席" if lyw_style=="season" else "海港鲜鱼席")
+		_r(c_at+Vector2(-190,-52),Vector2(64,18),Color("3b2a1e"))
+		_r(c_at+Vector2(-188,-50),Vector2(60,14),banner_col)
+		_label(banner_txt,c_at+Vector2(-158,-39),CREAM,9)
+	elif state.restaurant.rented and lyw_step==0 and Restaurant.near(_local,Restaurant.counter(),120):
+		_label("抽屉旧水牌 · 右键查看",Restaurant.counter()+Vector2(0,-82),GOLD,10)
 	if Restaurant.near(_local,Restaurant.pantry(),120):_label("备料柜 · B",Restaurant.pantry()+Vector2(0,-66),CREAM,10)
 	if Restaurant.near(_local,Restaurant.counter(),120):_label("收银台 · 左键",Restaurant.counter()+Vector2(0,-66),CREAM,10)
 	for i in 2:
@@ -933,11 +946,52 @@ func _draw_island() -> void:
 	var origin: Vector2 = _island_origin()
 	var bounds := Rect2(canvas_bounds.position + origin, canvas_bounds.size).grow(40)
 	_draw_island_ground(bounds)
-	if bounds.has_point(IslandMap.DOCK):
+	if bounds.has_point(IslandMap.DOCK) or bounds.has_point(LongStories.COAST_SITE):
 		IslandTiles.draw_patch(self,"Beach",Rect2i(14,23,4,2),Vector2(128,348),2.0,int(state.get("day",1)),["Back","Buildings"],Color.WHITE,_elapsed,"spring_beach")
 		_sprite("anchor", Vector2(142, 377), Vector2(25, 25))
 		_prop("bedroll", Vector2(305, 385))
 		_sprite("rod", Vector2(248, 435), Vector2(26, 26))
+		var ka: Dictionary = state.get("chronicles", {}).get("kao_an", {})
+		var ka_step := int(ka.get("step", 0))
+		var ka_style := str(ka.get("style", ""))
+		if ka_step >= 5:
+			if ka_style == "ferry":
+				_r(Vector2(174, 332), Vector2(36, 10), Color("8c6239"))
+				_r(Vector2(176, 326), Vector2(32, 6), Color("b58453"))
+				_r(Vector2(216, 308), Vector2(3, 34), Color("59412c"))
+				_r(Vector2(219, 310), Vector2(16, 9), Color("3c6e91"))
+				_label("定期客船港", Vector2(198, 302), Color("f1d6a6"), 10)
+			else:
+				_r(Vector2(174, 328), Vector2(16, 14), Color("875f38"))
+				_r(Vector2(192, 331), Vector2(14, 11), Color("a6794b"))
+				_r(Vector2(214, 308), Vector2(3, 34), Color("59412c"))
+				_r(Vector2(217, 310), Vector2(16, 9), Color("b86935"))
+				_label("远航补给港", Vector2(198, 302), Color("f1d6a6"), 10)
+		elif int(state.get("journal", {}).get("story_step", 0)) >= 1 and ka_step == 0 and _near(IslandMap.DOCK, 115):
+			_label("系船柱旧航线铜牌（右键查看）", Vector2(210, 334), GOLD, 10)
+		var coast_at := LongStories.COAST_SITE
+		var hlj: Dictionary = state.get("chronicles", {}).get("hai_lin_ju", {})
+		var hlj_step := int(hlj.get("step", 0))
+		var hlj_style := str(hlj.get("style", ""))
+		if hlj_step >= 5:
+			if hlj_style == "chime":
+				_r(coast_at + Vector2(-10, -24), Vector2(3, 24), Color("6e5036"))
+				_r(coast_at + Vector2(8, -24), Vector2(3, 24), Color("6e5036"))
+				_r(coast_at + Vector2(-12, -26), Vector2(25, 3), Color("8c6849"))
+				for sx in [-5, 1, 7]:
+					_r(coast_at + Vector2(sx, -22), Vector2(2, 6), Color("d9d2c0"))
+					draw_circle(coast_at + Vector2(sx + 1, -14), 3.0, Color("7db8b5"))
+				_label("听潮海螺架", coast_at + Vector2(0, -34), Color("d8efe8"), 10)
+			else:
+				draw_circle(coast_at + Vector2(0, -4), 8.0, Color("cfd6d4"))
+				draw_circle(coast_at + Vector2(0, -11), 6.0, Color("e3e8e6"))
+				draw_circle(coast_at + Vector2(0, -17), 4.0, Color("f5f7f5"))
+				_label("白石安澜界", coast_at + Vector2(0, -28), Color("d8efe8"), 10)
+		elif hlj_step == 0:
+			for px_off in [Vector2(-8, -2), Vector2(0, 1), Vector2(8, -1)]:
+				draw_circle(coast_at + px_off, 2.5, Color("eceee9"))
+			if _near(coast_at, 110):
+				_label("浅滩白石（右键查看）", coast_at + Vector2(0, 16), CREAM, 10)
 		if _near(Vector2(305, 385), 55):
 			_label("海岸营地", Vector2(305, 430), CREAM, 11)
 	var island: Dictionary = state.get("island", {})

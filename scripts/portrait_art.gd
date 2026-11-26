@@ -9,13 +9,10 @@ static func texture(npc_id: String) -> Texture2D:
 	if _portraits.has(npc_id):
 		return _portraits[npc_id]
 	var path := ""
-	if npc_id in ["yan_zhen", "mu_tong"]:
-		path = "res://assets/portraits/harbor/" + npc_id + ".png"
-	elif OceanResidents.NPCS.has(npc_id):
+	if OceanResidents.NPCS.has(npc_id):
 		path = "res://assets/portraits/ocean/" + npc_id + ".png"
 	elif CharacterArt.NPC_SHEETS.has(npc_id):
-		var filename: String = CharacterArt.NPC_SHEETS[npc_id].resource_path.get_file()
-		path = "res://assets/vendor/stardew-island/portraits/" + filename
+		path = "res://assets/portraits/harbor/" + npc_id + ".png"
 	else:
 		return null
 	return _load_atlas(npc_id, path)

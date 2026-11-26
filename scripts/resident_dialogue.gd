@@ -61,7 +61,32 @@ static func line(data:Dictionary, slot:String, id:String) -> String:
 	return str(pool[index])
 
 static func chronicle_line(data:Dictionary, id:String) -> String:
-	var hcy:Dictionary = data.get("chronicles", {}).get("hou_chao_yuan", {})
+	var chron:Dictionary = data.get("chronicles", {})
+	var lyw:Dictionary = chron.get("liu_yi_wan", {})
+	if int(lyw.get("step", 0)) == 5:
+		var s_style := str(lyw.get("style", "home"))
+		var s_label := "家常暖锅席" if s_style == "home" else ("时令鲜蔬席" if s_style == "season" else "海港鲜鱼席")
+		match id:
+			"chen_yu": return "『%s』挂出去以后，常客进门先看锅里冒没冒热气，比看菜单还快。" % s_label
+			"tian_qing": return "我的歪萝卜如今在你们『%s』里可是抢手货，林穗昨天还多问了一句呢。" % s_label
+			"su_qin": return "现在傍晚收工顺路去吃碗热汤，汤禾终于不用半夜替我盯灶台了。"
+			"lin_sui": return "北街旧店挂起『%s』的牌子后，顺路来买米买料的人也准时多了。" % s_label
+	var ka:Dictionary = chron.get("kao_an", {})
+	if int(ka.get("step", 0)) == 5:
+		var ferry:bool = str(ka.get("style", "")) == "ferry"
+		match id:
+			"bai_fan": return "雾岬外侧那块新转向标老远就能瞧见，起雾天靠潮芽港再也不用提心吊胆了。"
+			"lu_yao": return "我在西岸指路图旁注好了新航标说明，下船的客人一眼就能认出进镇的路。" if ferry else "补给港的木箱码得整整齐齐，路过外海的船主看着就踏实。"
+			"qiao_xin": return "定期客船靠岸那天，候船长椅上坐满了等信和访友的人！" if ferry else "联络船带货越来越准时，西岸补给箱省了我好多搬运工夫。"
+	var hlj:Dictionary = chron.get("hai_lin_ju", {})
+	if int(hlj.get("step", 0)) == 5:
+		var chime:bool = str(hlj.get("style", "")) == "chime"
+		match id:
+			"wen_zhi": return "《潮间邻居附录》借阅得最快，孩子们都想去浅滩听听『听潮海螺架』的轻响。" if chime else "《潮间邻居附录》定稿后，大家都认得西岸浅滩那座『白石安澜界』了。"
+			"chao_jia": return "浅滩的海螺声很轻，年轻海龟听见就知道岸边安稳，不用再绕远路了。" if chime else "那几块安澜白石叠得稳当，我们远远顺着浪看一眼就认得路。"
+			"lan_ying": return "我现在分得清抛锚声和你们敲海螺架打招呼的声音啦！" if chime else "定音石垫好以后，回声干干净净，再也不会把海龟吓跑了。"
+			"tai_lu": return "温知回信说干叶书签夹在附录里了，海风吹过浅滩的声音连风栖岛都听得见。"
+	var hcy:Dictionary = chron.get("hou_chao_yuan", {})
 	if int(hcy.get("step", 0)) != 5: return ""
 	var inn:bool = str(hcy.get("style", "")) == "inn"
 	match id:

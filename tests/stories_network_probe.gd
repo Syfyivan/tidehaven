@@ -16,10 +16,13 @@ func chosen_appearance()->Dictionary:
 
 func _setup_fixture()->void:
 	var d:Dictionary=main.world.data
-	d.navigation.anchored=true;d.chart.visited=true;d.minute=660;d.island.homestead.rented=true
+	d.navigation.anchored=true;d.chart.visited=true;d.minute=660;d.island.homestead.rented=true;d.journal.story_step=1
 	var dock:=Archipelago.island_position(d.chart);d.navigation.x=dock.x;d.navigation.y=dock.y
 	for beat:Dictionary in Stories.ARCS[OWNER].steps:
 		for item:String in beat.get("cost",{}):Inventory.add(d.players.guest.bag,item,int(beat.cost[item]))
+	Inventory.add(d.players.guest.bag,"wood",4)
+	Inventory.add(d.players.guest.bag,"rope",1)
+	d.chronicles.kao_an={"step":3,"day":1,"choices":[0,0],"style":""}
 
 func prepare(index:int)->void:
 	var d:Dictionary=main.world.data
@@ -55,11 +58,20 @@ func _host()->void:
 		93:
 			if remote_stage=="chronicle_done":
 				_check(int(d.chronicles.hou_chao_yuan.step)==2 and d.chronicles.hou_chao_yuan.choices==[0],"chronicle reply advances once over ENet without duplicate replay")
+				var mist:=Archipelago.island_position(d.chart,"island_mist")
+				d.navigation.x=mist.x;d.navigation.y=mist.y
+				Rooms._arrive(d,d.players.guest,"island_mist",preload("res://scripts/ocean_residents.gd").position("bai_fan")+Vector2(36,0))
+				_signal_client("ocean_chronicle_ready");_next()
+		94:
+			if remote_stage=="ocean_chronicle_done":
+				_check(int(d.chronicles.kao_an.step)==4 and d.chronicles.kao_an.choices==[0,0,1],"ocean chronicle reply on Bai Fan advances once over ENet")
+				var home:=Archipelago.island_position(d.chart)
+				d.navigation.x=home.x;d.navigation.y=home.y
 				expected={"stories":d.stories.duplicate(true),"chronicles":d.chronicles.duplicate(true),"journal":d.journal.duplicate(true),"wardrobe":d.wardrobe.duplicate(true),"money":d.money}
-				_check(main._persist(),"host persists ending, chronicle and personal outfit")
+				_check(main._persist(),"host persists ending, chronicles and personal outfit")
 				var f:=FileAccess.open(str(main.save_path)+".expected.json",FileAccess.WRITE);f.store_string(JSON.stringify(expected,"",true,true));f.close()
 				_signal_client("saved");_next()
-		94:
+		95:
 			if not d.players.guest.online:_finish()
 
 func _client()->void:
@@ -110,13 +122,24 @@ func _client()->void:
 			if int(d.get("chronicles",{}).get("hou_chao_yuan",{}).get("step",0))==2 and _age()>0.35:
 				main.dialogue_ui.hide();client_stage.rpc_id(1,"chronicle_done");_next()
 		19:
+			if server_stage=="ocean_chronicle_ready" and _age()>0.35:
+				main.perform("ocean_chronicle_open",{"id":"bai_fan","arc":"kao_an","step":3});_next()
+		20:
+			if main.dialogue_ui.visible and "雾岬" in main.dialogue_ui.body.text and _age()>0.35:
+				main.perform("ocean_chronicle_reply",{"id":"bai_fan","arc":"kao_an","step":3,"reply":1})
+				main.perform("ocean_chronicle_reply",{"id":"bai_fan","arc":"kao_an","step":3,"reply":0})
+				_next()
+		21:
+			if int(d.get("chronicles",{}).get("kao_an",{}).get("step",0))==4 and _age()>0.35:
+				main.dialogue_ui.hide();client_stage.rpc_id(1,"ocean_chronicle_done");_next()
+		22:
 			if server_stage=="saved":
-				_check(d.stories.guest[OWNER].step==3 and int(d.chronicles.hou_chao_yuan.step)==2 and d.money==int(Stories.ARCS[OWNER].coins),"client receives final ending, shared chronicle and one shared reward")
+				_check(d.stories.guest[OWNER].step==3 and int(d.chronicles.hou_chao_yuan.step)==2 and int(d.chronicles.kao_an.step)==4 and d.money==int(Stories.ARCS[OWNER].coins),"client receives final ending, town+ocean chronicles and one shared reward")
 				_finish()
 
 func _resume()->void:
 	var d:Dictionary=main.world.data
 	_check(_json_fields({"stories":d.stories,"chronicles":d.chronicles,"journal":d.journal,"wardrobe":d.wardrobe,"money":d.money})==_json_fields(expected),"independent process restores both identities and full story/chronicle records")
-	_check(d.stories.guest[OWNER].step==3 and d.stories.host.is_empty() and int(d.chronicles.hou_chao_yuan.step)==2,"guest ending remains personal and chronicle remains shared after reconnect")
+	_check(d.stories.guest[OWNER].step==3 and d.stories.host.is_empty() and int(d.chronicles.hou_chao_yuan.step)==2 and int(d.chronicles.kao_an.step)==4,"guest ending remains personal and both chronicles remain shared after reconnect")
 	_check(d.money==int(Stories.ARCS[OWNER].coins),"restoring does not repeat reward")
 	if not finished:_finish()

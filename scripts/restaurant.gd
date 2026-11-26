@@ -3,6 +3,7 @@ extends RefCounted
 const Inventory=preload("res://scripts/inventory.gd")
 const Rooms=preload("res://scripts/rooms.gd")
 const Routes=preload("res://scripts/resident_routes.gd")
+const LongStories=preload("res://scripts/long_stories.gd")
 const RECIPES:={
 	"sashimi":{"cost":{"fish":2},"seconds":4.0,"price":12},
 	"maki":{"cost":{"fish":1,"rice":1,"seaweed":1},"seconds":6.0,"price":16},
@@ -50,6 +51,10 @@ static func options(data:Dictionary,player:Dictionary)->Array:
 		return result
 	for point:Vector2 in [counter(),station(0),station(1)]:
 		if near(player,point):result.append(_option("shop_manage","查看菜单与备餐",{},point))
+	if near(player,counter(),96.0):
+		var lyw_step:=int(LongStories.record(data,"liu_yi_wan").get("step",0))
+		if lyw_step==0:result.append(_option("shop_inspect","查看旧店墙角的点菜单底稿",{},counter()))
+		elif lyw_step>=5:result.append(_option("shop_style","切换旧店席面牌（家常／时令／海鲜）",{},counter()))
 	if stock_access(data,player):result.append(_option("open_chest","打开备料柜 · 16格",{"id":STOCK_ID},pantry()))
 	for customer:Dictionary in data.restaurant.customers:
 		if customer.phase=="wait" and near(player,Vector2(customer.x,customer.y)):
@@ -89,7 +94,9 @@ static func action(data:Dictionary,player:Dictionary,verb:String,args:Dictionary
 			if not Inventory.remove(stock,item,int(RECIPES[args.recipe].cost[item])):return "备料柜里的%s不足，按B存入食材。"%Inventory.ITEM_NAMES[item]
 		shop.stock=stock;shop.stations[index]={"recipe":args.recipe,"remaining":RECIPES[args.recipe].seconds}
 		return "开始制作%s，完成后走近案板取餐。"%Inventory.ITEM_NAMES[args.recipe]
-	if not near(player,counter()):return "走近收银台管理营业。"
+	if not near(player,counter(),96.0 if verb in ["shop_inspect","shop_style"] else 72.0):return "走近收银台管理营业。"
+	if verb=="shop_inspect":return LongStories.inspect_shop(data) if args.is_empty() else "操作参数无效。"
+	if verb=="shop_style":return LongStories.toggle_shop_style(data) if args.is_empty() else "操作参数无效。"
 	if verb=="shop_menu":
 		if shop.open:return "先打烊，再调整菜单。"
 		if args.size()!=1 or not args.get("recipe") is String or not RECIPES.has(args.recipe):return "请选择一道菜。"

@@ -42,7 +42,7 @@ func _initialize() -> void:
 		if ptex != null:
 			_check_binary_alpha(ptex.get_image(), 1200, "harbor player portrait binary alpha: " + str(body_idx))
 
-	for npc_id in ["yan_zhen", "mu_tong"]:
+	for npc_id: String in CharacterArt.NPC_SHEETS:
 		var ptex := Portraits.texture(npc_id)
 		_check(ptex is AtlasTexture and ptex.get_size() == Vector2(64, 64), "harbor NPC portrait exists: " + npc_id)
 		if ptex != null:

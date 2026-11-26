@@ -1,20 +1,28 @@
 {
   "files": [
     {
-      "file": "yan_zhen.png",
+      "file": "chen_yu.png",
       "canvas": [
         64,
         128
       ],
-      "sha256": "378f19f91b6523df40338a3b9c578d91b9315269c5c6a7ffe8837ffb1afb2b2f"
+      "sha256": "64010b7df8d8c9652a84e24675699a762457cb959bf2740cc6eaca38aec16232"
     },
     {
-      "file": "mu_tong.png",
+      "file": "gu_xing.png",
       "canvas": [
         64,
         128
       ],
-      "sha256": "a225f4432529f87bb44a16569be302d6cf801561b57ff9daa6d3221dba47ec0d"
+      "sha256": "285bbe6fef96ecb84a6ed4863198ab1be3b0f3ad17b8df7aeac49d4f2dc076e3"
+    },
+    {
+      "file": "harbor_hairstyles.png",
+      "canvas": [
+        128,
+        96
+      ],
+      "sha256": "2d4c3b578fa0c78aadbd33935b1e8933376821f0676245e01a8327e18b0561e1"
     },
     {
       "file": "harbor_shirts.png",
@@ -25,12 +33,132 @@
       "sha256": "7b9a7f4f6fc40881ef6809b80bda1df82fec4e412c417ec369494c5e952e879f"
     },
     {
-      "file": "harbor_hairstyles.png",
+      "file": "he_mu.png",
       "canvas": [
-        128,
-        96
+        64,
+        128
       ],
-      "sha256": "2d4c3b578fa0c78aadbd33935b1e8933376821f0676245e01a8327e18b0561e1"
+      "sha256": "95440f2a0a8eb10acde4b4c397cb93cfd934ba4c0dfac2f200f4bc53ead3b037"
+    },
+    {
+      "file": "lin_sui.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "2c5f349a26ada2c1486f5c018176d4b676cfc12b8bf75120049e0fe2ffd170a3"
+    },
+    {
+      "file": "lu_yao.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "d9a90198f1eb9029ed36c67247e05823427685565a73cf001d941527ee2d6c27"
+    },
+    {
+      "file": "lu_zhou.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "fc4ad842e2d328c7813b799fab60a43391cbb68e7fd85e4f814d8dc61a6f4ed3"
+    },
+    {
+      "file": "mu_tong.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "a225f4432529f87bb44a16569be302d6cf801561b57ff9daa6d3221dba47ec0d"
+    },
+    {
+      "file": "qiao_xin.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "4d1dca020b2924cc1dcc46a7baec673a55c0d710570ee63b08dfc7e042329066"
+    },
+    {
+      "file": "sen_ke.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "cd8f54936f44df956b7a9c2af5de37ba81ba88a7a1bc88e8bd2681a9f505a773"
+    },
+    {
+      "file": "shi_xun.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "f092875254e6e4b3b5399d1497cb23de7334dd29440e2d31741ae1194ef4ee4a"
+    },
+    {
+      "file": "su_qin.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "b0f14532b7f212d27fb491fdc2e7d5507cda6acdb5e57fcf7601ac7df29239fa"
+    },
+    {
+      "file": "tang_he.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "5d72bac286cc2f28d6f80e7dd6973c9071c86c85a0a1052ae927af277933da62"
+    },
+    {
+      "file": "tian_qing.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "3367a5752a21277da82fbc4d4610ef26eaf85f4bffb69d123487c3ac8fdae467"
+    },
+    {
+      "file": "wen_zhi.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "bce5bcc85c6a26f7d2a4ec0927fb11409e31c16c1d97a1c8d1108579eda0b9c9"
+    },
+    {
+      "file": "xu_an.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "68aa544acd2442e40bdbefdaf8fb97d2fd9ad2a5975cc64cee9309f64cf83414"
+    },
+    {
+      "file": "xu_mian.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "2cd9cad78948182d5583d0a366a0f3ca9d1a3c3b102ac8deaa3c736fec0d575e"
+    },
+    {
+      "file": "yan_zhen.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "378f19f91b6523df40338a3b9c578d91b9315269c5c6a7ffe8837ffb1afb2b2f"
+    },
+    {
+      "file": "zhou_chao.png",
+      "canvas": [
+        64,
+        128
+      ],
+      "sha256": "71f8db32729d37ab19f0f8db2d7a3114ceb6a98b350f7dc2b2585af643c85df0"
     }
   ]
 }

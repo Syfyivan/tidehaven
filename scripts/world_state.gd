@@ -65,7 +65,7 @@ func _init() -> void:
 		for gy in range(3, 6):
 			initial_tiles.append(_tile_key(gx, gy))
 	data = {
-		"version": 17, "wardrobe":Appearance.create(), "day": 1, "minute": 360.0, "elapsed": 0.0, "rooms": Rooms.create(), "gardens": Gardens.create(), "restaurant":Restaurant.create(),
+		"version": 18, "wardrobe":Appearance.create(), "day": 1, "minute": 360.0, "elapsed": 0.0, "rooms": Rooms.create(), "gardens": Gardens.create(), "restaurant":Restaurant.create(),
 		"navigation": Navigation.create(), "chart": Archipelago.create(Navigation.create()), "island": IslandState.create(),
 		"money": 0, "chests": {}, "deck_tiles": initial_tiles,
 		"structures": {"bedroll_0": _new_structure("bedroll_0", "bedroll", Vector2(416, 224))},
@@ -714,6 +714,14 @@ func action(slot: String, verb: String, args: Dictionary = {}) -> String:
 		return LongStories.inspect_yard(data) if player.area=="island" and _near(player,IslandMap.YARD_GATE,80.0) else "请走到荒院西侧门口再查看。"
 	if verb=="yard_style":
 		return LongStories.toggle_yard_style(data) if player.area=="island" and _near(player,IslandMap.YARD_GATE,80.0) else "请走到荒院西侧门口再调整门牌。"
+	if verb=="dock_inspect":
+		return LongStories.inspect_dock(data) if player.area=="island" and _near(player,IslandMap.DOCK,110.0) else "请走到潮芽岛西岸码头再查看。"
+	if verb=="dock_style":
+		return LongStories.toggle_dock_style(data) if player.area=="island" and _near(player,IslandMap.DOCK,110.0) else "请走到潮芽岛西岸码头再调整布置。"
+	if verb=="coast_inspect":
+		return LongStories.inspect_coast(data) if player.area=="island" and _near(player,LongStories.COAST_SITE,110.0) else "请走到西岸浅滩白石旁再查看。"
+	if verb=="coast_style":
+		return LongStories.toggle_coast_style(data) if player.area=="island" and _near(player,LongStories.COAST_SITE,110.0) else "请走到西岸浅滩再切换信物。"
 	if verb.begins_with("town_"):
 		return IslandTown.action(data, player, verb, args, slot)
 	if verb.begins_with("room_"):
@@ -1203,11 +1211,23 @@ func interaction_options(slot: String) -> Array:
 	if player.area == "island":
 		result.append_array(IslandTown.options(data, player))
 		if _near(player, IslandMap.YARD_GATE, 80.0):
-			var hcy_step := int(LongStories.record(data).get("step", 0))
+			var hcy_step := int(LongStories.record(data, "hou_chao_yuan").get("step", 0))
 			if data.island.homestead.rented and hcy_step == 0:
 				_option(result, "yard_inspect", "查看旧院门框刻痕")
 			elif hcy_step >= 5:
 				_option(result, "yard_style", "切换候潮院门牌（农庄／驿院）")
+		if _near(player, IslandMap.DOCK, 110.0):
+			var ka_step := int(LongStories.record(data, "kao_an").get("step", 0))
+			if int(data.journal.get("story_step", 0)) >= 1 and ka_step == 0:
+				_option(result, "dock_inspect", "查看码头系船柱上的旧航线铜牌")
+			elif ka_step >= 5:
+				_option(result, "dock_style", "切换西岸码头布置（补给港／客船港）")
+		if _near(player, LongStories.COAST_SITE, 110.0):
+			var hlj_step := int(LongStories.record(data, "hai_lin_ju").get("step", 0))
+			if hlj_step == 0:
+				_option(result, "coast_inspect", "查看浅滩上排列整齐的白石与贝壳")
+			elif hlj_step >= 5:
+				_option(result, "coast_style", "切换浅滩邻居信物（白石界／海螺架）")
 		var chest_id := nearby_chest(slot)
 		if not chest_id.is_empty():
 			_option(result, "open_chest", "打开附近木箱", {"id": chest_id})
@@ -1575,7 +1595,7 @@ func restore(saved: Dictionary) -> bool:
 	migration_notice = ""
 	var pending_migration_notice := ""
 	# Build a fresh validated value; a rejected file must leave the live world untouched.
-	if not _integer(saved.get("version"), 1, 17) or not _integer(saved.get("day"), 1, 1000000):
+	if not _integer(saved.get("version"), 1, 18) or not _integer(saved.get("day"), 1, 1000000):
 		return false
 	var legacy := int(saved.version) == 1
 	var survival := int(saved.version) >= 3
@@ -1620,7 +1640,7 @@ func restore(saved: Dictionary) -> bool:
 	var stories:=ResidentStories.restore(saved.get("stories"),int(saved.day)) if int(saved.version)>=16 else ResidentStories.create()
 	if stories.is_empty():return false
 	if int(saved.version)>=16:world_keys.append("stories")
-	var chronicles:=LongStories.restore(saved.get("chronicles"),int(saved.day)) if int(saved.version)>=17 else LongStories.create()
+	var chronicles:=LongStories.restore(saved.get("chronicles"),int(saved.day),int(saved.version)) if int(saved.version)>=17 else LongStories.create()
 	if chronicles.is_empty():return false
 	if int(saved.version)>=17:world_keys.append("chronicles")
 	if not legacy and not _keys(saved, world_keys):
@@ -1831,7 +1851,7 @@ func restore(saved: Dictionary) -> bool:
 	if not walkable:
 		return false
 	var restored_data := {
-		"version": 17, "wardrobe":wardrobe,"housing":housing,"journal":journal,"stories":stories,"chronicles":chronicles, "rooms": rooms, "gardens": gardens, "restaurant":restaurant, "day": int(saved.day), "minute": float(saved.minute), "elapsed": float(saved.elapsed), "navigation": navigation, "chart": chart, "island": island,
+		"version": 18, "wardrobe":wardrobe,"housing":housing,"journal":journal,"stories":stories,"chronicles":chronicles, "rooms": rooms, "gardens": gardens, "restaurant":restaurant, "day": int(saved.day), "minute": float(saved.minute), "elapsed": float(saved.elapsed), "navigation": navigation, "chart": chart, "island": island,
 		"money": int(saved.money), "chests": chests, "expansion": int(saved.expansion),
 		"crop": {"stage": int(crop.stage), "progress": float(crop.progress), "watered": bool(crop.watered)},
 		"orders_filled": int(saved.get("orders_filled", 0)), "orders_limit": 3, "players": players, "entities": entities, "threats": threats,

@@ -4,7 +4,7 @@ extends "res://tests/playthrough.gd"
 func _run() -> void:
 	for key in ["save-path", "report", "evidence-dir"]:
 		if not main.cli.has(key): _fail("Missing isolated argument: " + key); return
-	for version in range(1,17):
+	for version in range(1,18):
 		if ProjectSettings.globalize_path(str(main.save_path)).to_lower() == ProjectSettings.globalize_path("user://world_v%d.json" % version).to_lower():
 			_fail("Refusing player default save"); return
 	if FileAccess.file_exists(main.save_path) or FileAccess.file_exists(str(main.save_path)+".bak"):

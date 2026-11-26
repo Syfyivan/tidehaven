@@ -118,7 +118,7 @@ func _test_save_and_invalid() -> void:
 	for v14_key in ["rooms","gardens","restaurant","wardrobe","housing","journal","stories","chronicles"]:old.erase(v14_key)
 	for v14_player in old.players.values():v14_player.erase("room")
 	for p in old.players.values():p.erase("dive_status")
-	check(loaded.restore(old) and loaded.data.version==17 and loaded.data.threats.size()==2,"old v12 creates threats without losing world")
+	check(loaded.restore(old) and loaded.data.version==18 and loaded.data.threats.size()==2,"old v12 creates threats without losing world")
 	check(loaded.data.players.host.bag==w.data.players.host.bag and not old.has("threats"),"migration leaves supplied old snapshot unchanged")
 	var baseline:Dictionary=loaded.snapshot()
 	for field in ["x","y","dx","dy","remaining","clock"]:

@@ -263,7 +263,7 @@ func _test_migration_and_validation() -> void:
 	var world = WorldState.new()
 	var saved := _legacy_snapshot()
 	_check(world.restore(JSON.parse_string(JSON.stringify(saved))), "valid old JSON save migrates")
-	_check(world.data.version == 17 and Inventory.count(world.data.players.guest.bag, "fish") == 5 and Inventory.count(world.data.players.guest.bag, "wood") == 3 and int(world.chest_totals().fish) == 5 and int(world.chest_totals().wood) == 3, "legacy personal and shared items remain distinct and lossless")
+	_check(world.data.version == 18 and Inventory.count(world.data.players.guest.bag, "fish") == 5 and Inventory.count(world.data.players.guest.bag, "wood") == 3 and int(world.chest_totals().fish) == 5 and int(world.chest_totals().wood) == 3, "legacy personal and shared items remain distinct and lossless")
 	saved.storage.wood = Inventory.CHEST_SIZE * Inventory.STACK_LIMIT * 2 + 1
 	_check(world.restore(saved) and world.data.chests.size() >= 3 and int(world.chest_totals().wood) == saved.storage.wood, "oversized legacy warehouse expands into finite migration chests without loss")
 	var roundtrip: Variant = JSON.parse_string(JSON.stringify(world.snapshot()))
