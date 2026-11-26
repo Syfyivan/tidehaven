@@ -74,7 +74,7 @@ var pause_note: Label
 var font: SystemFont
 var pause_open := false
 var room_paused := false
-var save_path := "user://world_v19.json"
+var save_path := "user://world_v20.json"
 var net_clock := 0.0
 var hud_clock := 0.0
 var input_clock := 0.0
@@ -1014,7 +1014,7 @@ func _clicked_interaction(keyboard: bool) -> bool:
 			continue
 		if verb=="home_pack":
 			continue
-		if verb in ["eat", "drink", "cast", "reel", "relocate", "sleep", "deposit", "take_meal", "drop_anchor", "raise_anchor", "sell", "build", "dock_style", "coast_style", "workshop_inspect", "workshop_style", "farm_inspect", "farm_style", "pirate_inspect", "pirate_style", "reef_inspect", "reef_style"]:
+		if verb in ["eat", "drink", "cast", "reel", "relocate", "sleep", "deposit", "take_meal", "drop_anchor", "raise_anchor", "sell", "build", "yard_inspect", "yard_style", "dock_inspect", "dock_style", "coast_inspect", "coast_style", "workshop_inspect", "workshop_style", "farm_inspect", "farm_style", "pirate_inspect", "pirate_style", "reef_inspect", "reef_style", "pilot_inspect", "pilot_style", "chair_inspect", "chair_style", "clock_inspect", "clock_style", "scale_inspect", "scale_style"]:
 			continue
 		safe_options.append(option)
 		if not keyboard and verb in ["land", "dive", "fill_cup"]:
@@ -1385,7 +1385,7 @@ func _persist() -> bool:
 	if file == null:
 		save_error = "无法写入存档"
 		return false
-	file.store_string(JSON.stringify({"format": "tidehaven", "version": 19, "state": world.snapshot()}, "", false, true))
+	file.store_string(JSON.stringify({"format": "tidehaven", "version": 20, "state": world.snapshot()}, "", false, true))
 	file.flush()
 	var write_error := file.get_error()
 	file.close()
@@ -1403,8 +1403,8 @@ func _persist() -> bool:
 	return true
 
 func _save_candidates() -> Array:
-	if save_path == "user://world_v19.json" and not FileAccess.file_exists(save_path) and not FileAccess.file_exists(save_path + ".bak"):
-		for previous in ["user://world_v18.json","user://world_v17.json","user://world_v16.json","user://world_v15.json","user://world_v14.json","user://world_v13.json", "user://world_v12.json", "user://world_v11.json", "user://world_v10.json", "user://world_v9.json", "user://world_v8.json", "user://world_v7.json", "user://world_v6.json", "user://world_v5.json", "user://world_v4.json", "user://world_v3.json", "user://world_v2.json", "user://world_v1.json"]:
+	if save_path == "user://world_v20.json" and not FileAccess.file_exists(save_path) and not FileAccess.file_exists(save_path + ".bak"):
+		for previous in ["user://world_v19.json","user://world_v18.json","user://world_v17.json","user://world_v16.json","user://world_v15.json","user://world_v14.json","user://world_v13.json", "user://world_v12.json", "user://world_v11.json", "user://world_v10.json", "user://world_v9.json", "user://world_v8.json", "user://world_v7.json", "user://world_v6.json", "user://world_v5.json", "user://world_v4.json", "user://world_v3.json", "user://world_v2.json", "user://world_v1.json"]:
 			if FileAccess.file_exists(previous) or FileAccess.file_exists(previous + ".bak"):
 				return [previous, previous + ".bak"]
 	return [save_path, save_path + ".bak"]
@@ -1429,7 +1429,7 @@ func _load_saved() -> bool:
 		if typeof(version_value) not in [TYPE_INT, TYPE_FLOAT]:
 			continue
 		# JSON reads integer-looking values as floats; validate before converting.
-		if float(version_value) not in [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0]:
+		if float(version_value) not in [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0, 15.0, 16.0, 17.0, 18.0, 19.0, 20.0]:
 			continue
 		if parsed.get("format", "") == "tidehaven" and parsed.get("state") is Dictionary:
 			if world.restore(parsed.state):

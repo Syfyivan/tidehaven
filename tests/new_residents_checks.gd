@@ -5,7 +5,7 @@ const Routes=preload("res://scripts/resident_routes.gd")
 const Rooms=preload("res://scripts/rooms.gd")
 const Map=preload("res://scripts/island_map.gd")
 const Art=preload("res://scripts/character_art.gd")
-const NEW_RESIDENTS:={"lu_zhou":"lu_zhou.png","mu_tong":"mu_tong.png","gu_xing":"gu_xing.png","xu_mian":"xu_mian.png"}
+const NEW_RESIDENTS:={"lu_zhou":"lu_zhou.png","mu_tong":"mu_tong.png","gu_xing":"gu_xing.png","xu_mian":"xu_mian.png","cen_po":"cen_po.png","a_yuan":"a_yuan.png"}
 var checks:=0
 var failures:=0
 
@@ -24,7 +24,7 @@ func clear_leg(leg:Dictionary)->bool:
 	return true
 
 func _initialize()->void:
-	check(Town.NPCS.size()==18 and Art.NPC_SHEETS.size()==18,"18 registered town residents with complete original sheets")
+	check(Town.NPCS.size()==20 and Art.NPC_SHEETS.size()==20,"20 registered town residents with complete original sheets")
 	check(Art.WORLD_SIZE==Vector2(32,64) and Art.FOOT_OFFSET==Vector2(16,62),"all adults keep the existing world scale and fixed foot")
 	var sources:Dictionary={}
 	var homes:Dictionary={}

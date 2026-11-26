@@ -65,7 +65,7 @@ func _init() -> void:
 		for gy in range(3, 6):
 			initial_tiles.append(_tile_key(gx, gy))
 	data = {
-		"version": 19, "wardrobe":Appearance.create(), "day": 1, "minute": 360.0, "elapsed": 0.0, "rooms": Rooms.create(), "gardens": Gardens.create(), "restaurant":Restaurant.create(),
+		"version": 20, "wardrobe":Appearance.create(), "day": 1, "minute": 360.0, "elapsed": 0.0, "rooms": Rooms.create(), "gardens": Gardens.create(), "restaurant":Restaurant.create(),
 		"navigation": Navigation.create(), "chart": Archipelago.create(Navigation.create()), "island": IslandState.create(),
 		"money": 0, "chests": {}, "deck_tiles": initial_tiles,
 		"structures": {"bedroll_0": _new_structure("bedroll_0", "bedroll", Vector2(416, 224))},
@@ -738,6 +738,22 @@ func action(slot: String, verb: String, args: Dictionary = {}) -> String:
 		return LongStories.inspect_reef(data) if player.area=="room" and player.room=="island_reef" and _near(player,OceanResidents.position("chao_jia")+LongStories.REEF_OFFSET,96.0) else "请到珊湾岛潮甲东北侧沙坪旁再查看。"
 	if verb=="reef_style":
 		return LongStories.toggle_reef_style(data) if player.area=="room" and player.room=="island_reef" and _near(player,OceanResidents.position("chao_jia")+LongStories.REEF_OFFSET,96.0) else "请到珊湾岛潮甲东北侧沙坪旁再切换安排。"
+	if verb=="pilot_inspect":
+		return LongStories.inspect_pilot(data) if player.area=="island" and _near(player,LongStories.PILOT_SITE,88.0) else "请走到西岸码头南侧系缆桩边再查看。"
+	if verb=="pilot_style":
+		return LongStories.toggle_pilot_style(data) if player.area=="island" and _near(player,LongStories.PILOT_SITE,88.0) else "请走到西岸码头南侧系缆桩边再切换布置。"
+	if verb=="chair_inspect":
+		return LongStories.inspect_chair(data) if player.area=="room" and player.room=="restaurant" and _near(player,LongStories.CHAIR_SITE,72.0) else "请走进潮间寿司屋西侧餐桌旁再查看速写册。"
+	if verb=="chair_style":
+		return LongStories.toggle_chair_style(data) if player.area=="room" and player.room=="restaurant" and _near(player,LongStories.CHAIR_SITE,72.0) else "请走进潮间寿司屋西侧画架旁再切换展出角落。"
+	if verb=="clock_inspect":
+		return LongStories.inspect_clock(data) if player.area=="room" and player.room=="reef_grotto" and _near(player,LongStories.CLOCK_SITE,88.0) else "请进入潮钟礁洞走近修补石台再查看。"
+	if verb=="clock_style":
+		return LongStories.toggle_clock_style(data) if player.area=="room" and player.room=="reef_grotto" and _near(player,LongStories.CLOCK_SITE,88.0) else "请进入潮钟礁洞走近修补石台再切换样式。"
+	if verb=="scale_inspect":
+		return LongStories.inspect_scale(data) if player.area=="island" and _near(player,LongStories.SCALE_SITE,88.0) else "请走到岸边渔铺西南侧海岸木坪再查看。"
+	if verb=="scale_style":
+		return LongStories.toggle_scale_style(data) if player.area=="island" and _near(player,LongStories.SCALE_SITE,88.0) else "请走到岸边渔铺西南侧海岸木坪再切换歇脚台。"
 	if verb.begins_with("town_"):
 		return IslandTown.action(data, player, verb, args, slot)
 	if verb.begins_with("room_"):
@@ -1234,6 +1250,18 @@ func interaction_options(slot: String) -> Array:
 					_option(result, "reef_inspect", "查看潮线折返的海龟爬痕")
 				elif r_step >= 5:
 					_option(result, "reef_style", "切换珊湾潮线安排（歇沙坪／浮木标）")
+		elif player.room == "restaurant" and _near(player, LongStories.CHAIR_SITE, 72.0):
+			var kyz_step := int(LongStories.record(data, "kong_yi_zi").get("step", 0))
+			if kyz_step == 0:
+				_option(result, "chair_inspect", "查看餐桌边的空椅速写册")
+			elif kyz_step >= 5:
+				_option(result, "chair_style", "切换《空椅子展览》角落（寿司屋／镇公所）")
+		elif player.room == "reef_grotto" and _near(player, LongStories.CLOCK_SITE, 88.0):
+			var zbzz_step := int(LongStories.record(data, "zou_bu_zhun_zhong").get("step", 0))
+			if zbzz_step == 0:
+				_option(result, "clock_inspect", "查看浸水黄铜船钟与八音盒")
+			elif zbzz_step >= 5:
+				_option(result, "clock_style", "切换潮汐钟样式（礁洞八音钟／海岸潮汐盘）")
 		return result
 	if player.area == "island":
 		result.append_array(IslandTown.options(data, player))
@@ -1271,6 +1299,18 @@ func interaction_options(slot: String) -> Array:
 				_option(result, "coast_inspect", "查看浅滩上排列整齐的白石与贝壳")
 			elif hlj_step >= 5:
 				_option(result, "coast_style", "切换浅滩邻居信物（白石界／海螺架）")
+		if _near(player, LongStories.PILOT_SITE, 88.0):
+			var bgc_step := int(LongStories.record(data, "bu_gan_chao").get("step", 0))
+			if LongStories.pilot_ready(data) and bgc_step == 0:
+				_option(result, "pilot_inspect", "查看系缆桩边的旧领航旗囊")
+			elif bgc_step >= 5:
+				_option(result, "pilot_style", "切换西岸歇脚布置（藤椅角／手札台）")
+		if _near(player, LongStories.SCALE_SITE, 88.0):
+			var bstw_step := int(LongStories.record(data, "bu_shi_tan_wei").get("step", 0))
+			if bstw_step == 0:
+				_option(result, "scale_inspect", "查看霸占备用铜秤盘的海豹")
+			elif bstw_step >= 5:
+				_option(result, "scale_style", "切换三斤岸边歇脚处（晒背木台／浮球礼尚角）")
 		var chest_id := nearby_chest(slot)
 		if not chest_id.is_empty():
 			_option(result, "open_chest", "打开附近木箱", {"id": chest_id})
@@ -1638,7 +1678,7 @@ func restore(saved: Dictionary) -> bool:
 	migration_notice = ""
 	var pending_migration_notice := ""
 	# Build a fresh validated value; a rejected file must leave the live world untouched.
-	if not _integer(saved.get("version"), 1, 19) or not _integer(saved.get("day"), 1, 1000000):
+	if not _integer(saved.get("version"), 1, 20) or not _integer(saved.get("day"), 1, 1000000):
 		return false
 	var legacy := int(saved.version) == 1
 	var survival := int(saved.version) >= 3
@@ -1894,7 +1934,7 @@ func restore(saved: Dictionary) -> bool:
 	if not walkable:
 		return false
 	var restored_data := {
-		"version": 19, "wardrobe":wardrobe,"housing":housing,"journal":journal,"stories":stories,"chronicles":chronicles, "rooms": rooms, "gardens": gardens, "restaurant":restaurant, "day": int(saved.day), "minute": float(saved.minute), "elapsed": float(saved.elapsed), "navigation": navigation, "chart": chart, "island": island,
+		"version": 20, "wardrobe":wardrobe,"housing":housing,"journal":journal,"stories":stories,"chronicles":chronicles, "rooms": rooms, "gardens": gardens, "restaurant":restaurant, "day": int(saved.day), "minute": float(saved.minute), "elapsed": float(saved.elapsed), "navigation": navigation, "chart": chart, "island": island,
 		"money": int(saved.money), "chests": chests, "expansion": int(saved.expansion),
 		"crop": {"stage": int(crop.stage), "progress": float(crop.progress), "watered": bool(crop.watered)},
 		"orders_filled": int(saved.get("orders_filled", 0)), "orders_limit": 3, "players": players, "entities": entities, "threats": threats,

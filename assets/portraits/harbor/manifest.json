@@ -1,6 +1,24 @@
 {
   "files": [
     {
+      "id": "a_yuan",
+      "file": "a_yuan.png",
+      "canvas": [
+        64,
+        64
+      ],
+      "sha256": "ee11672bd7b8f4f67eba49c484ca3313d15aa2a8116f61451f0e264bf9840086"
+    },
+    {
+      "id": "cen_po",
+      "file": "cen_po.png",
+      "canvas": [
+        64,
+        64
+      ],
+      "sha256": "ad535cf19bbc58950c6e8debe87b2259170770fb021f0ee694cb716950af0f37"
+    },
+    {
       "id": "chen_yu",
       "file": "chen_yu.png",
       "canvas": [

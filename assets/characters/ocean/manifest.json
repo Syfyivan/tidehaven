@@ -1,5 +1,5 @@
 {
-  "version": "0.21.0",
+  "version": "0.22.0",
   "license": "Original project pixel art (redistributable)",
   "files": {
     "bai_fan.png": {
@@ -7,25 +7,35 @@
       "height": 32,
       "sha256": "2ce8297fbf8155a9f75296eb89954d4721df762a92105fa4ccb43e7d82d98ad7"
     },
-    "chi_sheng.png": {
-      "width": 32,
-      "height": 32,
-      "sha256": "4ab3cbbd4d0256ca531e98322656a761c51badc88f171955588b1636722d0023"
-    },
     "chao_jia.png": {
       "width": 64,
       "height": 32,
       "sha256": "d04060955d93be14129b7e92749d0a55a78b8b5cf47645a96de6b70ddbaa639f"
     },
-    "tai_lu.png": {
+    "chi_sheng.png": {
       "width": 32,
-      "height": 16,
-      "sha256": "7477c5fe1d7945211f639dc07df21ab934f5eb26b41a98a5cac32b15899acd86"
+      "height": 32,
+      "sha256": "4ab3cbbd4d0256ca531e98322656a761c51badc88f171955588b1636722d0023"
     },
     "lan_ying.png": {
       "width": 64,
       "height": 32,
       "sha256": "205fc22f3e5ceb0e0f4d17bbaa9f09ac6b4e0e947c486efb405b2ad0f8823299"
+    },
+    "mi_luo.png": {
+      "width": 64,
+      "height": 32,
+      "sha256": "92c216b4ee09736b1c6e05525508f21bb554fb485613aaa1d68afbb77e3bbf83"
+    },
+    "san_jin.png": {
+      "width": 64,
+      "height": 32,
+      "sha256": "e832be4238d2a8a702a9a36348d1d44f11be367e566e54064e1e3fc0d347398c"
+    },
+    "tai_lu.png": {
+      "width": 32,
+      "height": 16,
+      "sha256": "7477c5fe1d7945211f639dc07df21ab934f5eb26b41a98a5cac32b15899acd86"
     }
   }
 }

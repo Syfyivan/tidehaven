@@ -5,6 +5,7 @@ const Map = preload("res://scripts/island_map.gd")
 const Inventory = preload("res://scripts/inventory.gd")
 const Housing=preload("res://scripts/housing.gd")
 const SEA_ENTRY := Vector2(820, 480)
+const GROTTO_ARCH := Vector2(456, 210)
 const REACH := 64.0
 const INTERIORS := {
 	"island_mist":{"map":"Mountain","name":"雾岬 · 山湖"},
@@ -33,25 +34,29 @@ static func create() -> Dictionary:
 	return {"visited":{}, "depleted":{}, "opened":{"sea":1,"mine":1}}
 
 static func valid_id(id: String) -> bool:
-	return INTERIORS.has(id) or id in ["sea_1","sea_2","sea_3","mine_1","mine_2","mine_3"]
+	return INTERIORS.has(id) or id in ["sea_1","sea_2","sea_3","reef_grotto","mine_1","mine_2","mine_3"]
+
+static func is_sea_cave(id: String) -> bool:
+	return id.begins_with("sea_") or id == "reef_grotto"
 
 static func underwater(player: Dictionary) -> bool:
-	return player.get("area") == "water" or (player.get("area") == "room" and str(player.get("room", "")).begins_with("sea_"))
+	return player.get("area") == "water" or (player.get("area") == "room" and is_sea_cave(str(player.get("room", ""))))
 
 static func room_name(id: String) -> String:
 	if INTERIORS.has(id): return INTERIORS[id].name
+	if id == "reef_grotto": return "潮钟礁洞 · 55米"
 	if id.begins_with("sea_"): return "回声海洞 · %d层 · %d米" % [floor_number(id), 40+floor_number(id)*15]
 	if id.begins_with("mine_"): return "灰岩矿洞 · 地下%d层" % floor_number(id)
 	return ""
 
 static func floor_number(id: String) -> int:
-	return int(id.get_slice("_",1))
+	return 4 if id == "reef_grotto" else int(id.get_slice("_",1))
 
 static func source(id: String) -> String:
 	return str(INTERIORS[id].map) if INTERIORS.has(id) else ("Mines/%d" % floor_number(id) if id.begins_with("mine_") else "")
 
 static func size(id: String) -> Vector2:
-	if id.begins_with("sea_"): return Vector2(900,560)
+	if is_sea_cave(id): return Vector2(900,560)
 	var map: Dictionary = Tiles.map_data(source(id))
 	return Vector2(float(map.width),float(map.height))*32
 
@@ -68,7 +73,7 @@ static func seabed(x: float, floor_id: int) -> float:
 static func can_stand(id: String, at: Vector2) -> bool:
 	if not valid_id(id) or not at.is_finite(): return false
 	if not Rect2(Vector2.ZERO,size(id)).has_point(at): return false
-	if id.begins_with("sea_"):
+	if is_sea_cave(id):
 		return at.x >= 36 and at.x <= 864 and at.y >= ceiling(at.x,floor_number(id))+28 and at.y <= seabed(at.x,floor_number(id))-24
 	var cells: Dictionary = geometry(id).cells
 	for offset in [Vector2(-7,-3),Vector2(7,-3),Vector2(-7,4),Vector2(7,4)]:
@@ -175,10 +180,10 @@ static func _connected(cells: Dictionary,start: Vector2i) -> Dictionary:
 	return result
 
 static func entry(id: String) -> Vector2:
-	return Vector2(80,225) if id.begins_with("sea_") else Vector2(geometry(id).entry)
+	return Vector2(80,225) if is_sea_cave(id) else Vector2(geometry(id).entry)
 
 static func onward(id: String) -> Vector2:
-	return Vector2(820,310) if id.begins_with("sea_") else Vector2(geometry(id).end)
+	return Vector2(820,310) if is_sea_cave(id) else Vector2(geometry(id).end)
 
 static func nodes(id: String) -> Dictionary:
 	if _nodes.has(id): return _nodes[id]
@@ -229,6 +234,8 @@ static func options(data: Dictionary, player: Dictionary) -> Array:
 			result.append(option("sleep","准备结束今天",id,at))
 		if id=="yard_home" and int(data.housing.level)>=2 and at.distance_to(onward(id))<=REACH:
 			result.append(option("room_annex","走进扩建书房","yard_annex",onward(id)))
+		if id=="sea_2" and at.distance_to(GROTTO_ARCH)<=REACH:
+			result.append(option("room_enter","进入潮钟礁洞 · 55米","reef_grotto",GROTTO_ARCH))
 		if at.distance_to(entry(id))<=REACH: result.append(option("room_exit","回到停泊的木筏" if id.begins_with("island_") else "返回上一处",id,entry(id)))
 		if (id.begins_with("sea_") or id.begins_with("mine_")) and floor_number(id)<3 and at.distance_to(onward(id))<=REACH:
 			result.append(option("room_deeper","前往下一层 · 先开采本层矿脉",id,onward(id)))
@@ -275,6 +282,7 @@ static func action(data: Dictionary, player: Dictionary, verb: String, args: Dic
 	elif verb == "room_exit":
 		if id.begins_with("island_"):return "请从停泊点返回木筏。"
 		elif id=="yard_annex":_arrive(data,player,"yard_home",onward("yard_home"))
+		elif id=="reef_grotto":_arrive(data,player,"sea_2",GROTTO_ARCH+Vector2(0,26))
 		elif id=="raft_cabin":_outside(player,"deck",Housing.cabin_door(data))
 		elif id=="yard_home":_outside(player,"island",Housing.door(data))
 		elif id.begins_with("sea_") or id.begins_with("mine_"):

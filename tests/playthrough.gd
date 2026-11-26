@@ -42,7 +42,7 @@ func _run() -> void:
 		if not main.cli.has(argument):
 			_fail("Missing isolated test argument: " + argument)
 			return
-	for filename in ["world_v1.json", "world_v2.json", "world_v3.json", "world_v4.json", "world_v5.json", "world_v6.json", "world_v7.json", "world_v8.json", "world_v9.json", "world_v10.json", "world_v11.json", "world_v12.json", "world_v13.json", "world_v14.json", "world_v15.json", "world_v16.json", "world_v17.json", "world_v18.json", "world_v19.json"]:
+	for filename in ["world_v1.json", "world_v2.json", "world_v3.json", "world_v4.json", "world_v5.json", "world_v6.json", "world_v7.json", "world_v8.json", "world_v9.json", "world_v10.json", "world_v11.json", "world_v12.json", "world_v13.json", "world_v14.json", "world_v15.json", "world_v16.json", "world_v17.json", "world_v18.json", "world_v19.json", "world_v20.json"]:
 		if ProjectSettings.globalize_path(str(main.save_path)) == ProjectSettings.globalize_path("user://" + filename):
 			_fail("Refusing to use the player's default save")
 			return
@@ -53,7 +53,7 @@ func _run() -> void:
 	await _click(main.new_game_button.get_global_rect().get_center())
 	if not (await _until(func() -> bool: return str(main.mode) == "solo" and not main.overlay.visible, "new solo title button", 4.0)):
 		return
-	if not _check(int(_state().version) == 19 and _state().deck_tiles.size() == 9 and _state().chests.is_empty() and _state().structures.size() == 1 and Inventory.total_count(_bag()) == 0, "Fresh opening must be nine raft cells, one bedroll and an empty backpack"):
+	if not _check(int(_state().version) == 20 and _state().deck_tiles.size() == 9 and _state().chests.is_empty() and _state().structures.size() == 1 and Inventory.total_count(_bag()) == 0, "Fresh opening must be nine raft cells, one bedroll and an empty backpack"):
 		return
 	_record("Started the real nine-cell survival opening with no granted resources")
 	if not (await _capture("01-opening.png")):

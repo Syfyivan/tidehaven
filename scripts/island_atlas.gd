@@ -267,7 +267,7 @@ func _draw_map() -> void:
 		map_canvas.draw_line(dock + Vector2(-7, 0), dock + Vector2(7, 0), Color("665442"), 2, false)
 	for slot: String in _data.get("players", {}):
 		var player: Dictionary = _data.players[slot]
-		if not player.get("online", false) or (player.get("area", "deck") != "island" and not (player.get("area")=="room" and not str(player.get("room","")).begins_with("sea_"))):
+		if not player.get("online", false) or (player.get("area", "deck") != "island" and not (player.get("area")=="room" and not str(player.get("room","")).begins_with("sea_") and str(player.get("room",""))!="reef_grotto")):
 			continue
 		var at := Vector2(float(player.x), float(player.y))
 		if player.area=="room":

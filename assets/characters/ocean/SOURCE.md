@@ -1,10 +1,12 @@
-# Ocean Resident World Sprites (0.21.0)
+# 海上与海岸伙伴世界精灵来源记录（0.21—0.22，2026-11-26）
 
-Original binary-alpha pixel art world sprites created by `tools/build-021-art.py` to match the 0.19 ocean portraits (`assets/portraits/ocean/*.png`).
-Replaces all remaining `assets/vendor/stardew-island/ocean-residents/*` character sprite dependencies so all 23 characters in Tidehaven use original redistributable character & portrait artwork.
+全部 7 位海上与海岸伙伴世界精灵由 `tools/build-021-art.py` 与 `tools/build-022-art.py` 以原创二值透明像素绘制，与 `assets/portraits/ocean/*.png` 肖像一一对应，不依赖任何第三方角色图：
+- `bai_fan.png`（`32×32`，两帧 `16×32` → 世界 `32×64`）：雾岬岛海商白帆。
+- `chi_sheng.png`（`32×32`，两帧 `16×32` → 世界 `32×64`）：珊湾岛海盗赤绳。
+- `chao_jia.png`（`64×32`，两帧 `32×32` → 世界 `64×64`）：珊湾岛老海龟潮甲。
+- `tai_lu.png`（`32×16`，两帧 `16×16` → 世界 `32×32`）：风栖岛林地精灵苔露。
+- `lan_ying.png`（`64×32`，两帧 `32×32` → 世界 `64×64`）：回声海洞三层潮洞海灵澜影。
+- `mi_luo.png`（`64×32`，两帧 `32×32` → 世界 `64×64`）：潮钟礁洞侧视盘尾人鱼修补匠米洛（额戴放大镜、斜跨齿轮带、手持铜轮与珊瑚尾鳍摆动）。
+- `san_jin.png`（`64×32`，两帧 `32×32` → 世界 `64×64`）：珊湾潮岸与渔铺西南木坪的斑点海豹三斤（前鳍轻拍装有扇贝壳的旧黄铜秤盘）。
 
-- `bai_fan.png` (`32x32`, 2 frames of `16x32` -> `32x64` world): Sea merchant Bai Fan on Mist Island.
-- `chi_sheng.png` (`32x32`, 2 frames of `16x32` -> `32x64` world): Pirate Chi Sheng on Reef Island.
-- `chao_jia.png` (`64x32`, 2 frames of `32x32` -> `64x64` world): Elder sea turtle Chao Jia on Reef Island.
-- `tai_lu.png` (`32x16`, 2 frames of `16x16` -> `32x32` world): Woodland sprite Tai Lu on Wind Island.
-- `lan_ying.png` (`64x32`, 2 frames of `32x32` -> `64x64` world): Tide-cave spirit Lan Ying in Echo Sea Cave Floor 3.
+逐文件尺寸与 SHA256 见 `manifest.json`。

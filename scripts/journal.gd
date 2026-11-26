@@ -26,8 +26,12 @@ const REQUESTS:={
 	"qiao_xin":{"title":"包裹的垫料","text":"易碎的货物需要垫好，海上捞来的叶子也能派上用场。","item":"leaf","count":6,"coins":12},
 	"shi_xun":{"title":"矿道补缝","text":"矿道脚边有些坑洼，收些碎石就能填平。","item":"stone","count":5,"coins":18},
 	"sen_ke":{"title":"林地观察","text":"林中蘑菇又长出来了，采些回来看看今年的收成。","item":"mushroom","count":3,"coins":20},
+	"cen_po":{"title":"甲板上的热茶","text":"海风吹久了嗓子干，带两杯干净淡水来泡壶茶，我给你讲讲外海的暗流。","item":"freshwater","count":2,"coins":16},
+	"a_yuan":{"title":"试色的木牌","text":"调新漆得先在干木板上试底色，帮我带四块木板来好吗？","item":"wood","count":4,"coins":15},
+	"mi_luo":{"title":"礁洞的替补齿轮","text":"八音盒还缺几片耐敲打的铜铁料，带三块废金属来给我改齿吧。","item":"scrap","count":3,"coins":18},
+	"san_jin":{"title":"不粘毛的海草垫","text":"三斤拍了拍晒背板，似乎想垫一层柔韧的海苔蹭下巴。","item":"seaweed","count":3,"coins":15},
 }
-const OTHER_NAMES:={"bai_fan":"白帆","chi_sheng":"赤绳","chao_jia":"潮甲","tai_lu":"苔露","lan_ying":"澜影"}
+const OTHER_NAMES:={"bai_fan":"白帆","chi_sheng":"赤绳","chao_jia":"潮甲","tai_lu":"苔露","lan_ying":"澜影","mi_luo":"米洛","san_jin":"三斤"}
 const BEACON:=Vector2(284,336)
 const STORY:=[
 	{"npc":"xu_an","title":"海风里的旧灯","text":"码头的引航灯熄了以后，夜归的人总要绕远。愿意帮镇上修灯吗？这是自愿的，先过好你的日子也没关系。","cost":{"wood":12,"scrap":6},"coins":25},

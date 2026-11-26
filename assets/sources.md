@@ -1,5 +1,9 @@
 # Tidehaven artwork sources
 
+## 0.22 四位候选新角色原创世界像素与肖像（2026-11-26）
+
+- **4位新角色半身肖像与世界精灵表**（海港镇民 `cen_po`、`a_yuan` 位于 `assets/{portraits,characters}/harbor/`；海洋伙伴 `mi_luo`、`san_jin` 位于 `assets/{portraits,characters}/ocean/`）：肖像由内置 `image_gen` 生成原创像素半身母稿后经 `tools/build-022-art.py` 量化为严格二值透明 `64×64` 原生画布；世界精灵表由 `tools/build-022-art.py` 绘制为配套二值透明像素（岑婆/阿沅 `64×128` 四向四帧 `16×32`，米洛/三斤 `64×32` 双帧 `32×32`）。至此全游戏全部 27 位角色（20 位镇民 + 7 位海洋伙伴）的世界像素与对话肖像 100% 为项目自有可公开分发资产，不含任何商业游戏解包图。逐文件尺寸与 SHA256 见对应目录 `manifest.json` 与 `SOURCE.md`。
+
 ## 0.21 五位海上伙伴原创世界像素精灵补齐（2026-11-26）
 
 - **5位海上伙伴世界双帧精灵表**（`assets/characters/ocean/{bai_fan,chi_sheng,chao_jia,tai_lu,lan_ying}.png`）：由 `tools/build-021-art.py` 对照 `0.19` 原创海洋肖像绘制为严格二值透明原生像素表（白帆/赤绳 `32×32`、潮甲/澜影 `64×32`、苔露 `32×16`），替换 `OceanResidentArt` 原先读取的 `vendor/stardew-island/ocean-residents/*` 图集。至此全游戏 23 位已接入角色（18 位镇民 + 5 位海上伙伴）的世界像素与对话肖像全部为项目自有可公开分发资产。逐文件尺寸与 SHA256 见 `assets/characters/ocean/manifest.json` 与 `SOURCE.md`。

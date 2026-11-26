@@ -20,7 +20,7 @@ func completed(choice:int = 0) -> Dictionary:
 func _init() -> void:
 	var world = World.new()
 	var baseline:Dictionary = world.data.duplicate(true)
-	check(Dialogue.BASIC.size() == 23 and Journal.REQUESTS.size() == 23, "23 existing residents covered, without candidate NPCs")
+	check(Dialogue.BASIC.size() == 27 and Journal.REQUESTS.size() == 27, "27 active residents covered (20 town + 7 ocean)")
 	for id:String in Journal.REQUESTS:
 		check(Dialogue.BASIC.has(id) and (Town.NPCS.has(id) or Ocean.NPCS.has(id)), id + " dialogue belongs to a real resident")
 		var data:Dictionary = baseline.duplicate(true)
@@ -87,7 +87,7 @@ func _world_progress(baseline:Dictionary) -> void:
 	var shop_line:String = Dialogue.progress(data, "host", "lin_sui")
 	check(shop_line.contains("接了北街旧店") and not shop_line.contains("昨晚") and not shop_line.contains("赚"), "Renting shop does not invent first-night earnings or service")
 	check(shop_line == Dialogue.progress(data, "guest", "lin_sui"), "Both players can hear about the shared shop")
-	check(Dialogue.line(data, "stranger", "xu_an").is_empty() and Dialogue.line(data, "host", "mi_luo").is_empty(), "Unknown slots and future candidates have no runtime dialogue")
+	check(Dialogue.line(data, "stranger", "xu_an").is_empty() and Dialogue.line(data, "host", "unregistered_npc").is_empty(), "Unknown slots and unregistered NPC IDs have no runtime dialogue")
 
 func _journal_and_dispatch() -> void:
 	var world = World.new()

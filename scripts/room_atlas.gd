@@ -39,7 +39,8 @@ func refresh(data:Dictionary,slot:String)->void:
 	if selected.is_empty():return
 	title.text=Rooms.room_name(selected)
 	note.text="沿入口返回上一层。开采矿脉疏通深处，矿石带回熔炉可做金属锭。" if selected.begins_with("mine_") or selected.begins_with("sea_") else "房门与走道按实际室内绘制，桌柜和墙面不可穿越。"
-	if selected.begins_with("sea_"):note.text+="\n每层入口的空气洞可以补氧；在深处停留仍会消耗氧气。"
+	if selected=="reef_grotto":note.text="沿左侧空气洞可返回回声海洞二层；入口的空气洞可以补氧，在礁洞深处停留仍会消耗氧气。"
+	elif selected.begins_with("sea_"):note.text+="\n每层入口的空气洞可以补氧；在深处停留仍会消耗氧气。"
 	if selected.begins_with("island_"):note.text="金点是木筏的停泊入口，紫点是海上伙伴；资源需走近后用对应工具采集。地图不会传送。"
 	for i in floors.size():
 		floors[i].visible=selected.begins_with("mine_") or selected.begins_with("sea_")
@@ -57,7 +58,7 @@ func _draw_map()->void:
 	var scale_value:=minf(740/extent.x,445/extent.y)
 	var offset:Vector2=(canvas.size-extent*scale_value)/2
 	canvas.draw_rect(Rect2(Vector2.ZERO,canvas.size),Color("364d4e"))
-	if selected.begins_with("sea_"):
+	if Rooms.is_sea_cave(selected):
 		var path:=PackedVector2Array()
 		for x in range(0,901,8):path.append(offset+Vector2(x,Rooms.ceiling(x,Rooms.floor_number(selected)))*scale_value)
 		for x in range(900,-1,-8):path.append(offset+Vector2(x,Rooms.seabed(x,Rooms.floor_number(selected)))*scale_value)
@@ -66,6 +67,10 @@ func _draw_map()->void:
 		Tiles.draw_patch(canvas,Rooms.source(selected),Rect2i(Vector2i.ZERO,Vector2i(extent/32)),offset,scale_value*2,int(_data.day))
 	for point in [Rooms.entry(selected),Rooms.onward(selected)] if floors[0].visible else [Rooms.entry(selected)]:
 		canvas.draw_circle(offset+Vector2(point)*scale_value,6,Color("e6bd74"))
+	if selected=="sea_2":
+		var g_at:=offset+Rooms.GROTTO_ARCH*scale_value
+		canvas.draw_circle(g_at,5.5,Color("e6bd74"))
+		canvas.draw_string(ThemeDB.fallback_font,g_at+Vector2(8,4),"潮钟礁洞",HORIZONTAL_ALIGNMENT_LEFT,-1,12,UI.PAPER)
 	for node:Dictionary in Rooms.nodes(selected).values():
 		if Rooms.active(_data,node):canvas.draw_circle(offset+Vector2(node.x,node.y)*scale_value,3,Color("b0bcc2"))
 	for id:String in Ocean.NPCS:

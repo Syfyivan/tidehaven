@@ -11,13 +11,16 @@ const NPCS:={
 	"chao_jia":{"name":"潮甲","role":"老海龟","room":"island_reef","magic":true,"talk":"潮水记得每一条回家的路。别着急，把海里的碎片一点点收起来，我们就能住得安心。"},
 	"tai_lu":{"name":"苔露","role":"林地精灵","room":"island_wind","magic":true,"talk":"种子要过夜才会长大，魔法也不能跳过四季。你愿意帮林地播下希望，我就教你唤一阵雨。"},
 	"lan_ying":{"name":"澜影","role":"潮洞海灵","room":"sea_3","magic":true,"talk":"别把气息留在最深处。帮我找回共鸣的矿石，我能教你借一口潮息；它会消耗体力，也需要休息才能再用。"},
+	"mi_luo":{"name":"米洛","role":"人鱼修补匠","room":"reef_grotto","magic":true,"talk":"沉进海里的旧铜钟和八音盒可没坏透，只是岸上的人非要它们按十二个死格子走。你有生锈的小齿轮或废金属，都可以带进礁洞给我瞧瞧。"},
+	"san_jin":{"name":"三斤","role":"爱占秤盘的海豹","room":"island_reef","magic":false,"talk":"（三斤把圆下巴垫在铜秤盘边，拍了两下肚皮，把一枚磨平的扇贝壳推到你靴尖前。）"},
 }
 static var _positions:Dictionary={}
 static func position(id:String)->Vector2:
 	if id=="lan_ying":return Vector2(460,240)
+	if id=="mi_luo":return Vector2(472,272)
 	if _positions.has(id):return _positions[id]
 	var room:String=NPCS[id].room
-	var wanted:=Rooms.entry(room)+Vector2(192 if id=="chao_jia" else 352,-128)
+	var wanted:=Rooms.entry(room)+(Vector2(-128,-96) if id=="san_jin" else Vector2(192 if id=="chao_jia" else 352,-128))
 	var best:=INF
 	var point:=Rooms.entry(room)
 	for cell:Vector2i in Rooms.geometry(room).ordered:
@@ -61,7 +64,11 @@ static func action(data:Dictionary,player:Dictionary,slot:String,verb:String,arg
 	if verb in ["ocean_personal_open","ocean_personal_reply"]:
 		if player.get("resting",false) or player.get("sleep_ready",false):return "先起身再聊吧。"
 		return str(npc.name)+"："+(PersonalStories.open(data,slot,args) if verb=="ocean_personal_open" else PersonalStories.action(data,player,slot,args))
-	if verb=="ocean_talk":return str(npc.name)+"："+Journal.talk(data,slot,id,str(npc.talk))
+	if verb=="ocean_talk":
+		var spoken:=Journal.talk(data,slot,id,str(npc.talk))
+		if id=="san_jin" and data.journal.tide_speech:
+			spoken+=" （潮语里传来它得意的哼哼：『这块暖融融的晒背地盘我可替你们看稳啦！』）"
+		return str(npc.name)+"："+spoken
 	if verb=="ocean_trade":
 		if id!="bai_fan":return "对方没有这些货物。"
 		return "白帆：两杯淡水收好，路上别渴着。" if Journal.exchange(player,{"plastic":2},{"freshwater":2}) else "塑料不足或背包放不下，未交换物品。"

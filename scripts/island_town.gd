@@ -21,6 +21,8 @@ const NPCS := {
 	"mu_tong": {"name":"沐桐","role":"植物画师","landmark":"farmhouse","home":"orchard_house","work_at":Vector2(368,464),"variant":15,"start":540,"end":1020,"talk":"田青借了我一张桌子，好把岛上的野花和庄稼画下来。城里的人只记得盛开的样子，可我喜欢它们刚冒芽的时候。等你院里的第一茬作物长起来，也带我去看看吧。"},
 	"gu_xing": {"name":"顾星","role":"潮汐器械师","landmark":"carpenter","home":"east_house","work_at":Vector2(400,656),"variant":16,"start":600,"end":1080,"talk":"我借贺木工坊的一角修测潮仪。海风和潮水有自己的节奏，旧仪器却总慢半拍。严砧说齿轮没坏，或许是我太想把每件事算准了。你从外岛回来时，能和我讲讲那里的浪吗？"},
 	"xu_mian": {"name":"许棉","role":"裁缝","landmark":"market","home":"orchard_house","work_at":Vector2(304,656),"variant":17,"start":600,"end":1080,"talk":"林穗把柜台边的位置借给我缝衣服。我以前总照着别人的样子做，最近想试试自己的配色。发型和衣服都可以换，舒服最要紧；你喜欢明亮一点，还是像旧帆布那样安静的颜色？"},
+	"cen_po": {"name":"岑婆","role":"退休领航员","landmark":"townhall","home":"east_house","work_at":Vector2(656,304),"variant":18,"start":480,"end":1020,"talk":"年轻时我在潮芽港领船进出，潮水差半刻钟都要吹哨子；如今退下来搭船四处逛逛，倒学会慢下来看风景了。出海前拿不准风向和暗流，尽管来找我聊聊。"},
+	"a_yuan": {"name":"阿沅","role":"招牌画师","landmark":"restaurant","home":"orchard_house","work_at":Vector2(208,624),"variant":19,"start":540,"end":1080,"talk":"我替镇上的铺子补漆木招牌，闲下来就爱在角落画大家坐过的空椅子。沐桐画花草怎么抽芽，我画椅子怎么被人坐出脾气；等你的院子或小店添了新布置，也请我去画一笔吧。"},
 	"chen_yu": {"name":"陈鱼","role":"厨师","landmark":"restaurant","variant":9,"start":660,"end":1320,"talk":"旧酒馆的灶台还好用。你潜水带回来的鱼很鲜，配上自己种的蔬菜做寿司吧。镇长管租约，我白天在店里，你们两个人可以一个备餐、一个上菜。"},
 	"wen_zhi": {"name":"温知","role":"教师","landmark":"townhall","variant":10,"start":480,"end":960,"talk":"镇公所借了角落给我们上课。图鉴里记着四季：春萝卜四天，玉米七天，南瓜十天，雪根六天。每天浇水，夜里才生长。修好温室就不用担心换季了。"},
 	"qiao_xin": {"name":"乔信","role":"邮差","landmark":"plaza","variant":11,"start":540,"end":1020,"talk":"我把镇里的供货单带到广场。居民需要鱼和蔬菜，凑够一单再交给我，金币会进你们的共同钱袋。做不做都行，不耽误出海。"},

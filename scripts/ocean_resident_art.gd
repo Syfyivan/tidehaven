@@ -6,6 +6,8 @@ const SOURCES:={
 	"chao_jia":preload(ROOT+"chao_jia.png"),
 	"tai_lu":preload(ROOT+"tai_lu.png"),
 	"lan_ying":preload(ROOT+"lan_ying.png"),
+	"mi_luo":preload(ROOT+"mi_luo.png"),
+	"san_jin":preload(ROOT+"san_jin.png"),
 }
 const REGIONS:={
 	"bai_fan":Vector2i(16,32),
@@ -13,6 +15,8 @@ const REGIONS:={
 	"chao_jia":Vector2i(32,32),
 	"tai_lu":Vector2i(16,16),
 	"lan_ying":Vector2i(32,32),
+	"mi_luo":Vector2i(32,32),
+	"san_jin":Vector2i(32,32),
 }
 static var _frames:Dictionary={}
 static func texture(id:String,elapsed:float)->Texture2D:
@@ -25,4 +29,6 @@ static func texture(id:String,elapsed:float)->Texture2D:
 		_frames[key]=atlas
 	return _frames[key]
 static func rect(id:String,at:Vector2)->Rect2:
-	return Rect2(at-Vector2(16,30),Vector2(32,32)) if id=="tai_lu" else Rect2(at-Vector2(32,48 if id=="chao_jia" else 36),Vector2(64,64)) if id in ["chao_jia","lan_ying"] else Rect2(at-Vector2(16,62),Vector2(32,64))
+	if id=="tai_lu":return Rect2(at-Vector2(16,30),Vector2(32,32))
+	if id in ["chao_jia","lan_ying","mi_luo","san_jin"]:return Rect2(at-Vector2(32,48 if id in ["chao_jia","mi_luo","san_jin"] else 36),Vector2(64,64))
+	return Rect2(at-Vector2(16,62),Vector2(32,64))

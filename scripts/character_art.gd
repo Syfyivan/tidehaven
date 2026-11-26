@@ -24,6 +24,8 @@ const NPC_SHEETS := {
 	"zhou_chao":preload(HARBOR_ROOT + "zhou_chao.png"),
 	"tian_qing":preload(HARBOR_ROOT + "tian_qing.png"),
 	"lu_yao":preload(HARBOR_ROOT + "lu_yao.png"),
+	"cen_po":preload(HARBOR_ROOT + "cen_po.png"),
+	"a_yuan":preload(HARBOR_ROOT + "a_yuan.png"),
 }
 const STEP_FRAMES := [0, 1, 2, 3]
 const DIRECTION_ROWS := [0,3,1,2] # Game down/left/right/up -> atlas down/right/up/left.

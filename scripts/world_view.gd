@@ -490,7 +490,7 @@ func _draw_room() -> void:
 	var bounds := Rect2(origin+canvas_bounds.position,canvas_bounds.size)
 	_r(canvas_bounds.position,canvas_bounds.size,Color("243336"))
 	draw_set_transform_matrix(Transform2D(0,-origin))
-	if id.begins_with("sea_"):
+	if Rooms.is_sea_cave(id):
 		draw_rect(bounds,Color("17394a"))
 		var top := PackedVector2Array([Vector2(bounds.position.x-4,bounds.position.y-4),Vector2(bounds.end.x+4,bounds.position.y-4)])
 		var bottom := PackedVector2Array()
@@ -511,6 +511,12 @@ func _draw_room() -> void:
 			_draw_seaweed(Vector2(x,Rooms.seabed(x,Rooms.floor_number(id))+2),36 if i%3==0 else 22,i*4.1)
 		for i in 5: _ring(air+Vector2(-25+i*13,-fposmod(_elapsed*12+i*7,40)),2,Color("add6cc"))
 		_label("空气洞 · 停留补氧",air+Vector2(26,-58),MINT,11)
+		if id=="sea_2":
+			_draw_cave_mouth(Rooms.GROTTO_ARCH,false)
+			for cx in [-26,26]:draw_circle(Rooms.GROTTO_ARCH+Vector2(cx,-18),4.0,Color("6bd4c8"))
+			_label("潮钟礁洞 · 55米 ↑",Rooms.GROTTO_ARCH+Vector2(0,40),MINT,11)
+		elif id=="reef_grotto":
+			_draw_grotto_workshop()
 	else:
 		var cells := Rect2i(Vector2i(bounds.position/32)-Vector2i(2,2),Vector2i(bounds.size/32)+Vector2i(5,5))
 		IslandTiles.draw_patch(self,Rooms.source(id),cells,Vector2(cells.position)*32,2,int(state.day),["Back","Back2","Buildings","Buildings2"],Color.WHITE,_elapsed)
@@ -564,15 +570,16 @@ func _draw_room() -> void:
 		elif actor.type=="customer":_draw_customer(actor.customer)
 		elif actor.type=="crop":_draw_island_plot(actor.at,actor.plot,true)
 		else:_draw_town_npc(actor.npc)
-	if not id.begins_with("sea_"):
+	if not Rooms.is_sea_cave(id):
 		var cells := Rect2i(Vector2i(bounds.position/32)-Vector2i(2,2),Vector2i(bounds.size/32)+Vector2i(5,5))
 		IslandTiles.draw_patch(self,Rooms.source(id),cells,Vector2(cells.position)*32,2,int(state.day),["Front","Front2","Front3","AlwaysFront"],Color.WHITE,_elapsed)
 	if id=="restaurant":_draw_restaurant_counters()
+	if id=="townhall":_draw_townhall_exhibit()
 	if id=="island_reef":_draw_reef_chronicles()
 	if id=="yard_home" and int(state.housing.level)>=2:
 		_label("书房 →",Rooms.onward(id)+Vector2(0,-35),GOLD,13)
 	if not placement.is_empty():_draw_placement()
-	if not id.begins_with("sea_") and Vector2(_local.x,_local.y).distance_to(Rooms.entry(id))>110:_label("返回 ↑",Rooms.entry(id)+Vector2(0,32),CREAM,11)
+	if not Rooms.is_sea_cave(id) and Vector2(_local.x,_local.y).distance_to(Rooms.entry(id))>110:_label("返回 ↑",Rooms.entry(id)+Vector2(0,32),CREAM,11)
 	if id.begins_with("sea_") or id.begins_with("mine_"):
 		if Rooms.floor_number(id)<3:
 			var onward := Rooms.onward(id)
@@ -625,6 +632,62 @@ func _draw_restaurant_counters()->void:
 			_sprite(work.recipe,at,Vector2(28,28))
 			_label("可取餐" if float(work.remaining)==0 else "%.1f秒"%work.remaining,at+Vector2(0,-24),MINT,10)
 		elif Restaurant.near(_local,Restaurant.station(i),96):_label("案板%d"%(i+1),at+Vector2(0,-8),CREAM,10)
+	var kyz:Dictionary=state.get("chronicles",{}).get("kong_yi_zi",{})
+	var kyz_step:=int(kyz.get("step",0))
+	var ch_at:=LongStories.CHAIR_SITE+Vector2(-16,-22)
+	if kyz_step>=5:
+		_shadow(ch_at+Vector2(0,4),Vector2(34,6),Color(0.18,0.12,0.08,0.28))
+		_r(ch_at+Vector2(-32,-26),Vector2(64,26),Color("5c3e26"))
+		_r(ch_at+Vector2(-29,-4),Vector2(4,8),Color("4a311d"))
+		_r(ch_at+Vector2(25,-4),Vector2(4,8),Color("4a311d"))
+		for fx in [-20,0,20]:
+			_r(ch_at+Vector2(fx-7,-23),Vector2(14,19),Color("efe4c8"))
+			_r(ch_at+Vector2(fx-4,-17),Vector2(8,8),Color("9e6b3b"))
+		_label("镇公所日常画廊" if str(kyz.get("style",""))=="hall" else "寿司屋空椅画角",ch_at+Vector2(0,-34),CREAM,9)
+	elif kyz_step==0:
+		_r(ch_at+Vector2(-7,-10),Vector2(14,11),Color("8c6239"))
+		_r(ch_at+Vector2(-5,-8),Vector2(10,7),Color("f2e7cc"))
+		if Vector2(_local.x,_local.y).distance_to(LongStories.CHAIR_SITE)<84:_label("空椅速写册 · 右键查看",ch_at+Vector2(0,-16),GOLD,10)
+
+func _draw_townhall_exhibit()->void:
+	var kyz:Dictionary=state.get("chronicles",{}).get("kong_yi_zi",{})
+	if int(kyz.get("step",0))>=5 and str(kyz.get("style",""))=="hall":
+		var h_at:=Vector2(176,264)
+		_shadow(h_at+Vector2(0,4),Vector2(34,6),Color(0.18,0.12,0.08,0.26))
+		_r(h_at+Vector2(-32,-26),Vector2(64,26),Color("5c3e26"))
+		_r(h_at+Vector2(-29,-4),Vector2(4,8),Color("4a311d"))
+		_r(h_at+Vector2(25,-4),Vector2(4,8),Color("4a311d"))
+		for fx in [-20,0,20]:
+			_r(h_at+Vector2(fx-7,-23),Vector2(14,19),Color("efe4c8"))
+			_r(h_at+Vector2(fx-4,-17),Vector2(8,8),Color("8c5930"))
+		_label("空椅子日常展",h_at+Vector2(0,-34),CREAM,9)
+
+func _draw_grotto_workshop()->void:
+	var wb:=LongStories.CLOCK_SITE
+	_shadow(wb+Vector2(0,18),Vector2(38,8),Color(0.05,0.16,0.20,0.45))
+	_r(wb+Vector2(-32,2),Vector2(64,18),Color("496e73"))
+	_r(wb+Vector2(-36,-4),Vector2(72,7),Color("679094"))
+	# Salvaged brass clocks & music-box gears on stone bench
+	draw_circle(wb+Vector2(-14,-11),7.0,Color("b88b3b"))
+	draw_circle(wb+Vector2(-14,-11),4.5,Color("ebe3c7"))
+	_r(wb+Vector2(4,-14),Vector2(14,10),Color("8c5e32"))
+	_r(wb+Vector2(6,-12),Vector2(10,4),Color("e3b954"))
+	var zbzz:Dictionary=state.get("chronicles",{}).get("zou_bu_zhun_zhong",{})
+	var z_step:=int(zbzz.get("step",0))
+	if z_step>=5:
+		if str(zbzz.get("style",""))=="harbor":
+			_r(wb+Vector2(-10,-40),Vector2(20,24),Color("6e4e32"))
+			draw_circle(wb+Vector2(0,-28),7.5,Color("deb454"))
+			draw_circle(wb+Vector2(0,-28),4.5,Color("d4f2ec"))
+			_label("海岸木架潮汐钟",wb+Vector2(0,-48),MINT,10)
+		else:
+			_r(wb+Vector2(-16,-40),Vector2(32,4),Color("ad8336"))
+			for bx in [-10,0,10]:
+				_r(wb+Vector2(bx,-36),Vector2(3,10),Color("e6be5a"))
+			draw_circle(wb+Vector2(0,-21+sin(_elapsed*2.2)*2.0),4.0,Color("aaf7e8"))
+			_label("礁洞报潮八音钟",wb+Vector2(0,-48),MINT,10)
+	elif z_step==0 and Vector2(_local.x,_local.y).distance_to(wb)<96:
+		_label("浸水船钟 · 右键查看",wb+Vector2(0,-24),GOLD,10)
 
 func _draw_reef_chronicles()->void:
 	var cs_at:=OceanResidents.position("chi_sheng")
@@ -1031,6 +1094,35 @@ func _draw_island() -> void:
 				draw_circle(coast_at + px_off, 2.5, Color("eceee9"))
 			if _near(coast_at, 110):
 				_label("浅滩白石（右键查看）", coast_at + Vector2(0, 16), CREAM, 10)
+		var zbzz_c: Dictionary = state.get("chronicles", {}).get("zou_bu_zhun_zhong", {})
+		if int(zbzz_c.get("step", 0)) >= 5:
+			var tc_at := coast_at + Vector2(52, 8)
+			if str(zbzz_c.get("style", "")) == "harbor":
+				_r(tc_at + Vector2(-7, -20), Vector2(14, 18), Color("6e4e32"))
+				draw_circle(tc_at + Vector2(0, -11), 5.0, Color("e0b653"))
+				_label("潮汐钟", tc_at + Vector2(0, -26), MINT, 9)
+			else:
+				_r(tc_at + Vector2(-2, -18), Vector2(4, 16), Color("6e5036"))
+				draw_circle(tc_at + Vector2(0, -14), 4.0, Color("e6be5a"))
+		var p_at := LongStories.PILOT_SITE
+		var bgc: Dictionary = state.get("chronicles", {}).get("bu_gan_chao", {})
+		var bgc_step := int(bgc.get("step", 0))
+		if bgc_step >= 5:
+			if str(bgc.get("style", "")) == "chart":
+				_r(p_at + Vector2(-11, -18), Vector2(22, 14), Color("6e4d30"))
+				_r(p_at + Vector2(-8, -16), Vector2(16, 8), Color("efe3c5"))
+				_r(p_at + Vector2(2, -14), Vector2(4, 4), Color("deb454"))
+				_label("领航手札台", p_at + Vector2(0, -24), Color("f1d6a6"), 10)
+			else:
+				_r(p_at + Vector2(-9, -14), Vector2(14, 11), Color("a87d4c"))
+				_r(p_at + Vector2(-7, -19), Vector2(10, 6), Color("c49a64"))
+				_r(p_at + Vector2(7, -11), Vector2(5, 8), Color("9e4b2b"))
+				_label("候船藤椅角", p_at + Vector2(0, -25), Color("f1d6a6"), 10)
+		elif LongStories.pilot_ready(state) and bgc_step == 0:
+			_r(p_at + Vector2(-8, -8), Vector2(14, 8), Color("44596e"))
+			_r(p_at + Vector2(-4, -10), Vector2(10, 3), Color("deb454"))
+			if _near(p_at, 92):
+				_label("旧领航旗囊（右键查看）", p_at + Vector2(0, 14), GOLD, 10)
 		if _near(Vector2(305, 385), 55):
 			_label("海岸营地", Vector2(305, 430), CREAM, 11)
 	var island: Dictionary = state.get("island", {})
@@ -1098,6 +1190,10 @@ func _draw_yard(bounds: Rect2) -> void:
 				_label("你们的院子 · 门柱留有旧刻痕（右键查看）", gate + Vector2(118, 20), CREAM, 12)
 			else:
 				_label((plaque + " · 你们的院子") if state.island.homestead.rented else "荒废的院子 · 镇长在东街", gate + Vector2(82, 20), CREAM, 12)
+		var bgc_y: Dictionary = state.get("chronicles", {}).get("bu_gan_chao", {})
+		if state.island.homestead.rented and int(bgc_y.get("step", 0)) >= 5 and str(bgc_y.get("style", "")) == "chair":
+			_r(gate + Vector2(-56, -16), Vector2(12, 9), Color("b88b58"))
+			_r(gate + Vector2(-54, -20), Vector2(8, 4), Color("d1a872"))
 
 func _draw_fence(at: Vector2, horizontal: bool) -> void:
 	var rect: Rect2i = IslandArt.REGIONS.fence_h if horizontal else IslandArt.REGIONS.fence_v
@@ -1270,6 +1366,25 @@ func _draw_building_chronicle(id: String, base: Vector2, door: Vector2) -> void:
 				_r(at + Vector2(-6, -4), Vector2(3, 4), Color("5c4028"))
 				_r(at + Vector2(3, -4), Vector2(3, 4), Color("5c4028"))
 				_label("廊下矮凳席", at + Vector2(0, -18), CREAM, 9)
+	elif id == "fishery":
+		var bstw: Dictionary = state.get("chronicles", {}).get("bu_shi_tan_wei", {})
+		var b_step := int(bstw.get("step", 0))
+		var s_at := LongStories.SCALE_SITE
+		if b_step >= 5:
+			_r(s_at + Vector2(-18, -6), Vector2(36, 9), Color("9e7446"))
+			_r(s_at + Vector2(-16, -4), Vector2(32, 5), Color("c29663"))
+			if str(bstw.get("style", "")) == "buoy":
+				draw_circle(s_at + Vector2(22, -10), 5.0, Color("d9783b"))
+				_r(s_at + Vector2(-26, -12), Vector2(9, 8), Color("785534"))
+				_label("浅滩浮球礼尚角", s_at + Vector2(0, -20), CREAM, 9)
+			else:
+				_label("向阳晒背木台", s_at + Vector2(0, -20), CREAM, 9)
+		if b_step in [0, 1, 2] or float(state.get("minute", 600.0)) < 600.0:
+			var seal_at := s_at + (Vector2(56, 4) if b_step >= 5 else Vector2(0, 4))
+			draw_texture_rect(OceanArt.texture("san_jin", _elapsed), OceanArt.rect("san_jin", seal_at), false, Color.WHITE)
+			_label("三斤", seal_at + Vector2(0, 14), CREAM, 10)
+			if b_step == 0 and _near(s_at, 96):
+				_label("霸占秤盘的海豹（右键查看）", seal_at + Vector2(0, -46), GOLD, 9)
 
 func _draw_town_npc(npc: Dictionary) -> void:
 	var at := Vector2(float(npc.x), float(npc.y))

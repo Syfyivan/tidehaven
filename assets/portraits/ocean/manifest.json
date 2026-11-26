@@ -10,15 +10,6 @@
       "sha256": "8cbd93dfd2582014ef892150e33f418a70747a94f55ceec92bc1d80cb8543cd8"
     },
     {
-      "id": "chi_sheng",
-      "file": "chi_sheng.png",
-      "canvas": [
-        64,
-        64
-      ],
-      "sha256": "4596789109e30a8c7ed741ab24ce8e1e975b68c18aaac91199de8ca567a8eee1"
-    },
-    {
       "id": "chao_jia",
       "file": "chao_jia.png",
       "canvas": [
@@ -28,13 +19,13 @@
       "sha256": "ffb6c85790a9723840e849cd1b6ab1beafd8959f51913b14ceda144b55d2b34b"
     },
     {
-      "id": "tai_lu",
-      "file": "tai_lu.png",
+      "id": "chi_sheng",
+      "file": "chi_sheng.png",
       "canvas": [
         64,
         64
       ],
-      "sha256": "9138203c30f2c3fb737200aa7750273097d876b902cc676be12d2701d450014b"
+      "sha256": "4596789109e30a8c7ed741ab24ce8e1e975b68c18aaac91199de8ca567a8eee1"
     },
     {
       "id": "lan_ying",
@@ -44,6 +35,33 @@
         64
       ],
       "sha256": "245d62abf3203f9ab45e631959db0588eae711d0449af7c6120d7d6dbaae7da8"
+    },
+    {
+      "id": "mi_luo",
+      "file": "mi_luo.png",
+      "canvas": [
+        64,
+        64
+      ],
+      "sha256": "0cd98f54b53d2c28cb40f7c5e1fbce0d6118393ca990d036a127f264dc6f4cea"
+    },
+    {
+      "id": "san_jin",
+      "file": "san_jin.png",
+      "canvas": [
+        64,
+        64
+      ],
+      "sha256": "acfc8fae8a3af15cbde249e7d977f6dedc12947129c054e83cc3ad2fcfbb68c4"
+    },
+    {
+      "id": "tai_lu",
+      "file": "tai_lu.png",
+      "canvas": [
+        64,
+        64
+      ],
+      "sha256": "9138203c30f2c3fb737200aa7750273097d876b902cc676be12d2701d450014b"
     }
   ]
 }

@@ -24,6 +24,10 @@ const BASIC := {
 	"chao_jia": ["你们又给岸边换名字了？石头没换，我还是按石头认。", "今天这层沙暖些。你要坐，坐旁边，我刚把这个位置压平。"],
 	"tai_lu": ["你把花拔掉，又买另一种花种下。是原来那种站错地方了吗？", "我给石头排了队。风没吹乱，倒是我自己记不住谁排第一。"],
 	"lan_ying": ["你们说钟响就是该回家。要是我学钟响，你们会不会提前收摊？", "刚才那个声音很短，尾巴却留了很久。你们的门是不是都爱这样抱怨？"],
+	"cen_po": ["以前带船进港，连喝口茶都盯着风向标。现在坐着看云走偏了，倒觉得挺有意思。", "许岸每次见我都把桌面擦得锃亮。其实我最怀念的，反倒是旧值班室那张歪腿藤椅。"],
+	"a_yuan": ["陈鱼店里那张靠窗凳子左横档磨得最亮，我猜常坐的人习惯踮着左脚喝汤。", "沐桐教我认了三种树皮颜料，我答应替她的标本夹画一枚小木签。"],
+	"mi_luo": ["你们岸上丢下来的怀表真奇怪，走快两下就说是坏了，明明是赶着去看涨潮嘛。", "澜影借了我一块回音石试音梳，敲一下能把旁边睡着的小虾米震醒两只。"],
+	"san_jin": ["三斤把圆下巴搁在铜秤盘边打了个盹，胡须跟着海风一翘一翘。", "三斤用前鳍把两颗扁石子拨成一排，歪着脑袋满意地拍了拍肚皮。"],
 }
 const STORY_LINES := {
 	"yan_zhen": "石寻那把镐的事已经说妥。以后修工具，我先问要留哪一处，省得白费一炉火。",
@@ -43,6 +47,10 @@ const STORY_LINES := {
 	"chao_jia": "年轻的认新路，我听它们讲过了。白石那段还记着，不必每次都从那里起头。",
 	"tai_lu": "观察册捆好了。今天那株又偏出去一点，我就在纸边再添一笔。",
 	"lan_ying": "那段歌还没取岸上的名字。你上回说怎么记，我还记得。",
+	"cen_po": "那只没上发条的旧怀表我还揣着，想散步时摸到它，就提醒自己今天不用赶钟点。",
+	"a_yuan": "袖口那点擦不掉的朱砂红我干脆留在签名角当印章了，看着比正经印泥还顺眼。",
+	"mi_luo": "少了一齿的八音盒留着那一拍空拍之后，海浪声正好替它补上了那个音！",
+	"san_jin": "三斤认得你上次挑过的那块条纹海石，拿湿漉漉的鼻尖轻轻碰了碰你的靴面。",
 }
 const ENDING_LINES := {
 	"tian_qing": ["野花田这个名字我记住了。有人再说那角落空着，我就指给他看。", "那块地就歇一季。明年再说，今天不往上添活。"],
@@ -62,6 +70,30 @@ static func line(data:Dictionary, slot:String, id:String) -> String:
 
 static func chronicle_line(data:Dictionary, id:String) -> String:
 	var chron:Dictionary = data.get("chronicles", {})
+	var bgc:Dictionary = chron.get("bu_gan_chao", {})
+	if int(bgc.get("step", 0)) == 5:
+		var chair:bool = str(bgc.get("style", "")) == "chair"
+		match id:
+			"cen_po": return "西岸那把向海藤椅坐着真敞亮，下回从邻港过来我还先去那儿喝口热茶。" if chair else "《潮芽港新旧潮汐手札》摆在西岸木台上，路过的年轻船手翻一翻心里就有底了。"
+			"xu_an": return "岑婆说不摆迎宾席果然自在多了，昨天她还顺手指点了我两句防风栏的位置。"
+	var kyz:Dictionary = chron.get("kong_yi_zi", {})
+	if int(kyz.get("step", 0)) == 5:
+		var hall:bool = str(kyz.get("style", "")) == "hall"
+		match id:
+			"a_yuan": return "镇公所走廊和寿司屋都挂上空椅子速写后，路过的人总忍不住猜下一把画的是谁！" if hall else "寿司屋西墙那排空椅子小画框跟饭菜热气配在一起，看着就暖洋洋的。"
+			"tang_he": return "阿沅画里那把搭半干毛巾的竹椅被林穗一眼认出来，我现在收毛巾都折得方方正正。"
+	var zbzz:Dictionary = chron.get("zou_bu_zhun_zhong", {})
+	if int(zbzz.get("step", 0)) == 5:
+		var grotto:bool = str(zbzz.get("style", "")) == "grotto"
+		match id:
+			"mi_luo": return "礁洞的报潮八音钟一到平潮就叮咚响，连海洞口的鱼群都跟着打拍子呢！" if grotto else "海岸木架潮汐钟和礁洞主钟对得严丝合缝，夜潮一涨咱们两边同时知道！"
+			"gu_xing": return "米洛改出来的太阴潮汐钟齿比妙极了，我还记进了自己的误差笔记里。"
+	var bstw:Dictionary = chron.get("bu_shi_tan_wei", {})
+	if int(bstw.get("step", 0)) == 5:
+		var buoy:bool = str(bstw.get("style", "")) == "buoy"
+		match id:
+			"san_jin": return "三斤在暖烘烘的木台上舒展肚皮，前鳍轻轻拍了拍旁边装满圆贝壳的小木盒。" if buoy else "三斤安安稳稳趴在晒背木台上晒胡须，再也没去霸占周潮的鱼秤。"
+			"zhou_chao": return "三斤昨天又往浅滩浮球边推了两颗圆石子，不讨鱼吃、各晒各的太阳，省心多啦！" if buoy else "有了岸边那张带海苔味的向阳晒背台，三斤早上晒够太阳自己就回珊湾去了。"
 	var kjh:Dictionary = chron.get("kan_jian_hai", {})
 	if int(kjh.get("step", 0)) == 5:
 		var lamp:bool = str(kjh.get("style", "")) == "lamp"

@@ -30,7 +30,7 @@ func _init() -> void:
 	var world = World.new()
 	var baseline:Dictionary = world.data.duplicate(true)
 	check(baseline.get("stories") == Stories.create(), "New world initializes separate personal stories")
-	check(Stories.ARCS.size() == 23, "Every one of the 18 town and 5 ocean residents has a story")
+	check(Stories.ARCS.size() == 27, "Every one of the 20 town and 7 ocean residents has a story")
 	var titles:Dictionary = {}
 	var interlinked:int = 0
 	var overnight:int = 0
@@ -76,7 +76,7 @@ func _init() -> void:
 			check(Stories.summary(data, "host").contains(str(arc.steps[2].replies[final_choice].answer)), owner + " journal remembers chosen ending")
 			var restored:Dictionary = Stories.restore(JSON.parse_string(JSON.stringify(data.stories)), int(data.day))
 			check(restored == data.stories and typeof(restored.host[owner].step) == TYPE_INT and typeof(restored.host[owner].choices[0]) == TYPE_INT, owner + " JSON restore normalizes integer state")
-	check(interlinked == 23 and overnight >= 8, "All stories involve another resident and some allow natural overnight reflection")
+	check(interlinked == 27 and overnight >= 10, "All stories involve another resident and some allow natural overnight reflection")
 	_bad_actions(baseline)
 	_bad_saves()
 	var together:Dictionary = baseline.duplicate(true)

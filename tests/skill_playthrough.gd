@@ -5,7 +5,7 @@ func _run() -> void:
 		if not main.cli.has(argument):
 			_fail("Missing isolated argument " + argument)
 			return
-	for version in range(1, 19):
+	for version in range(1, 21):
 		if ProjectSettings.globalize_path(main.save_path).to_lower() == ProjectSettings.globalize_path("user://world_v%d.json" % version).to_lower():
 			_fail("Refusing real player save")
 			return
