@@ -65,7 +65,7 @@ func _init() -> void:
 		for gy in range(3, 6):
 			initial_tiles.append(_tile_key(gx, gy))
 	data = {
-		"version": 18, "wardrobe":Appearance.create(), "day": 1, "minute": 360.0, "elapsed": 0.0, "rooms": Rooms.create(), "gardens": Gardens.create(), "restaurant":Restaurant.create(),
+		"version": 19, "wardrobe":Appearance.create(), "day": 1, "minute": 360.0, "elapsed": 0.0, "rooms": Rooms.create(), "gardens": Gardens.create(), "restaurant":Restaurant.create(),
 		"navigation": Navigation.create(), "chart": Archipelago.create(Navigation.create()), "island": IslandState.create(),
 		"money": 0, "chests": {}, "deck_tiles": initial_tiles,
 		"structures": {"bedroll_0": _new_structure("bedroll_0", "bedroll", Vector2(416, 224))},
@@ -722,6 +722,22 @@ func action(slot: String, verb: String, args: Dictionary = {}) -> String:
 		return LongStories.inspect_coast(data) if player.area=="island" and _near(player,LongStories.COAST_SITE,110.0) else "请走到西岸浅滩白石旁再查看。"
 	if verb=="coast_style":
 		return LongStories.toggle_coast_style(data) if player.area=="island" and _near(player,LongStories.COAST_SITE,110.0) else "请走到西岸浅滩再切换信物。"
+	if verb=="workshop_inspect":
+		return LongStories.inspect_workshop(data) if player.area=="island" and _near(player,IslandMap.LANDMARKS.carpenter.door,88.0) else "请走到木匠工坊门前再查看草图。"
+	if verb=="workshop_style":
+		return LongStories.toggle_workshop_style(data) if player.area=="island" and _near(player,IslandMap.LANDMARKS.carpenter.door,88.0) else "请走到木匠工坊门前再切换工角样式。"
+	if verb=="farm_inspect":
+		return LongStories.inspect_farm(data) if player.area=="island" and _near(player,IslandMap.LANDMARKS.farmhouse.door,88.0) else "请走到苔瓦民居门前再查看菜筐。"
+	if verb=="farm_style":
+		return LongStories.toggle_farm_style(data) if player.area=="island" and _near(player,IslandMap.LANDMARKS.farmhouse.door,88.0) else "请走到苔瓦民居门前再切换时令陈列。"
+	if verb=="pirate_inspect":
+		return LongStories.inspect_pirate(data) if player.area=="room" and player.room=="island_reef" and _near(player,OceanResidents.position("chi_sheng"),96.0) else "请到珊湾岛走近海盗赤绳营地再查看。"
+	if verb=="pirate_style":
+		return LongStories.toggle_pirate_style(data) if player.area=="island" and _near(player,IslandMap.LANDMARKS.restaurant.door,96.0) else "请走到潮间寿司屋门外再调整安排。"
+	if verb=="reef_inspect":
+		return LongStories.inspect_reef(data) if player.area=="room" and player.room=="island_reef" and _near(player,OceanResidents.position("chao_jia")+LongStories.REEF_OFFSET,96.0) else "请到珊湾岛潮甲东北侧沙坪旁再查看。"
+	if verb=="reef_style":
+		return LongStories.toggle_reef_style(data) if player.area=="room" and player.room=="island_reef" and _near(player,OceanResidents.position("chao_jia")+LongStories.REEF_OFFSET,96.0) else "请到珊湾岛潮甲东北侧沙坪旁再切换安排。"
 	if verb.begins_with("town_"):
 		return IslandTown.action(data, player, verb, args, slot)
 	if verb.begins_with("room_"):
@@ -1207,6 +1223,17 @@ func interaction_options(slot: String) -> Array:
 	if player.area == "room":
 		result.append_array(Restaurant.options(data,player))
 		result.append_array(IslandTown.options(data,player))
+		if player.room == "island_reef":
+			if _near(player, OceanResidents.position("chi_sheng"), 96.0):
+				var p_step := int(LongStories.record(data, "liu_yi_ba_yi_zi").get("step", 0))
+				if data.restaurant.rented and p_step == 0:
+					_option(result, "pirate_inspect", "查看熏黑行军锅边的旧店传单")
+			if _near(player, OceanResidents.position("chao_jia") + LongStories.REEF_OFFSET, 96.0):
+				var r_step := int(LongStories.record(data, "jin_nian_sha_tan").get("step", 0))
+				if data.journal.get("tide_speech", false) and r_step == 0:
+					_option(result, "reef_inspect", "查看潮线折返的海龟爬痕")
+				elif r_step >= 5:
+					_option(result, "reef_style", "切换珊湾潮线安排（歇沙坪／浮木标）")
 		return result
 	if player.area == "island":
 		result.append_array(IslandTown.options(data, player))
@@ -1216,6 +1243,22 @@ func interaction_options(slot: String) -> Array:
 				_option(result, "yard_inspect", "查看旧院门框刻痕")
 			elif hcy_step >= 5:
 				_option(result, "yard_style", "切换候潮院门牌（农庄／驿院）")
+		if _near(player, IslandMap.LANDMARKS.carpenter.door, 88.0):
+			var kjh_step := int(LongStories.record(data, "kan_jian_hai").get("step", 0))
+			if LongStories.house_ready_for_sea_window(data) and kjh_step == 0:
+				_option(result, "workshop_inspect", "查看工坊廊下的船窗草图")
+			elif kjh_step >= 5:
+				_option(result, "workshop_style", "切换临海工作角（敞窗／风灯）")
+		if _near(player, IslandMap.LANDMARKS.farmhouse.door, 88.0):
+			var wlb_step := int(LongStories.record(data, "wai_luo_bo").get("step", 0))
+			if data.island.homestead.rented and wlb_step == 0:
+				_option(result, "farm_inspect", "查看门边挑剩的分叉菜筐")
+			elif wlb_step >= 5:
+				_option(result, "farm_style", "切换民居时令陈列（菜篓／陶坛）")
+		if _near(player, IslandMap.LANDMARKS.restaurant.door, 96.0):
+			var lybyz_step := int(LongStories.record(data, "liu_yi_ba_yi_zi").get("step", 0))
+			if lybyz_step >= 5:
+				_option(result, "pirate_style", "切换店外规矩（矮凳／外带台／留步牌）")
 		if _near(player, IslandMap.DOCK, 110.0):
 			var ka_step := int(LongStories.record(data, "kao_an").get("step", 0))
 			if int(data.journal.get("story_step", 0)) >= 1 and ka_step == 0:
@@ -1595,7 +1638,7 @@ func restore(saved: Dictionary) -> bool:
 	migration_notice = ""
 	var pending_migration_notice := ""
 	# Build a fresh validated value; a rejected file must leave the live world untouched.
-	if not _integer(saved.get("version"), 1, 18) or not _integer(saved.get("day"), 1, 1000000):
+	if not _integer(saved.get("version"), 1, 19) or not _integer(saved.get("day"), 1, 1000000):
 		return false
 	var legacy := int(saved.version) == 1
 	var survival := int(saved.version) >= 3
@@ -1851,7 +1894,7 @@ func restore(saved: Dictionary) -> bool:
 	if not walkable:
 		return false
 	var restored_data := {
-		"version": 18, "wardrobe":wardrobe,"housing":housing,"journal":journal,"stories":stories,"chronicles":chronicles, "rooms": rooms, "gardens": gardens, "restaurant":restaurant, "day": int(saved.day), "minute": float(saved.minute), "elapsed": float(saved.elapsed), "navigation": navigation, "chart": chart, "island": island,
+		"version": 19, "wardrobe":wardrobe,"housing":housing,"journal":journal,"stories":stories,"chronicles":chronicles, "rooms": rooms, "gardens": gardens, "restaurant":restaurant, "day": int(saved.day), "minute": float(saved.minute), "elapsed": float(saved.elapsed), "navigation": navigation, "chart": chart, "island": island,
 		"money": int(saved.money), "chests": chests, "expansion": int(saved.expansion),
 		"crop": {"stage": int(crop.stage), "progress": float(crop.progress), "watered": bool(crop.watered)},
 		"orders_filled": int(saved.get("orders_filled", 0)), "orders_limit": 3, "players": players, "entities": entities, "threats": threats,

@@ -1,5 +1,9 @@
 # Tidehaven artwork sources
 
+## 0.21 五位海上伙伴原创世界像素精灵补齐（2026-11-26）
+
+- **5位海上伙伴世界双帧精灵表**（`assets/characters/ocean/{bai_fan,chi_sheng,chao_jia,tai_lu,lan_ying}.png`）：由 `tools/build-021-art.py` 对照 `0.19` 原创海洋肖像绘制为严格二值透明原生像素表（白帆/赤绳 `32×32`、潮甲/澜影 `64×32`、苔露 `32×16`），替换 `OceanResidentArt` 原先读取的 `vendor/stardew-island/ocean-residents/*` 图集。至此全游戏 23 位已接入角色（18 位镇民 + 5 位海上伙伴）的世界像素与对话肖像全部为项目自有可公开分发资产。逐文件尺寸与 SHA256 见 `assets/characters/ocean/manifest.json` 与 `SOURCE.md`。
+
 ## 0.20 全镇18位居民近代海港像素与肖像补齐（2026-11-26）
 
 - **新增16位潮芽镇居民海港肖像与世界行走表**（`assets/portraits/harbor/<id>.png`、`assets/characters/harbor/<id>.png`，覆盖 `xu_an`、`he_mu`、`lin_sui`、`su_qin`、`tang_he`、`zhou_chao`、`tian_qing`、`lu_yao`、`chen_yu`、`wen_zhi`、`qiao_xin`、`shi_xun`、`sen_ke`、`lu_zhou`、`gu_xing`、`xu_mian`）：肖像由内置 `image_gen` 生成原创像素半身母稿后经 `tools/build-020-art.py` 量化为严格二值透明 `64×64` 原生画布；世界行走精灵表由 `tools/build-020-art.py` 按职业服饰与发式绘制为原创 `16×32` 四向四帧网格（`64×128`，固定脚点 `(8,31)`）。至此 18 位镇民全部使用项目自有可公开分发的海港资产，不再加载 `vendor/stardew-island/{characters,portraits}` 原始角色图。逐文件尺寸与 SHA256 见对应目录 `manifest.json` 与 `SOURCE.md`。

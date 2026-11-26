@@ -349,7 +349,7 @@ func _homestead_gallery() -> bool:
 	if not _check(main.mode == "menu", "packaged leased yard saves through pause menu"):
 		return false
 	var saved: Variant = JSON.parse_string(FileAccess.get_file_as_string(main.save_path))
-	if not _check(saved.version == 18 and saved.state.version == 18, "save envelope and world both use v18"):
+	if not _check(saved.version == 19 and saved.state.version == 19, "save envelope and world both use v19"):
 		return false
 	await _click(main.continue_button.get_global_rect().get_center())
 	if not _check(main.mode == "solo" and main.world.data.island.homestead == home and Inventory.count(main.world.data.players.host.bag, "seed") == 6, "packaged Continue retains lease and exactly one personal gift"):

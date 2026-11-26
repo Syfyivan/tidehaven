@@ -62,6 +62,34 @@ static func line(data:Dictionary, slot:String, id:String) -> String:
 
 static func chronicle_line(data:Dictionary, id:String) -> String:
 	var chron:Dictionary = data.get("chronicles", {})
+	var kjh:Dictionary = chron.get("kan_jian_hai", {})
+	if int(kjh.get("step", 0)) == 5:
+		var lamp:bool = str(kjh.get("style", "")) == "lamp"
+		match id:
+			"he_mu": return "『防潮风灯工角』傍晚一点亮，刨木头看纹路清清楚楚，严砧来瞧过也说稳当。" if lamp else "『迎风敞窗工角』推开就是海风，连顾星借桌角画图都嫌屋里闷了。"
+			"yan_zhen": return "贺木那套热油淬过的防盐窗轴一点没生锈，昨天他还回岸跟我喝了一壶茶。"
+			"gu_xing": return "我借贺木的新百叶窗框测过三次海雾湿度，读数比旧木窗稳多了！"
+	var wlb:Dictionary = chron.get("wai_luo_bo", {})
+	if int(wlb.get("step", 0)) == 5:
+		var crock:bool = str(wlb.get("style", "")) == "crock"
+		match id:
+			"tian_qing": return "门前摆起『时令腌菜陶坛』后，歪萝卜切块脆生生的，半根都不糟蹋。" if crock else "门前有了『田间直供菜篓』，分叉的甜根菜一下地就有去处啦。"
+			"lin_sui": return "顺直的摆货架、分叉的进时令菜篓，我这周的损耗账好看多了！"
+			"mu_tong": return "田青大姐留了两根长相最稀奇的分叉萝卜给我画速写，画完照样下锅。"
+	var lybyz:Dictionary = chron.get("liu_yi_ba_yi_zi", {})
+	if int(lybyz.get("step", 0)) == 5:
+		var p_style := str(lybyz.get("style", "stool"))
+		match id:
+			"chi_sheng": return "行行行，规矩我记着呢——双股缆绳我已经赔给周潮了，买热饭照价给钱！"
+			"zhou_chao": return "赤绳编回来的那两条粗缆手艺倒不赖。一码归一码，旧账算清了，交情另说。"
+			"chen_yu": return ("赤绳昨天收市后真规规矩矩坐在门外矮凳上喝完鱼汤，碗还自己叠好了。" if p_style == "stool" else ("侧窗外带台挺省心，钱货两清，镇上熟客也觉得稳妥。" if p_style == "window" else "港规木牌挂在门外，赤绳路过看了一眼倒也没耍赖，说等大家信得过再来。"))
+	var jnst:Dictionary = chron.get("jin_nian_sha_tan", {})
+	if int(jnst.get("step", 0)) == 5:
+		var marker:bool = str(jnst.get("style", "")) == "marker"
+		match id:
+			"chao_jia": return "珊湾那根慢行浮木标立得好，路过的小船远远就收桨，小辈们晒背踏实多了。" if marker else "向阳歇沙坪被草束拢得暖洋洋的，那两只爱争路的小海龟今早抢着趴那儿呢。"
+			"lu_zhou": return "我已经把珊湾东侧的新潮线标进巡海册了，出船路过都会留神慢行。"
+			"tai_lu": return "海风捎信来啦，珊湾边那排护沙草束已经自己扎下浅根了！"
 	var lyw:Dictionary = chron.get("liu_yi_wan", {})
 	if int(lyw.get("step", 0)) == 5:
 		var s_style := str(lyw.get("style", "home"))

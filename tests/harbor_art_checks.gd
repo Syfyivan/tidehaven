@@ -8,6 +8,7 @@ const Appearance = preload("res://scripts/appearance.gd")
 const ChoppingArt = preload("res://scripts/chopping_art.gd")
 const ToolMotion = preload("res://scripts/tool_motion.gd")
 const OceanResidents = preload("res://scripts/ocean_residents.gd")
+const OceanArt = preload("res://scripts/ocean_resident_art.gd")
 var checks := 0
 var failures := 0
 
@@ -35,6 +36,12 @@ func _initialize() -> void:
 		_check(tex is AtlasTexture and tex.get_size() == Vector2(64, 64), "ocean companion has 64x64 portrait: " + id)
 		if tex != null:
 			_check_binary_alpha(tex.get_image(), 1100, "ocean portrait crisp binary alpha: " + id)
+		_check(OceanArt.SOURCES.has(id) and OceanArt.SOURCES[id].resource_path.begins_with("res://assets/characters/ocean/"), "ocean companion world sprite is original asset: " + id)
+		for f_idx in 2:
+			var otex := OceanArt.texture(id, float(f_idx) * 0.5)
+			var expected_size: Vector2 = Vector2(OceanArt.REGIONS[id])
+			_check(otex.get_size() == expected_size, "ocean world sprite size %s frame %d" % [id, f_idx])
+			_check_binary_alpha(otex.get_image(), 80 if id == "tai_lu" else 130, "ocean world sprite binary alpha %s frame %d" % [id, f_idx])
 
 	for body_idx in [0, 1]:
 		var ptex := Portraits.player_texture({"body": body_idx})

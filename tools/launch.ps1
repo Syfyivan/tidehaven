@@ -1,6 +1,6 @@
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$playable = Join-Path $projectRoot 'build\Tidehaven-0.20.0.exe'
+$playable = Join-Path $projectRoot 'build\Tidehaven-0.21.0.exe'
 if (Test-Path -LiteralPath $playable) {
     Start-Process -FilePath $playable -WorkingDirectory (Split-Path -Parent $playable)
     exit

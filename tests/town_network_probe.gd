@@ -92,7 +92,7 @@ func _setup_fixture() -> void:
 	Inventory.add(data.players.host.bag, "wood", 1)
 	Inventory.add(data.players.guest.bag, "veg", 2)
 	original_host_bag = data.players.host.bag.duplicate(true)
-	_check(int(data.version) == 18 and Town.open_at("lin_sui", float(data.minute)) and Archipelago.within_docking_range(data.chart, data.navigation), "fixture starts a valid v10 docked town visit with two vegetables and eleven shared coins")
+	_check(int(data.version) == 19 and Town.open_at("lin_sui", float(data.minute)) and Archipelago.within_docking_range(data.chart, data.navigation), "fixture starts a valid v10 docked town visit with two vegetables and eleven shared coins")
 
 
 func _process(_delta: float) -> void:
@@ -343,7 +343,7 @@ func _resume() -> void:
 	var data: Dictionary = main.world.data
 	if not _check(_json(_persistent_fields(data)) == _json(expected), "independent process restores exact v10 positions, bags, shared money, town recovery and island progress"):
 		return
-	if not _check(int(data.version) == 18 and int(data.money) == 1 and _count(data, "host", "axe") == 1 and _count(data, "guest", "seed") == 1 and _count(data, "guest", "veg") == 0, "saved purchases and completed sale income survive a normal solo load"):
+	if not _check(int(data.version) == 19 and int(data.money) == 1 and _count(data, "host", "axe") == 1 and _count(data, "guest", "seed") == 1 and _count(data, "guest", "veg") == 0, "saved purchases and completed sale income survive a normal solo load"):
 		return
 	if not _check(float(data.players.guest.stamina) == 80 and data.players.host.activity.is_empty() and data.players.guest.activity.is_empty(), "paid bath recovery survives without replaying an activity or charging again"):
 		return

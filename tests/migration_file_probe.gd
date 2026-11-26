@@ -40,9 +40,9 @@ func _run() -> void:
 	success = success and game._persist() and game._start("solo", true)
 	success = success and _progress(game.world.data) == _progress(expected.data)
 	var written: Variant = JSON.parse_string(FileAccess.get_file_as_string(destination))
-	success = success and written is Dictionary and written.get("version") == 18 and written.get("state") is Dictionary and written.state.get("version") == 18 and FileAccess.get_file_as_string(source) == original
+	success = success and written is Dictionary and written.get("version") == 19 and written.get("state") is Dictionary and written.state.get("version") == 19 and FileAccess.get_file_as_string(source) == original
 	game.mode = "menu"
 	game.queue_free()
 	await process_frame
-	print("MIGRATION FILE ", "PASS" if success else "FAIL", ": v", int(wrapper.get("version", 0)), " source preserved; inventories, layouts, crops, resources, appearances, stories and chronicles survive v18 write/reload")
+	print("MIGRATION FILE ", "PASS" if success else "FAIL", ": v", int(wrapper.get("version", 0)), " source preserved; inventories, layouts, crops, resources, appearances, stories and chronicles survive v19 write/reload")
 	quit(0 if success else 1)

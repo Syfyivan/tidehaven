@@ -1,6 +1,12 @@
 # Tidehaven / 潮间小屋
 
-## 当前交付：0.20全镇海港人物与三条核心长线（2026-11-26）
+## 当前交付：0.21海上伙伴原创世界像素与四条进阶长线（2026-11-26）
+
+用户已锁定 **Godot 4.7.1 独立游戏路线** 为唯一主线（`experiments/stardew-spike` 封存为历史对照样板），并授权推送 GitHub（仅提交源码、文档、测试与原创/CC0资产；`assets/vendor/pipoya/*.png`、`assets/vendor/stardew-island/**/*.png`、`*.tmx`、`build/`、`artifacts/` 与个人存档严禁入库）。
+
+本轮交付 `0.21.0`（`build/Tidehaven-0.21.0.exe`，`world_v19.json`）：重绘 5 位海上伙伴（白帆、赤绳、潮甲、苔露、澜影）原创二值透明世界精灵（`assets/characters/ocean/`，全游戏 23 名角色世界+肖像现 100% 为自有可公开分发资产，零依赖 `vendor/stardew-island` 角色原图）；按 `docs/narrative/` 节点脚本实装四条推荐进阶长线 `P2-14《开门能看见海》`（含已住船屋旧档免材与船屋同步风灯/百叶窗）、`P2-20《歪萝卜也能上桌》`、`P2-28《留一把椅子》`（坚持真实旧账亲手补还与三选一店门分寸）及 `P2-29《今年的沙滩》`。最终包内嵌 PCK 两尺寸 UI 116/147/427/128/7 项、本机 ENet 12/8/3、`v11/v16/v17/v18` 副本迁移及 138.31 秒默认音频空背包开局/保存继续全部通过；启动入口已切 `0.21.0`，比例规范升级为 `v1.15`，旧包与个人原档保留。详见 `docs/implementation-0.21.md`。
+
+## 历史交付：0.20全镇海港人物与三条核心长线（2026-11-26）
 
 用户已锁定 **Godot 4.7.1 独立游戏路线** 为唯一主线（`experiments/stardew-spike` 封存为历史对照样板），并授权推送 GitHub（仅提交源码、文档、测试与原创/CC0资产；`assets/vendor/pipoya/*.png`、`assets/vendor/stardew-island/**/*.png`、`*.tmx`、`build/`、`artifacts/` 与个人存档严禁入库）。
 
@@ -105,7 +111,7 @@ One Godot 4.7 project, GDScript, Windows-native preview. Design and code share t
 
 - 2026-10-12历史反馈：0.11.2岛屿整体画面未通过用户观感；后续0.11.3后用户确认目前岛上玩法可以，当前转海陆素材统一。环境验收以完整可玩场景为单位，覆盖地形边角/道路交叉和端点/水岸、建筑周边、布景、阴影及像素密度；单件原图替换或规则测试不能代替。现有归档包含TMX地图，新增场景先核对已有地图/分层/图集能否复用，再决定补画；素材存在、适配完成和完整玩法分别记录。用户已同意场景复用并要求继续；0.11.3实施原TMX参考渲染与镇区适配，住房和寿司店按TODO后续排期。建筑组合登记IslandTiles.FACADES，地表在IslandSurface，实际街道/实体/岛图共用IslandMap。旧版几何只能用于迁移，不得随新街道改写；任何位置/农田迁移先保留独立原档备份。
 - 2026-10-12用户进一步明确“有这个授权”，朋友同意使用其所有东西、所有资料。按用户确认的授权信息推进ffffhx/stardew-valley-assets的岛屿素材筛选与适配，不重复询问同一授权事项；来源记录注明依据为用户确认，不伪称已独立审阅授权合同或仓库已授予所有人开放许可证。接入仍遵守下列美术/比例/状态验收规则。
-- 比例约束长期生效：采用art-direction.md的“比例规范 v1.14（当前生效）”；旧版截图/历史审计不是新资产尺寸依据。新设施先登记ArtCatalog.WORLD_PROPS，人物统一由CharacterArt/PlayerArt提供，工具姿态与接触由PlayerArt/ToolMotion登记；新生成物件登记CoastalArt裁切/逻辑网格；横版敌人登记SeaCreatureArt；岛屿原图裁切、季节、尺寸与接地点统一登记IslandArt；海洋材质、浸水光照与缩景倍率登记MaritimeArt。新增配方设施必须通过prop_art_checks的元数据覆盖检查，禁止依赖未登记资产的通用尺寸兜底。
+- 比例约束长期生效：采用art-direction.md的“比例规范 v1.15（当前生效）”；旧版截图/历史审计不是新资产尺寸依据。新设施先登记ArtCatalog.WORLD_PROPS，人物统一由CharacterArt/PlayerArt提供，工具姿态与接触由PlayerArt/ToolMotion登记；新生成物件登记CoastalArt裁切/逻辑网格；横版敌人登记SeaCreatureArt；岛屿原图裁切、季节、尺寸与接地点统一登记IslandArt；海洋材质、浸水光照与缩景倍率登记MaritimeArt。新增配方设施必须通过prop_art_checks的元数据覆盖检查，禁止依赖未登记资产的通用尺寸兜底。
 - 新增/更换素材、状态或尺寸时，同轮更新代码元数据、规范中的生效值/例外、来源记录及TODO；新增开盖/加工/预览状态必须与本体同屏检查。先跑比例检查，再检查960×600和1280×800的真实输入与原图截图；窗口/布局变动另检查宽屏、全屏及鼠标映射。不凭测试通过标记用户视觉认可。
 - 2026-10-12后续用户明确认可0.10.2这轮UI整理；保留已获认可的UI；人物由后续0.11.2明确反馈覆盖，继续推进实际场景与物资。0.10.3首组PNG及展示网格在CoastalArt，设施尺寸/接地点在ArtCatalog.WORLD_PROPS，成人标尺在CharacterArt；新增状态复用这些定义。生成原图与实际入游戏画面分别验收，不能将用户认可UI扩大为新物资验收。
 

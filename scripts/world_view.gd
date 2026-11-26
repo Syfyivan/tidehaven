@@ -102,7 +102,18 @@ func _draw() -> void:
 		draw_set_transform_matrix(deck_transform())
 		_draw_deck()
 		var cabin:Dictionary=state.get("housing",{}).get("cabin",{})
-		if not cabin.is_empty():_prop("cabin",Vector2(cabin.x,cabin.y))
+		if not cabin.is_empty():
+			_prop("cabin",Vector2(cabin.x,cabin.y))
+			var kjh_deck:Dictionary=state.get("chronicles",{}).get("kan_jian_hai",{})
+			if int(kjh_deck.get("step",0))>=5:
+				var c_pos:=Vector2(cabin.x,cabin.y)+Vector2(-42,-28)
+				if str(kjh_deck.get("style",""))=="lamp":
+					if float(state.get("minute",600.0))>=1080.0:draw_circle(c_pos+Vector2(0,-6),13.0,Color(0.98,0.79,0.42,0.24))
+					_r(c_pos+Vector2(-2,-14),Vector2(4,14),Color("5c4028"))
+					draw_circle(c_pos+Vector2(0,-6),4.0,Color("f5cb6e"))
+				else:
+					_r(c_pos+Vector2(-8,-12),Vector2(16,12),Color("6e4c30"))
+					_r(c_pos+Vector2(-6,-10),Vector2(12,8),Color("b88b58"))
 		_draw_players()
 		if not placement.is_empty():
 			_draw_placement()
@@ -547,7 +558,7 @@ func _draw_room() -> void:
 		if actor.type=="player":_draw_players(actor.slot)
 		elif actor.type=="ocean_npc":
 			var at:=OceanResidents.position(actor.id)
-			draw_texture_rect(OceanArt.texture(actor.id,_elapsed),OceanArt.rect(actor.id,at),false,Color("9ec66c") if actor.id=="tai_lu" else Color.WHITE)
+			draw_texture_rect(OceanArt.texture(actor.id,_elapsed),OceanArt.rect(actor.id,at),false,Color.WHITE)
 			_label(str(OceanResidents.NPCS[actor.id].name),at+Vector2(0,23),CREAM,11)
 		elif actor.type=="furniture":_prop("chest_open" if actor.prop.id==open_chest_id else actor.prop.item,Vector2(actor.prop.x,actor.prop.y))
 		elif actor.type=="customer":_draw_customer(actor.customer)
@@ -557,6 +568,7 @@ func _draw_room() -> void:
 		var cells := Rect2i(Vector2i(bounds.position/32)-Vector2i(2,2),Vector2i(bounds.size/32)+Vector2i(5,5))
 		IslandTiles.draw_patch(self,Rooms.source(id),cells,Vector2(cells.position)*32,2,int(state.day),["Front","Front2","Front3","AlwaysFront"],Color.WHITE,_elapsed)
 	if id=="restaurant":_draw_restaurant_counters()
+	if id=="island_reef":_draw_reef_chronicles()
 	if id=="yard_home" and int(state.housing.level)>=2:
 		_label("书房 →",Rooms.onward(id)+Vector2(0,-35),GOLD,13)
 	if not placement.is_empty():_draw_placement()
@@ -613,6 +625,33 @@ func _draw_restaurant_counters()->void:
 			_sprite(work.recipe,at,Vector2(28,28))
 			_label("可取餐" if float(work.remaining)==0 else "%.1f秒"%work.remaining,at+Vector2(0,-24),MINT,10)
 		elif Restaurant.near(_local,Restaurant.station(i),96):_label("案板%d"%(i+1),at+Vector2(0,-8),CREAM,10)
+
+func _draw_reef_chronicles()->void:
+	var cs_at:=OceanResidents.position("chi_sheng")
+	var lybyz:Dictionary=state.get("chronicles",{}).get("liu_yi_ba_yi_zi",{})
+	if state.get("restaurant",{}).get("rented",false) and int(lybyz.get("step",0))==0:
+		_r(cs_at+Vector2(-26,-42),Vector2(10,8),Color("292626"))
+		_r(cs_at+Vector2(-14,-40),Vector2(8,6),Color("e8dcc0"))
+		if Vector2(_local.x,_local.y).distance_to(cs_at)<96:_label("锅边旧传单（右键）",cs_at+Vector2(-18,-50),GOLD,9)
+	var reef_at:=OceanResidents.position("chao_jia")+LongStories.REEF_OFFSET
+	var jnst:Dictionary=state.get("chronicles",{}).get("jin_nian_sha_tan",{})
+	var j_step:=int(jnst.get("step",0))
+	if j_step>=5:
+		if str(jnst.get("style",""))=="marker":
+			_r(reef_at+Vector2(-3,-24),Vector2(6,24),Color("7a5a3a"))
+			_r(reef_at+Vector2(-11,-20),Vector2(22,10),Color("9e784e"))
+			draw_circle(reef_at+Vector2(0,-15),3.5,Color("5c823b"))
+			_label("慢行浮木标",reef_at+Vector2(0,-28),CREAM,10)
+		else:
+			_shadow(reef_at+Vector2(0,-2),Vector2(22,9),Color(0.95,0.84,0.58,0.55))
+			for gx in [-16,-4,10]:
+				_r(reef_at+Vector2(gx,-12),Vector2(4,8),Color("5f8a3e"))
+				_r(reef_at+Vector2(gx+1,-15),Vector2(2,4),Color("85b058"))
+			_label("向阳歇沙坪",reef_at+Vector2(0,-22),CREAM,10)
+	elif state.get("journal",{}).get("tide_speech",false) and j_step==0:
+		for tx in [-10,-2,6]:
+			_r(reef_at+Vector2(tx,-2+(tx%4)),Vector2(4,2),Color("bca26e"))
+		if Vector2(_local.x,_local.y).distance_to(reef_at)<96:_label("潮线爬痕 · 右键查看",reef_at+Vector2(0,16),GOLD,10)
 
 func _draw_sea_threats() -> void:
 	for enemy: Dictionary in state.get("threats", {}).values():
@@ -1142,6 +1181,7 @@ func _draw_town_building(building: Dictionary) -> void:
 		var person:=Vector2(float(_local.get("x",0)),float(_local.get("y",0)))
 		var tint:=Color(1,1,1,0.4 if person.y<footprint.position.y and facade.intersects(CharacterArt.world_rect(person)) else 1.0)
 		IslandTiles.draw_facade(self,str(building.id),contact,int(state.get("day",1)),tint)
+		_draw_building_chronicle(str(building.id),contact,door)
 		if _near(door,160): _label(IslandMap.landmark_label(state,building.id),contact+Vector2(0,20),CREAM,11)
 		return
 	var threshold := Vector2(door.x, footprint.end.y)
@@ -1168,7 +1208,68 @@ func _draw_town_building(building: Dictionary) -> void:
 	else:
 		draw_texture_rect(IslandArt.region(source, region), drawn, false, facade_tint)
 	# Native doors now share the character's 2x pixel scale; no oversized overlay.
+	_draw_building_chronicle(str(building.id),threshold,door)
 	_label(IslandMap.landmark_label(state,building.id), threshold + Vector2(0, 19), CREAM, 11)
+
+func _draw_building_chronicle(id: String, base: Vector2, door: Vector2) -> void:
+	if id == "carpenter":
+		var kjh: Dictionary = state.get("chronicles", {}).get("kan_jian_hai", {})
+		var k_step := int(kjh.get("step", 0))
+		var at := base + Vector2(68, -4)
+		if k_step >= 5:
+			if str(kjh.get("style", "")) == "lamp":
+				if float(state.get("minute", 600.0)) >= 1080.0:
+					draw_circle(at + Vector2(0, -14), 15.0, Color(0.98, 0.79, 0.42, 0.25))
+				_r(at + Vector2(-8, -20), Vector2(16, 18), Color("61432b"))
+				draw_circle(at + Vector2(0, -13), 4.0, Color("f5cb6e"))
+				_label("防潮风灯工角", at + Vector2(0, -26), Color("f5dcb0"), 9)
+			else:
+				_r(at + Vector2(-10, -20), Vector2(20, 16), Color("6e4c30"))
+				_r(at + Vector2(-8, -18), Vector2(16, 12), Color("b88b58"))
+				_r(at + Vector2(-6, -14), Vector2(12, 2), Color("593c24"))
+				_label("迎风敞窗工角", at + Vector2(0, -26), Color("f5dcb0"), 9)
+		elif LongStories.house_ready_for_sea_window(state) and k_step == 0 and _near(door, 92):
+			_r(at + Vector2(-7, -10), Vector2(14, 9), Color("e6dec5"))
+			_label("船窗草图（右键）", at + Vector2(0, 12), GOLD, 9)
+	elif id == "farmhouse":
+		var wlb: Dictionary = state.get("chronicles", {}).get("wai_luo_bo", {})
+		var w_step := int(wlb.get("step", 0))
+		var at := base + Vector2(96, -4)
+		if w_step >= 5:
+			if str(wlb.get("style", "")) == "crock":
+				_r(at + Vector2(-12, -6), Vector2(24, 5), Color("6e4e32"))
+				for cx in [-6, 5]:
+					draw_circle(at + Vector2(cx, -11), 5.0, Color("8c5230"))
+					_r(at + Vector2(cx - 4, -17), Vector2(8, 3), Color("c49a62"))
+				_label("时令腌菜陶坛", at + Vector2(0, -23), CREAM, 9)
+			else:
+				for bx in [-7, 5]:
+					_r(at + Vector2(bx - 5, -12), Vector2(10, 9), Color("9e824c"))
+					draw_circle(at + Vector2(bx - 1, -14), 3.5, Color("669944"))
+					draw_circle(at + Vector2(bx + 2, -13), 2.5, Color("de7a35"))
+				_label("田间直供菜篓", at + Vector2(0, -23), CREAM, 9)
+		elif state.get("island", {}).get("homestead", {}).get("rented", false) and w_step == 0 and _near(door, 92):
+			_r(at + Vector2(-6, -9), Vector2(12, 8), Color("9e824c"))
+			draw_circle(at + Vector2(0, -11), 3.0, Color("de7a35"))
+			_label("分叉菜筐（右键）", at + Vector2(0, 12), GOLD, 9)
+	elif id == "restaurant":
+		var lybyz: Dictionary = state.get("chronicles", {}).get("liu_yi_ba_yi_zi", {})
+		if int(lybyz.get("step", 0)) >= 5:
+			var at := base + Vector2(-216, -2)
+			var st := str(lybyz.get("style", "stool"))
+			if st == "window":
+				_r(at + Vector2(-12, -14), Vector2(24, 6), Color("8c6239"))
+				_r(at + Vector2(-4, -20), Vector2(9, 6), Color("e6d8b8"))
+				_label("侧窗外带台", at + Vector2(0, -26), CREAM, 9)
+			elif st == "slate":
+				_r(at + Vector2(-2, -22), Vector2(4, 20), Color("59412c"))
+				_r(at + Vector2(-11, -24), Vector2(22, 12), Color("2c363d"))
+				_label("港规留步牌", at + Vector2(0, -29), CREAM, 9)
+			else:
+				_r(at + Vector2(-8, -10), Vector2(16, 6), Color("8c6239"))
+				_r(at + Vector2(-6, -4), Vector2(3, 4), Color("5c4028"))
+				_r(at + Vector2(3, -4), Vector2(3, 4), Color("5c4028"))
+				_label("廊下矮凳席", at + Vector2(0, -18), CREAM, 9)
 
 func _draw_town_npc(npc: Dictionary) -> void:
 	var at := Vector2(float(npc.x), float(npc.y))

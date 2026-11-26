@@ -1,22 +1,27 @@
 extends RefCounted
-const ROOT:="res://assets/vendor/stardew-island/ocean-residents/"
-const Player=preload("res://scripts/player_art.gd")
+const ROOT:="res://assets/characters/ocean/"
 const SOURCES:={
-	"chao_jia":preload(ROOT+"turtle.png"),
-	"tai_lu":preload(ROOT+"Junimo.png"),
-	"lan_ying":preload(ROOT+"SeaMonsterKrobus.png"),
-	"chi_sheng":preload(ROOT+"pirates_tilesheet.png"),
+	"bai_fan":preload(ROOT+"bai_fan.png"),
+	"chi_sheng":preload(ROOT+"chi_sheng.png"),
+	"chao_jia":preload(ROOT+"chao_jia.png"),
+	"tai_lu":preload(ROOT+"tai_lu.png"),
+	"lan_ying":preload(ROOT+"lan_ying.png"),
+}
+const REGIONS:={
+	"bai_fan":Vector2i(16,32),
+	"chi_sheng":Vector2i(16,32),
+	"chao_jia":Vector2i(32,32),
+	"tai_lu":Vector2i(16,16),
+	"lan_ying":Vector2i(32,32),
 }
 static var _frames:Dictionary={}
 static func texture(id:String,elapsed:float)->Texture2D:
-	if id=="bai_fan":
-		Player.configure("sea_merchant",{"body":0,"hair":4,"hair_color":4,"shirt":6,"pants":2,"skin":2})
-		return Player.texture("sea_merchant",0,0)
-	var frame:int=int(elapsed*2)%2
+	var frame:int=int(maxf(0.0,elapsed)*2.0)%2
 	var key:=id+str(frame)
 	if not _frames.has(key):
+		var cell:Vector2i=REGIONS[id]
 		var atlas:=AtlasTexture.new();atlas.atlas=SOURCES[id];atlas.filter_clip=true
-		atlas.region={"chao_jia":Rect2(frame*32,0,32,32),"tai_lu":Rect2(frame*16,0,16,16),"lan_ying":Rect2(frame*32,0,32,32),"chi_sheng":Rect2(240+frame*16,0,16,32)}[id]
+		atlas.region=Rect2(frame*cell.x,0,cell.x,cell.y)
 		_frames[key]=atlas
 	return _frames[key]
 static func rect(id:String,at:Vector2)->Rect2:
