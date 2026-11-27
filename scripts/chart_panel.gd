@@ -348,6 +348,20 @@ func _draw_island(center: Vector2, id: String, unlocked: bool) -> void:
 func _draw_raft(center: Vector2) -> void:
 	map_canvas.draw_circle(center, 18, Color(0.92, 0.91, 0.72, 0.60))
 	map_canvas.draw_texture_rect(preload("res://scripts/art_catalog.gd").texture("floor"),Rect2(center-Vector2(12,12),Vector2(24,24)),false)
+	var frcdq: Dictionary = _data.get("chronicles", {}).get("feng_ren_chu_de_qi", {})
+	if int(frcdq.get("step", 0)) >= 5:
+		var style := str(frcdq.get("style", "tide"))
+		var flag_col: Color = preload("res://scripts/long_stories.gd").pennant_color(style)
+		map_canvas.draw_rect(Rect2(center + Vector2(-2, -18), Vector2(3, 16)), Color("5c422c"))
+		if style == "tide":
+			map_canvas.draw_colored_polygon(PackedVector2Array([center + Vector2(1, -18), center + Vector2(14, -17), center + Vector2(10, -13), center + Vector2(14, -9), center + Vector2(1, -10)]), flag_col)
+		elif style == "herb":
+			map_canvas.draw_colored_polygon(PackedVector2Array([center + Vector2(1, -18), center + Vector2(15, -15), center + Vector2(1, -13)]), flag_col)
+			map_canvas.draw_colored_polygon(PackedVector2Array([center + Vector2(1, -12), center + Vector2(13, -9), center + Vector2(1, -8)]), Color("78b86a"))
+		else:
+			map_canvas.draw_colored_polygon(PackedVector2Array([center + Vector2(1, -18), center + Vector2(14, -13), center + Vector2(1, -9)]), flag_col)
+		map_canvas.draw_rect(Rect2(center + Vector2(3, -15), Vector2(3, 2)), Color("f4ecd6"))
+		return
 	map_canvas.draw_rect(Rect2(center + Vector2(-2, -15), Vector2(3, 13)), Color("485b4d"))
 	map_canvas.draw_colored_polygon(PackedVector2Array([center + Vector2(1, -15), center + Vector2(11, -11), center + Vector2(1, -7)]), Color("a5634e"))
 

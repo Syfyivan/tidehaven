@@ -152,7 +152,7 @@ func _test_save_and_tools() -> void:
 		player.erase("activity")
 		player.erase("can_water")
 		player.hook = {}
-	check(loaded.restore(old) and loaded.data.version == 20, "v7 migrates to v20")
+	check(loaded.restore(old) and loaded.data.version == 21, "v7 migrates to v21")
 	var bad: Dictionary = saved.duplicate(true)
 	bad.players.host.hook.dx = NAN
 	check(not loaded.restore(bad), "malformed projectile rejected atomically")

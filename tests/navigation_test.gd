@@ -62,7 +62,7 @@ func _test_motion_and_relative_current() -> void:
 	var floating_drift := _drift_fixture(floating)
 	var stopped_drift := _drift_fixture(stopped)
 	var pushed_drift := _drift_fixture(pushed)
-	_check(floating.data.version == 20 and not floating.data.navigation.anchored and _anchors(floating) == 0, "fresh v7 world starts drifting without a free anchor")
+	_check(floating.data.version == 21 and not floating.data.navigation.anchored and _anchors(floating) == 0, "fresh v7 world starts drifting without a free anchor")
 	_give(stopped, "host", "anchor")
 	stopped.action("host", "drop_anchor")
 	_give(pushed, "host", "paddle")
@@ -223,7 +223,7 @@ func _test_save_and_migration() -> void:
 	world.tick(0.2)
 	var saved: Dictionary = JSON.parse_string(JSON.stringify(world.snapshot()))
 	var loaded = WorldState.new()
-	_check(loaded.restore(saved) and loaded.data.version == 20 and _same_navigation(loaded.data.navigation, world.data.navigation), "v7 JSON roundtrip preserves travel, momentum and individual cooldowns")
+	_check(loaded.restore(saved) and loaded.data.version == 21 and _same_navigation(loaded.data.navigation, world.data.navigation), "v7 JSON roundtrip preserves travel, momentum and individual cooldowns")
 	_check(loaded.data.players.host.bag == world.data.players.host.bag and loaded.data.players.guest.bag == world.data.players.guest.bag and _anchors(loaded) == 1, "sailing saves preserve both personal bags and total anchor supply")
 	loaded.join("host", "船长")
 	var distance: float = loaded.data.navigation.distance
@@ -249,7 +249,7 @@ func _test_save_and_migration() -> void:
 	old.players.host.x = 120.0
 	old.players.host.y = 100.0
 	old.entities.fish_00.active = false
-	_check(loaded.restore(JSON.parse_string(JSON.stringify(old))) and loaded.data.version == 20 and loaded.data.navigation.anchored and loaded.data.players.host.area == "water" and not loaded.data.entities.fish_00.active, "a genuine v5 underwater save migrates safely moored without resetting its harvest")
+	_check(loaded.restore(JSON.parse_string(JSON.stringify(old))) and loaded.data.version == 21 and loaded.data.navigation.anchored and loaded.data.players.host.area == "water" and not loaded.data.entities.fish_00.active, "a genuine v5 underwater save migrates safely moored without resetting its harvest")
 	loaded.join("host", "船长")
 	loaded.action("host", "raise_anchor")
 	_check(not loaded.data.navigation.anchored and Inventory.count(loaded.data.players.host.bag, "anchor") == 1 and Inventory.count(loaded.data.players.host.bag, "fish") == 3, "the one migration anchor is recoverable while preserving old belongings")

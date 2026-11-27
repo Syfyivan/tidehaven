@@ -252,6 +252,42 @@ func _draw_deck() -> void:
 	for id in state.get("chests", {}):
 		if state.chests[id].get("area", "deck") == "deck":
 			_draw_chest(str(id), state.chests[id])
+	_draw_raft_pennant()
+
+func _draw_raft_pennant() -> void:
+	var frcdq: Dictionary = state.get("chronicles", {}).get("feng_ren_chu_de_qi", {})
+	if int(frcdq.get("step", 0)) < 5:
+		return
+	var style := str(frcdq.get("style", "tide"))
+	var post := LongStories.pennant_post(state)
+	var col := LongStories.pennant_color(style)
+	var flutter := sin(_elapsed * 3.1) * 2.2
+	_shadow(post + Vector2(0, 2), Vector2(7, 3), Color(0.16, 0.14, 0.11, 0.28))
+	_r(post + Vector2(-3, -4), Vector2(6, 6), Color("59412c"))
+	_r(post + Vector2(-2, -40), Vector2(4, 38), Color("7a5738"))
+	draw_circle(post + Vector2(0, -40), 3.0, Color("deb454"))
+	if style == "tide":
+		_polygon(post, PackedVector2Array([
+			Vector2(2, -39), Vector2(28, -37 + flutter),
+			Vector2(21, -31 + flutter * 0.7), Vector2(28, -25 + flutter),
+			Vector2(2, -26),
+		]), col)
+		draw_line(post + Vector2(4, -32), post + Vector2(19, -31 + flutter * 0.7), Color("f2ecd8"), 1.5)
+	elif style == "herb":
+		_polygon(post, PackedVector2Array([
+			Vector2(2, -39), Vector2(30, -35 + flutter), Vector2(2, -32),
+		]), col)
+		_polygon(post, PackedVector2Array([
+			Vector2(2, -30), Vector2(26, -25 - flutter * 0.8), Vector2(2, -24),
+		]), Color("78b86a"))
+		_r(post + Vector2(4, -37), Vector2(4, 3), Color("f2ecd8"))
+	else:
+		_polygon(post, PackedVector2Array([
+			Vector2(2, -39), Vector2(29, -31 + flutter), Vector2(2, -24),
+		]), col)
+		draw_circle(post + Vector2(9, -32 + flutter * 0.3), 2.5, Color("f7e4b2"))
+	if _near(LongStories.pennant_tile_center(state), 78.0):
+		_label(LongStories.style_name(style), post + Vector2(8, -47), CREAM, 9)
 
 func _draw_planks(cell: Vector2) -> void:
 	draw_texture_rect(Art.texture("floor"), Rect2(cell * 64, Vector2(64, 64)), false)
@@ -575,6 +611,8 @@ func _draw_room() -> void:
 		IslandTiles.draw_patch(self,Rooms.source(id),cells,Vector2(cells.position)*32,2,int(state.day),["Front","Front2","Front3","AlwaysFront"],Color.WHITE,_elapsed)
 	if id=="restaurant":_draw_restaurant_counters()
 	if id=="townhall":_draw_townhall_exhibit()
+	if id=="carpenter":_draw_carpenter_gauge()
+	if id=="market":_draw_market_pennant()
 	if id=="island_reef":_draw_reef_chronicles()
 	if id=="yard_home" and int(state.housing.level)>=2:
 		_label("书房 →",Rooms.onward(id)+Vector2(0,-35),GOLD,13)
@@ -661,6 +699,63 @@ func _draw_townhall_exhibit()->void:
 			_r(h_at+Vector2(fx-7,-23),Vector2(14,19),Color("efe4c8"))
 			_r(h_at+Vector2(fx-4,-17),Vector2(8,8),Color("8c5930"))
 		_label("空椅子日常展",h_at+Vector2(0,-34),CREAM,9)
+	var mzbt:Dictionary=state.get("chronicles",{}).get("ming_zi_bu_tong",{})
+	if int(mzbt.get("step",0))>=5 and str(mzbt.get("style",""))=="folio":
+		var f_at:=Vector2(252,220)
+		_shadow(f_at+Vector2(0,4),Vector2(20,5),Color(0.18,0.12,0.08,0.24))
+		_r(f_at+Vector2(-18,-22),Vector2(36,22),Color("63462c"))
+		_r(f_at+Vector2(-15,-19),Vector2(30,16),Color("f2ead2"))
+		for sx in [-9,-2,5,11]:
+			_r(f_at+Vector2(sx,-14),Vector2(3,8),Color("52874a"))
+		_label("四时草木图谱",f_at+Vector2(0,-29),MINT,9)
+
+func _draw_carpenter_gauge()->void:
+	var wcb:Dictionary=state.get("chronicles",{}).get("wu_cha_biao",{})
+	var w_step:=int(wcb.get("step",0))
+	var g_at:=LongStories.GAUGE_SITE+Vector2(0,-24)
+	if w_step>=5:
+		_shadow(g_at+Vector2(0,6),Vector2(22,5),Color(0.16,0.12,0.08,0.26))
+		if str(wcb.get("style",""))=="slate_tide":
+			_r(g_at+Vector2(-20,-28),Vector2(40,28),Color("5c3e26"))
+			_r(g_at+Vector2(-17,-25),Vector2(34,22),Color("2d3b3e"))
+			draw_line(g_at+Vector2(0,-24),g_at+Vector2(0,-4),Color("8aa6a3"),1.0)
+			for ly in [-20,-14,-8]:
+				_r(g_at+Vector2(-13,ly),Vector2(10,2),Color("e8dfc5"))
+				_r(g_at+Vector2(3,ly),Vector2(10,2),Color("e3b968"))
+			_label("双栏潮汐余量板",g_at+Vector2(0,-35),CREAM,9)
+		else:
+			_r(g_at+Vector2(-14,-6),Vector2(28,8),Color("63442b"))
+			_r(g_at+Vector2(-6,-30),Vector2(12,24),Color("c99b42"))
+			_r(g_at+Vector2(-3,-27),Vector2(6,18),Color("d8f0ec"))
+			_r(g_at+Vector2(-8,-19+roundf(sin(_elapsed*1.6)*3.0)),Vector2(16,2),Color("b85233"))
+			_label("黄铜浮筒测潮仪",g_at+Vector2(0,-36),CREAM,9)
+	elif int(state.get("journal",{}).get("story_step",0))>=1 and w_step==0:
+		_r(g_at+Vector2(-12,-10),Vector2(24,11),Color("efe3c5"))
+		_r(g_at+Vector2(4,-16),Vector2(7,14),Color("c99b42"))
+		if Vector2(_local.x,_local.y).distance_to(LongStories.GAUGE_SITE)<84:
+			_label("批注潮表 · 右键查看",g_at+Vector2(0,-22),GOLD,9)
+
+func _draw_market_pennant()->void:
+	var frcdq:Dictionary=state.get("chronicles",{}).get("feng_ren_chu_de_qi",{})
+	var f_step:=int(frcdq.get("step",0))
+	var p_at:=LongStories.PENNANT_SITE+Vector2(0,-16)
+	if f_step>=5:
+		var style:=str(frcdq.get("style","tide"))
+		var col:=LongStories.pennant_color(style)
+		_shadow(p_at+Vector2(0,6),Vector2(18,5),Color(0.16,0.12,0.08,0.25))
+		_r(p_at+Vector2(-14,-24),Vector2(28,3),Color("6e4d30"))
+		_r(p_at+Vector2(-12,-24),Vector2(3,28),Color("5c3e26"))
+		_r(p_at+Vector2(9,-24),Vector2(3,28),Color("5c3e26"))
+		_r(p_at+Vector2(-8,-21),Vector2(16,16),col)
+		_r(p_at+Vector2(-4,-15),Vector2(8,3),Color("f4ecd6"))
+		_label(LongStories.style_name(style),p_at+Vector2(0,-31),CREAM,9)
+	elif bool(state.get("chart",{}).get("visited",false)) and f_step==0:
+		_shadow(p_at+Vector2(0,4),Vector2(16,5),Color(0.16,0.12,0.08,0.22))
+		_r(p_at+Vector2(-13,-10),Vector2(26,12),Color("9e7b4b"))
+		_r(p_at+Vector2(-9,-13),Vector2(9,6),Color("2d7a9c"))
+		_r(p_at+Vector2(1,-12),Vector2(9,5),Color("d4743b"))
+		if Vector2(_local.x,_local.y).distance_to(LongStories.PENNANT_SITE)<84:
+			_label("旧帆布旗篮 · 右键查看",p_at+Vector2(0,-19),GOLD,9)
 
 func _draw_grotto_workshop()->void:
 	var wb:=LongStories.CLOCK_SITE
@@ -1194,6 +1289,10 @@ func _draw_yard(bounds: Rect2) -> void:
 		if state.island.homestead.rented and int(bgc_y.get("step", 0)) >= 5 and str(bgc_y.get("style", "")) == "chair":
 			_r(gate + Vector2(-56, -16), Vector2(12, 9), Color("b88b58"))
 			_r(gate + Vector2(-54, -20), Vector2(8, 4), Color("d1a872"))
+		var mzbt_y: Dictionary = state.get("chronicles", {}).get("ming_zi_bu_tong", {})
+		if state.island.homestead.rented and int(mzbt_y.get("step", 0)) >= 5 and str(mzbt_y.get("style", "")) == "stakes":
+			_r(gate + Vector2(-52, 24), Vector2(3, 10), Color("6e4d30"))
+			_r(gate + Vector2(-57, 19), Vector2(13, 6), Color("dfd2b2"))
 
 func _draw_fence(at: Vector2, horizontal: bool) -> void:
 	var rect: Rect2i = IslandArt.REGIONS.fence_h if horizontal else IslandArt.REGIONS.fence_v
@@ -1327,6 +1426,17 @@ func _draw_building_chronicle(id: String, base: Vector2, door: Vector2) -> void:
 		elif LongStories.house_ready_for_sea_window(state) and k_step == 0 and _near(door, 92):
 			_r(at + Vector2(-7, -10), Vector2(14, 9), Color("e6dec5"))
 			_label("船窗草图（右键）", at + Vector2(0, 12), GOLD, 9)
+		var wcb_out: Dictionary = state.get("chronicles", {}).get("wu_cha_biao", {})
+		if int(wcb_out.get("step", 0)) >= 5:
+			var w_at := base + Vector2(-78, -4)
+			if str(wcb_out.get("style", "")) == "slate_tide":
+				_r(w_at + Vector2(-12, -20), Vector2(24, 16), Color("2d3b3e"))
+				_r(w_at + Vector2(-2, -6), Vector2(4, 6), Color("5c3e26"))
+				_label("潮汐余量板", w_at + Vector2(0, -25), CREAM, 9)
+			else:
+				_r(w_at + Vector2(-5, -20), Vector2(10, 18), Color("c99b42"))
+				_r(w_at + Vector2(-2, -17), Vector2(4, 12), Color("d8f0ec"))
+				_label("浮筒测潮仪", w_at + Vector2(0, -25), CREAM, 9)
 	elif id == "farmhouse":
 		var wlb: Dictionary = state.get("chronicles", {}).get("wai_luo_bo", {})
 		var w_step := int(wlb.get("step", 0))
@@ -1348,6 +1458,26 @@ func _draw_building_chronicle(id: String, base: Vector2, door: Vector2) -> void:
 			_r(at + Vector2(-6, -9), Vector2(12, 8), Color("9e824c"))
 			draw_circle(at + Vector2(0, -11), 3.0, Color("de7a35"))
 			_label("分叉菜筐（右键）", at + Vector2(0, 12), GOLD, 9)
+		var mzbt_f: Dictionary = state.get("chronicles", {}).get("ming_zi_bu_tong", {})
+		var m_step := int(mzbt_f.get("step", 0))
+		var h_at := LongStories.HERB_SITE
+		if m_step >= 5:
+			for hx in [-10, -2, 7]:
+				draw_circle(h_at + Vector2(hx, -3), 4.0, Color("4e8a45"))
+			if str(mzbt_f.get("style", "")) == "folio":
+				_r(h_at + Vector2(-14, -22), Vector2(28, 16), Color("63462c"))
+				_r(h_at + Vector2(-11, -19), Vector2(22, 10), Color("f2ead2"))
+				_label("四时生长图鉴匣", h_at + Vector2(0, -28), MINT, 9)
+			else:
+				for sx in [-12, 0, 12]:
+					_r(h_at + Vector2(sx - 1, -14), Vector2(2, 11), Color("6e4d30"))
+					_r(h_at + Vector2(sx - 5, -18), Vector2(10, 5), Color("e8dcc0"))
+				_label("多俗名田边木签", h_at + Vector2(0, -25), MINT, 9)
+		elif state.get("island", {}).get("homestead", {}).get("rented", false) and m_step == 0:
+			draw_circle(h_at + Vector2(-4, -2), 4.0, Color("558f49"))
+			_r(h_at + Vector2(3, -10), Vector2(12, 9), Color("e8dcc0"))
+			if _near(h_at, 92):
+				_label("三名写生板（右键查看）", h_at + Vector2(0, 14), GOLD, 9)
 	elif id == "restaurant":
 		var lybyz: Dictionary = state.get("chronicles", {}).get("liu_yi_ba_yi_zi", {})
 		if int(lybyz.get("step", 0)) >= 5:
@@ -1385,6 +1515,32 @@ func _draw_building_chronicle(id: String, base: Vector2, door: Vector2) -> void:
 			_label("三斤", seal_at + Vector2(0, 14), CREAM, 10)
 			if b_step == 0 and _near(s_at, 96):
 				_label("霸占秤盘的海豹（右键查看）", seal_at + Vector2(0, -46), GOLD, 9)
+		var jyjl: Dictionary = state.get("chronicles", {}).get("jiu_yuan_ji_lu", {})
+		var r_step := int(jyjl.get("step", 0))
+		var r_at := LongStories.RESCUE_SITE
+		if r_step >= 5:
+			_shadow(r_at + Vector2(0, 3), Vector2(18, 5), Color(0.16, 0.14, 0.10, 0.25))
+			if str(jyjl.get("style", "")) == "rack":
+				_r(r_at + Vector2(-13, -24), Vector2(3, 26), Color("61432b"))
+				_r(r_at + Vector2(10, -24), Vector2(3, 26), Color("61432b"))
+				_r(r_at + Vector2(-15, -24), Vector2(30, 3), Color("7d5838"))
+				draw_circle(r_at + Vector2(-4, -13), 7.0, Color("d96b38"))
+				draw_circle(r_at + Vector2(-4, -13), 3.5, Color("f2ebd9"))
+				draw_circle(r_at + Vector2(7, -12), 5.0, Color("c7b083"))
+				_label("岸边救生圈绳架", r_at + Vector2(0, -30), CREAM, 9)
+			else:
+				_r(r_at + Vector2(-16, -26), Vector2(32, 20), Color("5c3e26"))
+				_r(r_at + Vector2(-13, -23), Vector2(26, 14), Color("efe4c8"))
+				_r(r_at + Vector2(-10, -6), Vector2(3, 8), Color("4a311d"))
+				_r(r_at + Vector2(7, -6), Vector2(3, 8), Color("4a311d"))
+				_r(r_at + Vector2(-9, -19), Vector2(8, 6), Color("3c7899"))
+				_label("平潮备航公告栏", r_at + Vector2(0, -32), CREAM, 9)
+		elif LongStories.pilot_ready(state) and r_step == 0:
+			_r(r_at + Vector2(-2, -18), Vector2(4, 20), Color("61432b"))
+			_r(r_at + Vector2(-9, -18), Vector2(18, 12), Color("44596e"))
+			_r(r_at + Vector2(-6, -15), Vector2(12, 6), Color("e8dcc0"))
+			if _near(r_at, 92):
+				_label("巡海险情簿（右键查看）", r_at + Vector2(0, 14), GOLD, 9)
 
 func _draw_town_npc(npc: Dictionary) -> void:
 	var at := Vector2(float(npc.x), float(npc.y))

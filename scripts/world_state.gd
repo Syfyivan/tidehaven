@@ -65,7 +65,7 @@ func _init() -> void:
 		for gy in range(3, 6):
 			initial_tiles.append(_tile_key(gx, gy))
 	data = {
-		"version": 20, "wardrobe":Appearance.create(), "day": 1, "minute": 360.0, "elapsed": 0.0, "rooms": Rooms.create(), "gardens": Gardens.create(), "restaurant":Restaurant.create(),
+		"version": 21, "wardrobe":Appearance.create(), "day": 1, "minute": 360.0, "elapsed": 0.0, "rooms": Rooms.create(), "gardens": Gardens.create(), "restaurant":Restaurant.create(),
 		"navigation": Navigation.create(), "chart": Archipelago.create(Navigation.create()), "island": IslandState.create(),
 		"money": 0, "chests": {}, "deck_tiles": initial_tiles,
 		"structures": {"bedroll_0": _new_structure("bedroll_0", "bedroll", Vector2(416, 224))},
@@ -754,6 +754,24 @@ func action(slot: String, verb: String, args: Dictionary = {}) -> String:
 		return LongStories.inspect_scale(data) if player.area=="island" and _near(player,LongStories.SCALE_SITE,88.0) else "请走到岸边渔铺西南侧海岸木坪再查看。"
 	if verb=="scale_style":
 		return LongStories.toggle_scale_style(data) if player.area=="island" and _near(player,LongStories.SCALE_SITE,88.0) else "请走到岸边渔铺西南侧海岸木坪再切换歇脚台。"
+	if verb=="rescue_inspect":
+		return LongStories.inspect_rescue(data) if player.area=="island" and _near(player,LongStories.RESCUE_SITE,88.0) else "请走到渔铺东侧港道口备勤架旁再查看。"
+	if verb=="rescue_style":
+		return LongStories.toggle_rescue_style(data) if player.area=="island" and _near(player,LongStories.RESCUE_SITE,88.0) else "请走到渔铺东侧港道口备勤架旁再切换布置。"
+	if verb=="herb_inspect":
+		return LongStories.inspect_herb(data) if player.area=="island" and _near(player,LongStories.HERB_SITE,88.0) else "请走到苔瓦民居西南侧草圃旁再查看写生板。"
+	if verb=="herb_style":
+		return LongStories.toggle_herb_style(data) if player.area=="island" and _near(player,LongStories.HERB_SITE,88.0) else "请走到苔瓦民居西南侧草圃旁再切换陈列。"
+	if verb=="gauge_inspect":
+		return LongStories.inspect_gauge(data) if player.area=="room" and player.room=="carpenter" and _near(player,LongStories.GAUGE_SITE,76.0) else "请走进木匠工坊东侧实验台旁再查看记录。"
+	if verb=="gauge_style":
+		return LongStories.toggle_gauge_style(data) if player.area=="room" and player.room=="carpenter" and _near(player,LongStories.GAUGE_SITE,76.0) else "请走进木匠工坊东侧实验台旁再切换陈列。"
+	if verb=="pennant_inspect":
+		return LongStories.inspect_pennant(data) if player.area=="room" and player.room=="market" and _near(player,LongStories.PENNANT_SITE,76.0) else "请走进潮芽超市许棉裁缝角旁再查看旗篮。"
+	if verb=="pennant_style":
+		var near_market: bool = player.area=="room" and player.room=="market" and _near(player,LongStories.PENNANT_SITE,76.0)
+		var near_deck_flag: bool = player.area=="deck" and _near(player,LongStories.pennant_tile_center(data),76.0)
+		return LongStories.toggle_pennant_style(data) if (near_market or near_deck_flag) else "请到潮芽超市布架旁或木筏挂旗角再切换风旗纹样。"
 	if verb.begins_with("town_"):
 		return IslandTown.action(data, player, verb, args, slot)
 	if verb.begins_with("room_"):
@@ -1262,6 +1280,18 @@ func interaction_options(slot: String) -> Array:
 				_option(result, "clock_inspect", "查看浸水黄铜船钟与八音盒")
 			elif zbzz_step >= 5:
 				_option(result, "clock_style", "切换潮汐钟样式（礁洞八音钟／海岸潮汐盘）")
+		elif player.room == "carpenter" and _near(player, LongStories.GAUGE_SITE, 76.0):
+			var wcb_step := int(LongStories.record(data, "wu_cha_biao").get("step", 0))
+			if int(data.journal.get("story_step", 0)) >= 1 and wcb_step == 0:
+				_option(result, "gauge_inspect", "查看涂满红蓝批注的测潮记录")
+			elif wcb_step >= 5:
+				_option(result, "gauge_style", "切换工坊测潮陈列（浮筒仪／余量板）")
+		elif player.room == "market" and _near(player, LongStories.PENNANT_SITE, 76.0):
+			var frcdq_step := int(LongStories.record(data, "feng_ren_chu_de_qi").get("step", 0))
+			if bool(data.chart.get("visited", false)) and frcdq_step == 0:
+				_option(result, "pennant_inspect", "查看缝着铜扣眼的旧帆布旗篮")
+			elif frcdq_step >= 5:
+				_option(result, "pennant_style", "切换木筏风旗（燕尾／归航／风语）")
 		return result
 	if player.area == "island":
 		result.append_array(IslandTown.options(data, player))
@@ -1311,6 +1341,18 @@ func interaction_options(slot: String) -> Array:
 				_option(result, "scale_inspect", "查看霸占备用铜秤盘的海豹")
 			elif bstw_step >= 5:
 				_option(result, "scale_style", "切换三斤岸边歇脚处（晒背木台／浮球礼尚角）")
+		if _near(player, LongStories.RESCUE_SITE, 88.0):
+			var jyjl_step := int(LongStories.record(data, "jiu_yuan_ji_lu").get("step", 0))
+			if LongStories.pilot_ready(data) and jyjl_step == 0:
+				_option(result, "rescue_inspect", "查看只记险情的巡海记录夹")
+			elif jyjl_step >= 5:
+				_option(result, "rescue_style", "切换港道口备勤布置（公告栏／圈绳架）")
+		if _near(player, LongStories.HERB_SITE, 88.0):
+			var mzbt_step := int(LongStories.record(data, "ming_zi_bu_tong").get("step", 0))
+			if data.island.homestead.rented and mzbt_step == 0:
+				_option(result, "herb_inspect", "查看草圃三名写生板")
+			elif mzbt_step >= 5:
+				_option(result, "herb_style", "切换草圃陈列（木签／图鉴匣）")
 		var chest_id := nearby_chest(slot)
 		if not chest_id.is_empty():
 			_option(result, "open_chest", "打开附近木箱", {"id": chest_id})
@@ -1416,6 +1458,8 @@ func interaction_options(slot: String) -> Array:
 			if object.has("kind"):
 				label = str(Recipes.ALL.get(object.kind, {}).get("name", "睡袋" if object.kind == "bedroll" else "设施"))
 			_option(result, "relocate", "搬动%s" % label, {"id": id, "from_x": float(object.x), "from_y": float(object.y)})
+		if int(LongStories.record(data, "feng_ren_chu_de_qi").get("step", 0)) >= 5 and _near(player, LongStories.pennant_tile_center(data), 76.0):
+			_option(result, "pennant_style", "切换木筏风旗（燕尾／归航／风语）")
 	if Inventory.count(player.bag, "freshwater") > 0:
 		_option(result, "drink", "喝淡水 · 恢复口渴")
 	if Inventory.count(player.bag, "meal") > 0 or Inventory.count(player.bag, "cooked_fish") > 0:
@@ -1678,7 +1722,7 @@ func restore(saved: Dictionary) -> bool:
 	migration_notice = ""
 	var pending_migration_notice := ""
 	# Build a fresh validated value; a rejected file must leave the live world untouched.
-	if not _integer(saved.get("version"), 1, 20) or not _integer(saved.get("day"), 1, 1000000):
+	if not _integer(saved.get("version"), 1, 21) or not _integer(saved.get("day"), 1, 1000000):
 		return false
 	var legacy := int(saved.version) == 1
 	var survival := int(saved.version) >= 3
@@ -1934,7 +1978,7 @@ func restore(saved: Dictionary) -> bool:
 	if not walkable:
 		return false
 	var restored_data := {
-		"version": 20, "wardrobe":wardrobe,"housing":housing,"journal":journal,"stories":stories,"chronicles":chronicles, "rooms": rooms, "gardens": gardens, "restaurant":restaurant, "day": int(saved.day), "minute": float(saved.minute), "elapsed": float(saved.elapsed), "navigation": navigation, "chart": chart, "island": island,
+		"version": 21, "wardrobe":wardrobe,"housing":housing,"journal":journal,"stories":stories,"chronicles":chronicles, "rooms": rooms, "gardens": gardens, "restaurant":restaurant, "day": int(saved.day), "minute": float(saved.minute), "elapsed": float(saved.elapsed), "navigation": navigation, "chart": chart, "island": island,
 		"money": int(saved.money), "chests": chests, "expansion": int(saved.expansion),
 		"crop": {"stage": int(crop.stage), "progress": float(crop.progress), "watered": bool(crop.watered)},
 		"orders_filled": int(saved.get("orders_filled", 0)), "orders_limit": 3, "players": players, "entities": entities, "threats": threats,

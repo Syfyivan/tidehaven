@@ -71,6 +71,10 @@ func _initialize() -> void:
 	_test_kong_yi_zi(world)
 	_test_zou_bu_zhun_zhong(world)
 	_test_bu_shi_tan_wei(world)
+	_test_jiu_yuan_ji_lu(world)
+	_test_ming_zi_bu_tong(world)
+	_test_wu_cha_biao(world)
+	_test_feng_ren_chu_de_qi(world)
 	_test_migrations(world)
 
 	print("CHRONICLE CHECKS: %d checks, %d failures" % [checks, failures])
@@ -559,6 +563,147 @@ func _test_bu_shi_tan_wei(world) -> void:
 	world.action("host", "scale_style")
 	_check(LongStories.record(world.data, "bu_shi_tan_wei").style == "plank", "scale_style toggles buoy -> plank")
 
+func _test_jiu_yuan_ji_lu(world) -> void:
+	var unready := WorldState.new()
+	unready.join("host", "新客")
+	unready.data.players.host.area = "island"
+	unready.data.players.host.x = LongStories.RESCUE_SITE.x
+	unready.data.players.host.y = LongStories.RESCUE_SITE.y
+	unready.action("host", "rescue_inspect")
+	_check(int(LongStories.record(unready.data, "jiu_yuan_ji_lu").step) == 0, "rescue_inspect waits until harbor is familiar")
+
+	world.data.players.host.bag = Inventory.empty_slots(Inventory.BAG_SIZE)
+	world.data.stories.host.lu_zhou = {"step": 3, "day": 1, "choices": [0, 1, 0]}
+	world.data.players.host.area = "island"
+	world.data.players.host.room = ""
+	world.data.players.host.x = LongStories.RESCUE_SITE.x
+	world.data.players.host.y = LongStories.RESCUE_SITE.y
+	world.action("host", "rescue_inspect")
+	_check(int(LongStories.record(world.data, "jiu_yuan_ji_lu").step) == 1, "rescue_inspect starts jiu_yuan_ji_lu")
+
+	_place_near_npc(world, "host", "lu_zhou")
+	var lz_open := LongStories.open(world.data, "陆舟", {"id": "lu_zhou", "arc": "jiu_yuan_ji_lu", "step": 1}, "host")
+	_check(lz_open.contains("练习绳") and lz_open.contains("用不上"), "lu_zhou references personal story and calm-weather prevention")
+	world.action("host", "town_chronicle_reply", {"id": "lu_zhou", "arc": "jiu_yuan_ji_lu", "step": 1, "reply": 0})
+	_place_near_npc(world, "host", "su_qin")
+	world.action("host", "town_chronicle_reply", {"id": "su_qin", "arc": "jiu_yuan_ji_lu", "step": 2, "reply": 0})
+	_place_near_npc(world, "host", "sen_ke")
+	Inventory.add(world.data.players.host.bag, "rope", 2)
+	Inventory.add(world.data.players.host.bag, "fiber", 2)
+	world.action("host", "town_chronicle_reply", {"id": "sen_ke", "arc": "jiu_yuan_ji_lu", "step": 3, "reply": 0})
+	_check(int(LongStories.record(world.data, "jiu_yuan_ji_lu").step) == 4, "sen_ke advances jiu_yuan_ji_lu to overnight calm practice")
+	world.data.day += 1
+	_place_near_npc(world, "host", "lu_zhou")
+	var money_before := int(world.data.money)
+	world.action("host", "town_chronicle_reply", {"id": "lu_zhou", "arc": "jiu_yuan_ji_lu", "step": 4, "reply": 1})
+	var rec := LongStories.record(world.data, "jiu_yuan_ji_lu")
+	_check(int(rec.step) == 5 and rec.style == "rack" and int(world.data.money) == money_before + 40 and Inventory.count(world.data.players.host.bag, "meal") == 2, "jiu_yuan_ji_lu completes with rack style, 40 coins and 2 meal")
+	world.data.players.host.area = "island"
+	world.data.players.host.room = ""
+	world.data.players.host.x = LongStories.RESCUE_SITE.x
+	world.data.players.host.y = LongStories.RESCUE_SITE.y
+	world.action("host", "rescue_style")
+	_check(LongStories.record(world.data, "jiu_yuan_ji_lu").style == "board", "rescue_style toggles rack -> board")
+
+func _test_ming_zi_bu_tong(world) -> void:
+	world.data.players.host.bag = Inventory.empty_slots(Inventory.BAG_SIZE)
+	world.data.island.plots["62,56"] = {"crop": "seed", "growth": 2, "watered": true, "covered": false, "dead": false}
+	var plots_before: Dictionary = world.data.island.plots.duplicate(true)
+	world.data.players.host.area = "island"
+	world.data.players.host.room = ""
+	world.data.players.host.x = LongStories.HERB_SITE.x
+	world.data.players.host.y = LongStories.HERB_SITE.y
+	world.action("host", "herb_inspect")
+	_check(int(LongStories.record(world.data, "ming_zi_bu_tong").step) == 1, "herb_inspect starts ming_zi_bu_tong")
+
+	_place_near_npc(world, "host", "mu_tong")
+	world.action("host", "town_chronicle_reply", {"id": "mu_tong", "arc": "ming_zi_bu_tong", "step": 1, "reply": 0})
+	_place_near_npc(world, "host", "wen_zhi")
+	world.action("host", "town_chronicle_reply", {"id": "wen_zhi", "arc": "ming_zi_bu_tong", "step": 2, "reply": 1})
+	_place_near_npc(world, "host", "tai_lu")
+	Inventory.add(world.data.players.host.bag, "fiber", 2)
+	Inventory.add(world.data.players.host.bag, "mushroom", 1)
+	world.action("host", "ocean_chronicle_reply", {"id": "tai_lu", "arc": "ming_zi_bu_tong", "step": 3, "reply": 0})
+	world.data.day += 1
+	_place_near_npc(world, "host", "mu_tong")
+	var all_names := LongStories.open(world.data, "沐桐", {"id": "mu_tong", "arc": "ming_zi_bu_tong", "step": 4}, "host")
+	_check(all_names.contains("茶匙草") and all_names.contains("海风车前") and all_names.contains("听风耳"), "mu_tong preserves all three regional herb names side by side")
+	var money_before := int(world.data.money)
+	world.action("host", "town_chronicle_reply", {"id": "mu_tong", "arc": "ming_zi_bu_tong", "step": 4, "reply": 1})
+	var rec := LongStories.record(world.data, "ming_zi_bu_tong")
+	_check(int(rec.step) == 5 and rec.style == "folio" and int(world.data.money) == money_before + 40 and Inventory.count(world.data.players.host.bag, "salad") == 2, "ming_zi_bu_tong completes with folio style, 40 coins and 2 salad")
+	_check(world.data.island.plots == plots_before, "ming_zi_bu_tong never refreshes or overwrites player farm plots")
+	world.data.players.host.area = "island"
+	world.data.players.host.room = ""
+	world.data.players.host.x = LongStories.HERB_SITE.x
+	world.data.players.host.y = LongStories.HERB_SITE.y
+	world.action("host", "herb_style")
+	_check(LongStories.record(world.data, "ming_zi_bu_tong").style == "stakes", "herb_style toggles folio -> stakes")
+	world.data.island.plots.erase("62,56")
+
+func _test_wu_cha_biao(world) -> void:
+	world.data.players.host.bag = Inventory.empty_slots(Inventory.BAG_SIZE)
+	Rooms._arrive(world.data, world.data.players.host, "carpenter", LongStories.GAUGE_SITE)
+	world.action("host", "gauge_inspect")
+	_check(int(LongStories.record(world.data, "wu_cha_biao").step) == 1, "gauge_inspect starts wu_cha_biao in carpenter workshop")
+
+	_place_near_npc(world, "host", "gu_xing")
+	var gx_open := LongStories.open(world.data, "顾星", {"id": "gu_xing", "arc": "wu_cha_biao", "step": 1}, "host")
+	_check(gx_open.contains("太阴潮汐钟"), "gu_xing cross-references completed Mi Luo tide clock")
+	world.action("host", "town_chronicle_reply", {"id": "gu_xing", "arc": "wu_cha_biao", "step": 1, "reply": 0})
+	_place_near_npc(world, "host", "bai_fan")
+	Inventory.add(world.data.players.host.bag, "wood", 2)
+	Inventory.add(world.data.players.host.bag, "scrap", 2)
+	world.action("host", "ocean_chronicle_reply", {"id": "bai_fan", "arc": "wu_cha_biao", "step": 2, "reply": 1})
+	_place_near_npc(world, "host", "cen_po")
+	world.action("host", "town_chronicle_reply", {"id": "cen_po", "arc": "wu_cha_biao", "step": 3, "reply": 0})
+	world.data.day += 1
+	_place_near_npc(world, "host", "gu_xing")
+	var money_before := int(world.data.money)
+	world.action("host", "town_chronicle_reply", {"id": "gu_xing", "arc": "wu_cha_biao", "step": 4, "reply": 1})
+	var rec := LongStories.record(world.data, "wu_cha_biao")
+	_check(int(rec.step) == 5 and rec.style == "slate_tide" and int(world.data.money) == money_before + 45 and Inventory.count(world.data.players.host.bag, "cooked_fish") == 2, "wu_cha_biao completes with slate_tide style, 45 coins and 2 cooked_fish")
+	Rooms._arrive(world.data, world.data.players.host, "carpenter", LongStories.GAUGE_SITE)
+	world.action("host", "gauge_style")
+	_check(LongStories.record(world.data, "wu_cha_biao").style == "brass", "gauge_style toggles slate_tide -> brass")
+
+func _test_feng_ren_chu_de_qi(world) -> void:
+	world.data.players.host.bag = Inventory.empty_slots(Inventory.BAG_SIZE)
+	world.data.stories.host.xu_mian = {"step": 3, "day": 1, "choices": [1, 1, 1]}
+	Rooms._arrive(world.data, world.data.players.host, "market", LongStories.PENNANT_SITE)
+	world.action("host", "pennant_inspect")
+	_check(int(LongStories.record(world.data, "feng_ren_chu_de_qi").step) == 1, "pennant_inspect starts feng_ren_chu_de_qi in market")
+
+	_place_near_npc(world, "host", "xu_mian")
+	var xm_open := LongStories.open(world.data, "许棉", {"id": "xu_mian", "arc": "feng_ren_chu_de_qi", "step": 1}, "host")
+	_check(xm_open.contains("配色布样"), "xu_mian recalls player's finished personal story")
+	world.action("host", "town_chronicle_reply", {"id": "xu_mian", "arc": "feng_ren_chu_de_qi", "step": 1, "reply": 0})
+	_place_near_npc(world, "host", "bai_fan")
+	world.action("host", "ocean_chronicle_reply", {"id": "bai_fan", "arc": "feng_ren_chu_de_qi", "step": 2, "reply": 0})
+	_place_near_npc(world, "host", "he_mu")
+	Inventory.add(world.data.players.host.bag, "wood", 2)
+	Inventory.add(world.data.players.host.bag, "fiber", 3)
+	Inventory.add(world.data.players.host.bag, "rope", 1)
+	world.action("host", "town_chronicle_reply", {"id": "he_mu", "arc": "feng_ren_chu_de_qi", "step": 3, "reply": 0})
+	world.data.day += 1
+	_place_near_npc(world, "host", "xu_mian")
+	var speed_before := WorldState.water_speed(world.data.players.host)
+	var hook_before := WorldState.hook_distance(world.data.players.host)
+	var money_before := int(world.data.money)
+	world.action("host", "town_chronicle_reply", {"id": "xu_mian", "arc": "feng_ren_chu_de_qi", "step": 4, "reply": 2})
+	var rec := LongStories.record(world.data, "feng_ren_chu_de_qi")
+	_check(int(rec.step) == 5 and rec.style == "herb" and int(world.data.money) == money_before + 40 and Inventory.count(world.data.players.host.bag, "maki") == 2, "feng_ren_chu_de_qi 3rd option sets herb pennant and awards 40 coins + 2 maki")
+	_check(WorldState.water_speed(world.data.players.host) == speed_before and WorldState.hook_distance(world.data.players.host) == hook_before, "raft pennant is purely cosmetic without altering player abilities")
+	# Toggle directly on the raft bow corner!
+	var flag_center := LongStories.pennant_tile_center(world.data)
+	world.data.players.host.area = "deck"
+	world.data.players.host.room = ""
+	world.data.players.host.x = flag_center.x
+	world.data.players.host.y = flag_center.y
+	_check(world.interaction_options("host").any(func(o): return o.action == "pennant_style"), "raft pennant corner offers pennant_style in right-click options")
+	world.action("host", "pennant_style")
+	_check(LongStories.record(world.data, "feng_ren_chu_de_qi").style == "tide", "pennant_style on raft cycles herb -> tide")
+
 func _test_migrations(world) -> void:
 	# Ensure host is anchored at home island before snapshot
 	var dock_at := Archipelago.island_position(world.data.chart, Archipelago.HOME_ID)
@@ -570,18 +715,27 @@ func _test_migrations(world) -> void:
 	world.data.players.host.x = IslandMap.DOCK.x
 	world.data.players.host.y = IslandMap.DOCK.y
 	var roundtrip := WorldState.new()
-	_check(roundtrip.restore(JSON.parse_string(JSON.stringify(world.snapshot()))) and roundtrip.data.chronicles == world.data.chronicles, "v20 all 12 chronicles survive JSON round-trip")
+	_check(roundtrip.restore(JSON.parse_string(JSON.stringify(world.snapshot()))) and roundtrip.data.chronicles == world.data.chronicles, "v21 all 16 chronicles survive JSON round-trip")
 
-	# v19 save with 8 arcs migrates losslessly to v20 with 4 new blank arcs
+	# v20 save with 12 arcs migrates losslessly to v21 with 4 new blank arcs
+	var v20_copy: Dictionary = world.snapshot()
+	v20_copy.version = 20
+	v20_copy.chronicles = {}
+	for arc_20: String in LongStories.V20_ARCS:
+		v20_copy.chronicles[arc_20] = world.data.chronicles[arc_20].duplicate(true)
+	var from_v20 := WorldState.new()
+	_check(from_v20.restore(JSON.parse_string(JSON.stringify(v20_copy))) and int(from_v20.data.version) == 21 and from_v20.data.chronicles.zou_bu_zhun_zhong == v20_copy.chronicles.zou_bu_zhun_zhong and int(from_v20.data.chronicles.feng_ren_chu_de_qi.step) == 0, "v20 save migrates losslessly to v21 preserving all 12 0.22 arcs")
+
+	# v19 save with 8 arcs migrates losslessly to v21
 	var v19_copy: Dictionary = world.snapshot()
 	v19_copy.version = 19
 	v19_copy.chronicles = {}
 	for arc_19: String in LongStories.V19_ARCS:
 		v19_copy.chronicles[arc_19] = world.data.chronicles[arc_19].duplicate(true)
 	var from_v19 := WorldState.new()
-	_check(from_v19.restore(JSON.parse_string(JSON.stringify(v19_copy))) and int(from_v19.data.version) == 20 and from_v19.data.chronicles.kan_jian_hai == v19_copy.chronicles.kan_jian_hai and int(from_v19.data.chronicles.bu_gan_chao.step) == 0, "v19 save migrates losslessly to v20 preserving all 8 0.21 arcs")
+	_check(from_v19.restore(JSON.parse_string(JSON.stringify(v19_copy))) and int(from_v19.data.version) == 21 and from_v19.data.chronicles.kan_jian_hai == v19_copy.chronicles.kan_jian_hai and int(from_v19.data.chronicles.jiu_yuan_ji_lu.step) == 0, "v19 save migrates losslessly to v21 preserving all 8 0.21 arcs")
 
-	# v18 save with 4 arcs migrates losslessly to v20 with 8 new blank arcs
+	# v18 save with 4 arcs migrates losslessly to v21
 	var v18_copy: Dictionary = world.snapshot()
 	v18_copy.version = 18
 	v18_copy.chronicles = {
@@ -591,18 +745,18 @@ func _test_migrations(world) -> void:
 		"hai_lin_ju": world.data.chronicles.hai_lin_ju.duplicate(true),
 	}
 	var from_v18 := WorldState.new()
-	_check(from_v18.restore(JSON.parse_string(JSON.stringify(v18_copy))) and int(from_v18.data.version) == 20 and from_v18.data.chronicles.liu_yi_wan == v18_copy.chronicles.liu_yi_wan and int(from_v18.data.chronicles.zou_bu_zhun_zhong.step) == 0, "v18 save migrates losslessly to v20 preserving all 4 0.20 arcs")
+	_check(from_v18.restore(JSON.parse_string(JSON.stringify(v18_copy))) and int(from_v18.data.version) == 21 and from_v18.data.chronicles.liu_yi_wan == v18_copy.chronicles.liu_yi_wan and int(from_v18.data.chronicles.wu_cha_biao.step) == 0, "v18 save migrates losslessly to v21 preserving all 4 0.20 arcs")
 
-	# v17 save with only hou_chao_yuan migrates losslessly to v20
+	# v17 save with only hou_chao_yuan migrates losslessly to v21
 	var v17_copy: Dictionary = world.snapshot()
 	v17_copy.version = 17
 	v17_copy.chronicles = {"hou_chao_yuan": world.data.chronicles.hou_chao_yuan.duplicate(true)}
 	var from_v17 := WorldState.new()
-	_check(from_v17.restore(JSON.parse_string(JSON.stringify(v17_copy))) and int(from_v17.data.version) == 20 and from_v17.data.chronicles.hou_chao_yuan == v17_copy.chronicles.hou_chao_yuan and int(from_v17.data.chronicles.bu_shi_tan_wei.step) == 0, "v17 save migrates losslessly to v20 preserving Hou Chao Yuan")
+	_check(from_v17.restore(JSON.parse_string(JSON.stringify(v17_copy))) and int(from_v17.data.version) == 21 and from_v17.data.chronicles.hou_chao_yuan == v17_copy.chronicles.hou_chao_yuan and int(from_v17.data.chronicles.ming_zi_bu_tong.step) == 0, "v17 save migrates losslessly to v21 preserving Hou Chao Yuan")
 
-	# v16 save without chronicles migrates losslessly to v20
+	# v16 save without chronicles migrates losslessly to v21
 	var v16_copy: Dictionary = world.snapshot()
 	v16_copy.version = 16
 	v16_copy.erase("chronicles")
 	var from_v16 := WorldState.new()
-	_check(from_v16.restore(JSON.parse_string(JSON.stringify(v16_copy))) and int(from_v16.data.version) == 20 and int(from_v16.data.chronicles.kong_yi_zi.step) == 0, "v16 save migrates cleanly to v20")
+	_check(from_v16.restore(JSON.parse_string(JSON.stringify(v16_copy))) and int(from_v16.data.version) == 21 and int(from_v16.data.chronicles.kong_yi_zi.step) == 0, "v16 save migrates cleanly to v21")

@@ -1,7 +1,7 @@
 param([string]$Game = '', [string]$Resolution = '', [switch]$Island, [switch]$Skill, [switch]$Threats, [switch]$Core, [switch]$DummyAudio)
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
-if (-not $Game) { $Game = Join-Path $projectRoot 'build\Tidehaven-0.22.0.exe' }
+if (-not $Game) { $Game = Join-Path $projectRoot 'build\Tidehaven-0.23.0.exe' }
 if (-not (Test-Path -LiteralPath $Game)) { throw 'Export the Windows game before running this check.' }
 $runRoot = Join-Path $projectRoot ('artifacts\playthrough-' + (Get-Date -Format 'yyyyMMdd-HHmmss-fff'))
 New-Item -ItemType Directory -Path $runRoot | Out-Null

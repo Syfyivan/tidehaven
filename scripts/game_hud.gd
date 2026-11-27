@@ -266,7 +266,8 @@ func refresh(data: Dictionary, local_slot: String, options: Array, selected: int
 		var width := clampf(float(title.length()) * 15 + 52, 116, 290)
 		prompt_box.size = Vector2(width, 32)
 		prompt_key.text = "E" if tool != "hook" else "O"
-		prompt_more.text = "右键 / P · 更多操作" if options.size() > 1 else "也可点击目标"
+		var act := str(choice.get("action", ""))
+		prompt_more.text = "右键 / P · 更多操作" if (options.size() > 1 or act.ends_with("_inspect") or act.ends_with("_style")) else "也可点击目标"
 		prompt_more.size.x = width
 		var at := Vector2(float(player.x) * 1.4 + 10, float(player.y) * 1.4 + 64)
 		prompt_box.position = Vector2(clampf(at.x - width * 0.5, 20, 1260 - width), clampf(at.y, 130, 623))

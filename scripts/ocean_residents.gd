@@ -60,7 +60,7 @@ static func action(data:Dictionary,player:Dictionary,slot:String,verb:String,arg
 	if npc.magic and not data.journal.tide_speech:return str(npc.name)+"：你听见轻轻的潮声，却还不能理解。岛上的温知也许知道它的来历。"
 	if verb in ["ocean_chronicle_open","ocean_chronicle_reply"]:
 		if player.get("resting",false) or player.get("sleep_ready",false):return "先起身再聊吧。"
-		return str(npc.name)+"："+(LongStories.open(data,str(npc.name),args) if verb=="ocean_chronicle_open" else LongStories.action(data,player,slot,args))
+		return str(npc.name)+"："+(LongStories.open(data,str(npc.name),args,slot) if verb=="ocean_chronicle_open" else LongStories.action(data,player,slot,args))
 	if verb in ["ocean_personal_open","ocean_personal_reply"]:
 		if player.get("resting",false) or player.get("sleep_ready",false):return "先起身再聊吧。"
 		return str(npc.name)+"："+(PersonalStories.open(data,slot,args) if verb=="ocean_personal_open" else PersonalStories.action(data,player,slot,args))

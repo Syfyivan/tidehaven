@@ -1,6 +1,6 @@
 extends RefCounted
 ## Versioned long-form story arcs ("chronicles"), separate from 3-step personal stories.
-## Implements 12 playable P2 chronicles across v17-v20:
+## Implements 16 playable P2 chronicles across v17-v21:
 ## - P2-09 《候潮院》 (hou_chao_yuan)
 ## - P2-10 《今晚留一碗》 (liu_yi_wan)
 ## - P2-11 《重新有人靠岸》 (kao_an)
@@ -13,7 +13,12 @@ extends RefCounted
 ## - P2-33 《空椅子展览》 (kong_yi_zi)
 ## - P2-34 《一口走不准的钟》 (zou_bu_zhun_zhong)
 ## - P2-35 《这不是你的摊位》 (bu_shi_tan_wei)
+## - P2-44 《一份用不上的救援记录》 (jiu_yuan_ji_lu)
+## - P2-45 《名字各不相同的草》 (ming_zi_bu_tong)
+## - P2-46 《一张能用的误差表》 (wu_cha_biao)
+## - P2-47 《被风认出来的旗》 (feng_ren_chu_de_qi)
 const Inventory = preload("res://scripts/inventory.gd")
+const Housing = preload("res://scripts/housing.gd")
 const MONEY_LIMIT := 1000000000
 const COAST_SITE := Vector2(184, 244)
 const REEF_OFFSET := Vector2(80, -64)
@@ -21,15 +26,25 @@ const PILOT_SITE := Vector2(352, 432)
 const CHAIR_SITE := Vector2(176, 560)
 const CLOCK_SITE := Vector2(548, 286)
 const SCALE_SITE := Vector2(1144, 368)
+const RESCUE_SITE := Vector2(1288, 300)
+const HERB_SITE := Vector2(1184, 1760)
+const GAUGE_SITE := Vector2(608, 656)
+const PENNANT_SITE := Vector2(272, 736)
 const V18_ARCS := ["hou_chao_yuan", "liu_yi_wan", "kao_an", "hai_lin_ju"]
 const V19_ARCS := [
 	"hou_chao_yuan", "liu_yi_wan", "kao_an", "hai_lin_ju",
 	"kan_jian_hai", "wai_luo_bo", "liu_yi_ba_yi_zi", "jin_nian_sha_tan",
 ]
+const V20_ARCS := [
+	"hou_chao_yuan", "liu_yi_wan", "kao_an", "hai_lin_ju",
+	"kan_jian_hai", "wai_luo_bo", "liu_yi_ba_yi_zi", "jin_nian_sha_tan",
+	"bu_gan_chao", "kong_yi_zi", "zou_bu_zhun_zhong", "bu_shi_tan_wei",
+]
 const ARCS := [
 	"hou_chao_yuan", "liu_yi_wan", "kao_an", "hai_lin_ju",
 	"kan_jian_hai", "wai_luo_bo", "liu_yi_ba_yi_zi", "jin_nian_sha_tan",
 	"bu_gan_chao", "kong_yi_zi", "zou_bu_zhun_zhong", "bu_shi_tan_wei",
+	"jiu_yuan_ji_lu", "ming_zi_bu_tong", "wu_cha_biao", "feng_ren_chu_de_qi",
 ]
 const TITLES := {
 	"hou_chao_yuan": "候潮院",
@@ -44,6 +59,10 @@ const TITLES := {
 	"kong_yi_zi": "空椅子展览",
 	"zou_bu_zhun_zhong": "一口走不准的钟",
 	"bu_shi_tan_wei": "这不是你的摊位",
+	"jiu_yuan_ji_lu": "一份用不上的救援记录",
+	"ming_zi_bu_tong": "名字各不相同的草",
+	"wu_cha_biao": "一张能用的误差表",
+	"feng_ren_chu_de_qi": "被风认出来的旗",
 }
 const ARC_STYLES := {
 	"hou_chao_yuan": ["farm", "inn"],
@@ -58,6 +77,10 @@ const ARC_STYLES := {
 	"kong_yi_zi": ["saloon", "hall"],
 	"zou_bu_zhun_zhong": ["grotto", "harbor"],
 	"bu_shi_tan_wei": ["plank", "buoy"],
+	"jiu_yuan_ji_lu": ["board", "rack"],
+	"ming_zi_bu_tong": ["stakes", "folio"],
+	"wu_cha_biao": ["brass", "slate_tide"],
+	"feng_ren_chu_de_qi": ["tide", "sun", "herb"],
 }
 const STYLE_LABELS := {
 	"farm": "候潮农庄", "inn": "候潮驿院",
@@ -72,6 +95,10 @@ const STYLE_LABELS := {
 	"saloon": "寿司屋空椅画角", "hall": "镇公所日常画廊",
 	"grotto": "礁洞报潮八音钟", "harbor": "海岸木架潮汐钟",
 	"plank": "向阳晒背木台", "buoy": "浅滩浮球礼尚角",
+	"board": "平潮备航公告栏", "rack": "岸边救生圈绳架",
+	"stakes": "多俗名田边木签", "folio": "四时生长图鉴匣",
+	"brass": "黄铜浮筒测潮仪", "slate_tide": "双栏潮汐余量板",
+	"tide": "潮青双燕尾旗", "sun": "暖赭归航三角旗", "herb": "林翠风语长旒",
 }
 
 static func _blank() -> Dictionary:
@@ -112,6 +139,42 @@ static func shop_operated(data: Dictionary) -> bool:
 
 static func pilot_ready(data: Dictionary) -> bool:
 	return bool(data.get("island", {}).get("homestead", {}).get("rented", false)) or int(data.get("journal", {}).get("story_step", 0)) >= 1
+
+static func pennant_tile(data: Dictionary) -> Vector2i:
+	var tiles: Array = data.get("deck_tiles", [])
+	var cabin_box := Housing.cabin_bounds(data).grow(16.0)
+	var found_clear := false
+	var best_clear := Vector2i(8, 3)
+	var best_any := Vector2i(8, 3)
+	var first_any := true
+	for raw in tiles:
+		var parts := str(raw).split(",")
+		if parts.size() != 2:
+			continue
+		var cell := Vector2i(int(parts[0]), int(parts[1]))
+		if first_any or cell.y < best_any.y or (cell.y == best_any.y and cell.x > best_any.x):
+			best_any = cell
+			first_any = false
+		var center := Vector2(cell.x * 64 + 32, cell.y * 64 + 32)
+		if not cabin_box.has_point(center):
+			if not found_clear or cell.y < best_clear.y or (cell.y == best_clear.y and cell.x > best_clear.x):
+				best_clear = cell
+				found_clear = true
+	return best_clear if found_clear else best_any
+
+static func pennant_tile_center(data: Dictionary) -> Vector2:
+	var cell := pennant_tile(data)
+	return Vector2(cell.x * 64.0 + 32.0, cell.y * 64.0 + 32.0)
+
+static func pennant_post(data: Dictionary) -> Vector2:
+	var cell := pennant_tile(data)
+	return Vector2((cell.x + 1) * 64.0 - 8.0, cell.y * 64.0 + 10.0)
+
+static func pennant_color(style: String) -> Color:
+	match style:
+		"sun": return Color("d4743b")
+		"herb": return Color("4a9458")
+		_: return Color("2d7a9c")
 
 static func target_npc(arc: String, step: int) -> String:
 	match arc:
@@ -176,6 +239,26 @@ static func target_npc(arc: String, step: int) -> String:
 				1, 3: return "zhou_chao"
 				2: return "lu_zhou"
 				4: return "san_jin"
+		"jiu_yuan_ji_lu":
+			match step:
+				1, 4: return "lu_zhou"
+				2: return "su_qin"
+				3: return "sen_ke"
+		"ming_zi_bu_tong":
+			match step:
+				1, 4: return "mu_tong"
+				2: return "wen_zhi"
+				3: return "tai_lu"
+		"wu_cha_biao":
+			match step:
+				1, 4: return "gu_xing"
+				2: return "bai_fan"
+				3: return "cen_po"
+		"feng_ren_chu_de_qi":
+			match step:
+				1, 4: return "xu_mian"
+				2: return "bai_fan"
+				3: return "he_mu"
 	return ""
 
 static func recall_npcs(arc: String) -> Array:
@@ -192,6 +275,10 @@ static func recall_npcs(arc: String) -> Array:
 		"kong_yi_zi": return ["a_yuan", "lin_sui", "he_mu"]
 		"zou_bu_zhun_zhong": return ["mi_luo", "gu_xing", "yan_zhen"]
 		"bu_shi_tan_wei": return ["san_jin", "zhou_chao", "lu_zhou"]
+		"jiu_yuan_ji_lu": return ["lu_zhou", "su_qin", "sen_ke", "zhou_chao"]
+		"ming_zi_bu_tong": return ["mu_tong", "wen_zhi", "tian_qing", "tai_lu"]
+		"wu_cha_biao": return ["gu_xing", "lu_yao", "bai_fan", "cen_po"]
+		"feng_ren_chu_de_qi": return ["xu_mian", "mu_tong", "bai_fan", "he_mu"]
 	return []
 
 static func entries(data: Dictionary, npc_id: String) -> Array:
@@ -308,6 +395,42 @@ static func inspect_scale(data: Dictionary) -> String:
 	data.chronicles.bu_shi_tan_wei.day = int(data.get("day", 1))
 	return "一只圆滚滚的斑点海豹正把下巴垫在周潮的备用铜秤盘上晒太阳，前鳍拍得秤盘哐当作响。进岸边渔铺找周潮聊聊《这不是你的摊位》吧（已记入J手记）。"
 
+static func inspect_rescue(data: Dictionary) -> String:
+	if not pilot_ready(data):
+		return "木架上挂着一本防潮巡海簿。等向镇长承租荒院或修亮西岸引航灯后再来翻看吧。"
+	if int(record(data, "jiu_yuan_ji_lu").get("step", 0)) >= 1:
+		return "只记险情的巡海簿已经翻看过，去渔铺找救援员陆舟或查看J手记吧。"
+	data.chronicles.jiu_yuan_ji_lu.step = 1
+	data.chronicles.jiu_yuan_ji_lu.day = int(data.get("day", 1))
+	return "木架上的油布记录本大半空着，写过字的几页全记着突风断缆、呛水抽筋。进岸边渔铺找救援员陆舟聊聊《一份用不上的救援记录》吧（已记入J手记）。"
+
+static func inspect_herb(data: Dictionary) -> String:
+	if not data.get("island", {}).get("homestead", {}).get("rented", false):
+		return "草圃边夹着几页铅笔叶片细描。先向镇长许岸承租荒院安顿下来再来聊聊吧。"
+	if int(record(data, "ming_zi_bu_tong").get("step", 0)) >= 1:
+		return "夹着三张名签的写生板已经看过，去找植物画师沐桐或查看J手记吧。"
+	data.chronicles.ming_zi_bu_tong.step = 1
+	data.chronicles.ming_zi_bu_tong.day = int(data.get("day", 1))
+	return "田埂边的木夹板上压着一株圆叶小草的铅笔细描，旁边贴了三张纸条写着三个截然不同的名字。进苔瓦民居找植物画师沐桐聊聊《名字各不相同的草》吧（已记入J手记）。"
+
+static func inspect_gauge(data: Dictionary) -> String:
+	if int(data.get("journal", {}).get("story_step", 0)) < 1:
+		return "桌角摆着擦得锃亮的黄铜浮筒仪。等修亮西岸引航灯后再来和顾星讨论外海潮时吧。"
+	if int(record(data, "wu_cha_biao").get("step", 0)) >= 1:
+		return "涂满红蓝批注的测潮记录已经记下，去找顾星或查看J手记吧。"
+	data.chronicles.wu_cha_biao.step = 1
+	data.chronicles.wu_cha_biao.day = int(data.get("day", 1))
+	return "黄铜浮筒仪旁压着两页对不上的表格：顾星记着平潮在申时正，白帆却用炭笔批了一句『雾岬口早一刻钟就顶流』。和潮汐器械师顾星聊聊《一张能用的误差表》吧（已记入J手记）。"
+
+static func inspect_pennant(data: Dictionary) -> String:
+	if not bool(data.get("chart", {}).get("visited", false)):
+		return "竹篮里叠着几面旧帆布三角旗。等在潮芽岛安顿下来再来问问许棉吧。"
+	if int(record(data, "feng_ren_chu_de_qi").get("step", 0)) >= 1:
+		return "缝着铜扣眼的旧帆布旗篮已经看过，和裁缝许棉聊聊或查看J手记吧。"
+	data.chronicles.feng_ren_chu_de_qi.step = 1
+	data.chronicles.feng_ren_chu_de_qi.day = int(data.get("day", 1))
+	return "竹篮里叠着几面被海盐晒得柔和的窄长旧帆布旗，边缘锁着细密的防撕双线。和旁边的裁缝许棉聊聊《被风认出来的旗》吧（已记入J手记）。"
+
 static func _cycle_style(data: Dictionary, arc: String, wait_msg: String, desc_map: Dictionary) -> String:
 	var rec := record(data, arc)
 	if int(rec.get("step", 0)) < 5:
@@ -393,8 +516,33 @@ static func toggle_scale_style(data: Dictionary) -> String:
 		"buoy": "渔铺西南岸已换为『浅滩浮球礼尚角』布置（挂起软木浮球与纪念贝壳小木盒）。",
 	})
 
+static func toggle_rescue_style(data: Dictionary) -> String:
+	return _cycle_style(data, "jiu_yuan_ji_lu", "等《一份用不上的救援记录》晴天演练记妥后，再来切换港道口备勤布置。", {
+		"board": "渔铺东侧港道口已换为『平潮备航公告栏』布置（立起浮标方位口诀牌与今日无事签到簿）。",
+		"rack": "渔铺东侧港道口已换为『岸边救生圈绳架』布置（挂起橙白救生浮圈与分段活扣抛绳）。",
+	})
+
+static func toggle_herb_style(data: Dictionary) -> String:
+	return _cycle_style(data, "ming_zi_bu_tong", "等《名字各不相同的草》四时图谱画完后，再来切换草圃陈列。", {
+		"stakes": "苔瓦民居草圃已换为『多俗名田边木签』布置（并排保留茶匙草、海风车前与听风耳三枚木签）。",
+		"folio": "苔瓦民居草圃已换为『四时生长图鉴匣』布置（草圃插画匣与镇公所书案同步展出四时手绘谱）。",
+	})
+
+static func toggle_gauge_style(data: Dictionary) -> String:
+	return _cycle_style(data, "wu_cha_biao", "等《一张能用的误差表》早潮验证完成后，再来切换工坊测潮陈列。", {
+		"brass": "木匠工坊已换为『黄铜浮筒测潮仪』布置（桌边与工坊西廊同步立起带风向余量游标的黄铜浮筒仪）。",
+		"slate_tide": "木匠工坊已换为『双栏潮汐余量板』布置（并排挂起内湾实测刻度与外岬横风余量粉笔板）。",
+	})
+
+static func toggle_pennant_style(data: Dictionary) -> String:
+	return _cycle_style(data, "feng_ren_chu_de_qi", "等《被风认出来的旗》试挂落定后，再来更换木筏风旗纹样。", {
+		"tide": "木筏与海图标记已换为『潮青双燕尾旗』（靛青白浪双燕尾帆布旗，不改变角色属性）。",
+		"sun": "木筏与海图标记已换为『暖赭归航三角旗』（暖赭橘引航星纹斜三角旗，薄雾天最醒目）。",
+		"herb": "木筏与海图标记已换为『林翠风语长旒』（草木青绿双飘带长旒，随海风轻快舒展）。",
+	})
+
 static func _reply_count(arc: String, step: int) -> int:
-	return 3 if (step == 4 and arc in ["liu_yi_wan", "liu_yi_ba_yi_zi"]) else 2
+	return 3 if (step == 4 and arc in ["liu_yi_wan", "liu_yi_ba_yi_zi", "feng_ren_chu_de_qi"]) else 2
 
 static func _valid_args(data: Dictionary, args: Dictionary, is_reply: bool) -> bool:
 	if not data.get("chronicles") is Dictionary:
@@ -416,7 +564,7 @@ static func _valid_args(data: Dictionary, args: Dictionary, is_reply: bool) -> b
 		return false
 	return true
 
-static func open(data: Dictionary, npc_name: String, args: Dictionary) -> String:
+static func open(data: Dictionary, npc_name: String, args: Dictionary, slot: String = "host") -> String:
 	if not _valid_args(data, args, false):
 		return "这段往事已有新进展，请重新和对方聊聊。"
 	var arc := str(args.arc)
@@ -566,6 +714,61 @@ static func open(data: Dictionary, npc_name: String, args: Dictionary) -> String
 					if speech and str(args.get("id", "")) == "san_jin":
 						return head + "（三斤懒洋洋地晃了晃尾鳍）『岸边那处%s我每天早潮都会去巡视一圈，你们的鱼摊归周潮，晒背台归我！』在渔铺西南岸边右键可随时切换布置。" % style_name(str(rec.get("style", "plank")))
 					return head + "渔铺西南海岸现留着『%s』，清晨常能遇见三斤登岸晒肚皮，平时则在珊湾潮岸自在戏水。在渔铺西南海岸木坪右键可随时切换布置。" % style_name(str(rec.get("style", "plank")))
+		"jiu_yuan_ji_lu":
+			match step:
+				1:
+					var lz_story: Dictionary = data.get("stories", {}).get(slot, {}).get("lu_zhou", {})
+					if int(lz_story.get("step", 0)) == 3:
+						return head + "上回跟你说开以后，那两盘练习绳我一直挂在手边。刚才翻巡海簿才发现，我这本子上只要没出事就空着，搞得好像只有起大浪才算干活似的！其实镇上好多人连近岸浮标编号和顺手收抛绳都没试过——要是挑个大晴天让大家伙练熟了，这本险情记录一辈子用不上才好呢。你帮我去海风诊所问问苏芩，岸上备勤最常漏掉哪样小事？"
+					return head + "你翻过外头那本巡海簿啦？以前我总盯着险情记，风平浪静的日子一个字不写，看着倒像盼着出事似的。其实好些慌乱根本不用等到起大风——有人踩住散绳绊了脚，有人喊帮忙却说不清自己在哪个礁石边。我想趁天气晴稳约镇上做一回轻松的岸边练习，让那本险情页永远用不上。你先去诊所找苏芩商量一下？"
+				2: return head + "陆舟终于想通啦？来我诊所涂药的人里，十个有八个不是遇上什么惊涛骇浪，而是急着拉船把麻绳缠了手腕、或是跑得满头汗喊不清地名。演练那天别搞得像严肃考试，带绳子 ×2 和植物纤维 ×2 去找护林员森柯吧——森柯最擅长教人拿树影和屋脊报准位置，周潮也答应教大家盘一抖就开的活扣！"
+				3: return head + "哈哈，陆舟找对人啦！上回有人在河边喊『我在大石头旁』，岸上二十块大石头，听得人直挠头！用这两根绳子和植物纤维扎上三道醒目草结，对准西岸灯柱和渔铺屋脊一比划，三句话就能报准方位。周潮刚把渔铺前坪腾出来教盘抛绳，趁今天风软浪平大家伙练一轮——过一夜你回渔铺找陆舟看新记录吧！\n\n继续这段对话会交付：绳子 ×2、植物纤维 ×2。"
+				4:
+					if waiting_overnight(data, arc):
+						return head + "我正和周潮、森柯、苏芩在晴朗的浅岸陪大家试抛浮标绳、核对岸标口诀呢，过一夜再来渔铺看看记录吧；没有截止日期。"
+					return head + "快看这页新纸！昨天下午没人紧张也没人呛水，周潮教汤禾一把就甩准了浮球，苏芩检查完备勤包，最后大家伙轮流在巡海簿上签了一行：『晴，微风，浮标清晰、绳结顺手，今日无事。』原来记下平平安安的一天，看着比什么惊险功劳都踏实！港道口那处备勤角你想留哪种布置？（完成后获得40金币与料理 ×2，请预留1格背包）"
+				5: return head + "巡海簿里如今记满了『今日无事』的好天气，渔铺东侧港道口立着『%s』。走近港道口备勤架右键可随时切换布置。" % style_name(str(rec.get("style", "board")))
+		"ming_zi_bu_tong":
+			match step:
+				1:
+					var mt_story: Dictionary = data.get("stories", {}).get(slot, {}).get("mu_tong", {})
+					var prefix := "继上次那页幼苗速写之后，我又迷上这丛田边野草啦！" if int(mt_story.get("step", 0)) == 3 else "你看到草圃边那块写生板啦？"
+					return head + prefix + "阿沅爱画被人坐亮的旧木椅，我却总盯着土里刚拱出来的嫩叶看——结果同一丛圆叶草，田青大姐叫它『茶匙草』，说嫩芽卷成小汤匙就是地里缺水了；森柯说林子里另有俗名；温知老师的旧书上又写成别的词。我舍不得划掉任何一个名字，你去镇公所问问温知老师，图鉴能不能把大家的叫法都留下来？"
+				2: return head + "『茶匙草』记在农谚里可比书名好懂多了！旧书按叶脉叫它『海风车前』，田青按春芽卷边看土壤干湿、拿嫩叶滚汤，那是种地人摸出来的真本事，哪能分谁高谁低？不过沐桐想把抽芽、展叶、结穗到越冬根茎画在同一页上，理解潮声后，你带植物纤维 ×2 和林菇 ×1 去风栖岛找林地精灵苔露换几枚跨季干果穗吧！"
+				3: return head + "咦？你们管『听风耳』叫茶匙草呀！到了秋天它的果穗一干，起季风前就会沙沙响着报信，所以我一直按声音叫它呢。根本不用去动你们田里的庄稼——林子石缝下正好落着春天的芽衣、夏天的阔叶脉和秋天的空果壳，我拿你带来的纤维捆成一束捎回潮芽岛！过一夜等沐桐把四季长相画全，你再去民居看她怎么题名吧！\n\n继续这段对话会交付：植物纤维 ×2、林菇 ×1。"
+				4:
+					if waiting_overnight(data, arc):
+						return head + "我正借着窗光把萌芽、展叶、干果穗和越冬根茎细细上色，田青大姐也在旁边帮我补农谚注解呢，过一夜再来找我吧；没有截止日期。"
+					return head + "画完啦，快来看看！我把发芽到结籽四个阶段画在同一张长纸上，顶上并排写着『茶匙草 · 海风车前 · 听风耳』——底下分别注了田青看土干湿的窍门、温知核对的叶脉特征，还有苔露听风辨季的办法，谁也没把谁挤掉！民居西侧这片观察草圃，你想留哪种陈列？（完成后获得40金币与鲜蔬沙拉 ×2，请预留1格背包）"
+				5: return head + "『茶匙草 · 海风车前 · 听风耳』三个名字如今并排留在图鉴里，民居草圃现设『%s』。走近草圃写生点右键可随时切换陈列。" % style_name(str(rec.get("style", "stakes")))
+		"wu_cha_biao":
+			match step:
+				1:
+					var clock_done := int(record(data, "zou_bu_zhun_zhong").get("step", 0)) == 5
+					var extra := "上次帮米洛算完太阴潮汐钟的齿比，我回来又把自己的浮筒仪校准了一遍——可" if clock_done else "你也看见白帆留的那行炭笔字了？我把浮筒滑轮拆洗了三遍，齿轮咬合一点没坏——可"
+					return head + extra + "白帆和周潮跑船这么多年，绝不可能看错顶流的水花。昨晚陆遥拿港口地形图比了一下，怀疑是我挂浮筒的西岸内湾被防波石挡慢了水势！我想请白帆在外海水道投一只配重测流浮木跟我的钟点对一次表，你带木板 ×2 和废金属 ×2 出海去雾岬岛找白帆帮个忙？"
+				2: return head + "哈哈，顾星那小伙子没钻牛角尖，倒让我高看一眼！来，把配重铁片钉在木浮标底下往雾岬水道口一抛——你看，今天吹东北横风，外岬窄口水急，果然比潮芽内湾早十四分钟换流；可前天无风的时候其实只差五分钟！说白了，光凭老经验遇上闷风天也会抢早，光看内湾死刻度遇上横风又会赶晚。你把这份外海实测时刻带回镇公所请老领航员岑婆掌掌眼！\n\n继续这段对话会交付：木板 ×2、废金属 ×2。"
+				3: return head + "让我瞧瞧……嗯，顾星的内湾基准线画得干净，白帆记的外岬横风提前量也实在！以前年轻领航员最容易犯两个毛病：要么捧着死表硬闯急流，要么自恃老资格不看气压计。我在表头替他们添一栏『适用水域与正负一刻钟风向余量』，陆遥也答应把内湾和外岬分界注在港口指路图边。今晚我去工坊跟顾星合校明早的早潮，过一夜你再去找顾星看验证结果！"
+				4:
+					if waiting_overnight(data, arc):
+						return head + "我正和岑婆、陆遥对照早潮水位与雾岬旗号验证余量区间呢，过一夜再来木匠工坊找我吧；没有截止日期。"
+					return head + "验证通过啦！今早微偏北风，内湾平潮比基准早了两分钟，白帆从雾岬打旗号报过来的换流时刻正好落在我们标出的『提前八至十五分钟』区间里！以前我总觉得带误差就是没算准，岑婆一句话点醒了我：海面本来就是活的，把适用范围和余量老老实实写出来，才是真正能用的表！工坊这边你想摆哪套测潮陈列？（完成后获得45金币与烤鱼 ×2，请预留1格背包）"
+				5: return head + "《潮芽内湾与外岬潮时余量表》已经挂稳，工坊现设『%s』，出海前看一眼心里就有数。在工坊实验台旁右键可随时切换陈列。" % style_name(str(rec.get("style", "brass")))
+		"feng_ren_chu_de_qi":
+			match step:
+				1:
+					var xm_story: Dictionary = data.get("stories", {}).get(slot, {}).get("xu_mian", {})
+					var xm_open := "上回留下的那块配色布样我还收在针线匣顶上呢！这几天帮渔船补旧帆，" if int(xm_story.get("step", 0)) == 3 else "篮里这几面旧三角旗是老渔船换下来请我拆布料的。拆开针脚，"
+					return head + xm_open + "我才发现每条常跑外海的船都有一面窄长的认路旗——不是为了摆威风，是起薄雾的时候，岸上熟人老远瞄见那抹颜色就知道是谁平安回港了。你们的木筏常在四座岛之间跑，我也想替你们缝一面经得起海风的专属筏旗！你出海去雾岬岛时，先帮我向白帆船长打听一下海上挂旗有什么讲究？"
+				2: return head + "许棉姑娘想给你们缝筏旗？哈哈，那往后我在雾岬锚地老远就能认出你们的木筏啦！海面挂旗有两条铁律：一是别做死方布，剪成燕尾或斜三角才能把硬风卸掉不撕边；二是旗杆顶上千万得配个能顺风转圈的硬木活环，不然海风打两个旋就把旗布死死缠在杆子上了！沐桐懂耐盐的草木染汁，木活环和短旗杆你带木板 ×2、植物纤维 ×3 和绳子 ×1 回去找木匠贺木车一套！"
+				3:
+					var on_raft := "正好我住在你们船屋里，海风怎么吹最清楚！" if carpenter_settled(data) else "给木筏立风旗？"
+					return head + on_raft + "许棉管针脚受不受风，我管木栓缠不缠绳，各干各的内行活最痛快！你看，我在杉木短杆顶上车了一道双槽转环，风往哪边吹、铜扣跟着哪边转，半圈都不会打结。沐桐下午也送来了靛蓝叶、茜草根和青栀子三种耐海水的染膏，我今晚把旗杆和织带送去给许棉试挂修正，过一夜你去超市找许棉挑最合心意的纹样！\n\n继续这段对话会交付：木板 ×2、植物纤维 ×3、绳子 ×1。"
+				4:
+					if waiting_overnight(data, arc):
+						return head + "我正按沐桐调好的染膏双线锁边，并在西岸风口试挂修正转环绳扣呢，过一夜再来超市找我挑纹样吧；没有截止日期。"
+					return head + "清早拿到西岸栈桥试挂了一阵，贺木车的活环顺极了，周潮在渔铺门口老远就挥手喊认得你们的旗子！我把裁下来的边角料也锁了边，留一小方同纹布在布架上作纪念——三种耐海风的颜色与纹样都备好了（只换外观与海图旗标，不改任何能力数值），你想给木筏挂上哪一面？（完成后获得40金币与海苔鱼卷 ×2，请预留1格背包）"
+				5: return head + "你们的木筏和海图标记现挂着『%s』，起雾天熟人老远也能认出来。在超市布料架旁或木筏挂旗角右键均可随时切换纹样。" % style_name(str(rec.get("style", "tide")))
 	return ""
 
 static func replies(data: Dictionary, args: Dictionary) -> Array:
@@ -648,6 +851,30 @@ static func replies(data: Dictionary, args: Dictionary) -> Array:
 			3: ["好，过一夜我出海去珊湾潮岸看看三斤。", "留足距离还能常常见面，这才是最好的邻居。"],
 			4: ["设为『向阳晒背木台』，保留清爽弧面木台、保持礼貌不投喂。", "设为『浅滩浮球礼尚角』，在木台旁挂起软木浮球与纪念贝壳木盒。"],
 		},
+		"jiu_yuan_ji_lu": {
+			1: ["这主意好，挑风平浪静的日子练熟最管用，我去找苏芩。", "能把事故挡在发生前本来就是头等本事，我去诊所问问。"],
+			2: ["明白，我带绳子和植物纤维去找森柯约晴天演练。", "认路标、盘活扣加上备勤包，确实都是实在招数。"],
+			3: ["用灯柱和屋脊对位置一下子就好记多了，过一夜找陆舟。", "不搞吓人的演习、趁好天气练熟手脚，大家准乐意参加。"],
+			4: ["设为『平潮备航公告栏』，立起浮标方位口诀牌与今日无事簿。", "设为『岸边救生圈绳架』，挂起橙白救生浮圈与分段活扣抛绳。"],
+		},
+		"ming_zi_bu_tong": {
+			1: ["我去镇公所问问温知老师，不同叫法背后准有各自的道理。", "看芽知旱涝的名字多鲜活，并排留下来最棒了。"],
+			2: ["好，理解潮声后我带植物纤维和林菇去风栖岛找苔露。", "书名认叶脉、俗名记农事，写在同一页最清楚。"],
+			3: ["『听风耳』这个名字真灵巧，连秋天的风声都记下了。", "谢谢苔露，不动田里庄稼就能凑齐四季样本太好了。"],
+			4: ["设为『多俗名田边木签』，在民居草圃与荒院草边立起三名木标牌。", "设为『四时生长图鉴匣』，在草圃与镇公所同步展出四时手绘谱。"],
+		},
+		"wu_cha_biao": {
+			1: ["两边都没错，只是测的水域不同——我带材料去雾岬岛找白帆。", "不死磕单一数字、先去海面核对地形，这思路真清楚。"],
+			2: ["原来横风大小会拉开快慢差距，我带记录回镇公所请教岑婆。", "仪器抓得住慢气压，老船长看得准窄口风，合起来才好使。"],
+			3: ["写明适用范围和正负一刻钟余量，出海人看一眼就懂留分寸。", "好，等明早潮水验证完，我去木匠工坊找顾星。"],
+			4: ["设为『黄铜浮筒测潮仪』，在工坊桌边与门外西廊立起余量浮筒仪。", "设为『双栏潮汐余量板』，并排挂起内湾实测线与外岬横风余量板。"],
+		},
+		"feng_ren_chu_de_qi": {
+			1: ["好呀，我去雾岬岛请教白帆船长什么旗型最耐海风。", "薄雾里老远就能被岛上朋友认出来，听着就觉得安心。"],
+			2: ["燕尾泄风加防缠活环，记牢了！我带材料去找木匠贺木。", "等挂上新筏旗，下次进雾岬港老远就跟你打招呼！"],
+			3: ["双槽转环真利索，过一夜我去超市找许棉挑旗子纹样。", "裁缝、画师和木匠各展所长，这面小旗可有讲究。"],
+			4: ["挂『潮青双燕尾旗』，靛青白浪双燕尾帆布旗（同步海图标记）。", "挂『暖赭归航三角旗』，暖赭橘引航星纹斜三角旗（同步海图标记）。", "挂『林翠风语长旒』，草木青绿双飘带长旒（同步海图标记）。"],
+		},
 	}
 	var labels: Array = table[arc][step]
 	var out: Array = []
@@ -685,6 +912,14 @@ static func _step_cost(data: Dictionary, arc: String, step: int) -> Dictionary:
 		"bu_shi_tan_wei":
 			if step == 2: return {"wood": 3, "rope": 1}
 			if step == 3: return {"seaweed": 2}
+		"jiu_yuan_ji_lu":
+			if step == 3: return {"rope": 2, "fiber": 2}
+		"ming_zi_bu_tong":
+			if step == 3: return {"fiber": 2, "mushroom": 1}
+		"wu_cha_biao":
+			if step == 2: return {"wood": 2, "scrap": 2}
+		"feng_ren_chu_de_qi":
+			if step == 3: return {"wood": 2, "fiber": 3, "rope": 1}
 	return {}
 
 static func _final_reward(arc: String) -> Dictionary:
@@ -701,6 +936,10 @@ static func _final_reward(arc: String) -> Dictionary:
 		"kong_yi_zi": return {"coins": 40, "items": {"maki": 2}}
 		"zou_bu_zhun_zhong": return {"coins": 50, "items": {"sashimi": 2}}
 		"bu_shi_tan_wei": return {"coins": 35, "items": {"cooked_fish": 2}}
+		"jiu_yuan_ji_lu": return {"coins": 40, "items": {"meal": 2}}
+		"ming_zi_bu_tong": return {"coins": 40, "items": {"salad": 2}}
+		"wu_cha_biao": return {"coins": 45, "items": {"cooked_fish": 2}}
+		"feng_ren_chu_de_qi": return {"coins": 40, "items": {"maki": 2}}
 	return {"coins": 0, "items": {}}
 
 static func action(data: Dictionary, player: Dictionary, slot: String, args: Dictionary) -> String:
@@ -825,6 +1064,30 @@ static func _reply_feedback(arc: String, step: int, reply: int, chosen_style: St
 				2: return "向阳晒背木台已扎好！带海苔 ×2 找渔民周潮抹上海草气味引路吧 · 陆舟好感+15。"
 				3: return "三斤归还了铜秤盘，顺着退潮游去珊湾啦！过一夜后开船去珊湾潮岸看看它吧 · 周潮好感+15。"
 				4: return "渔铺西南海岸已设为『%s』！\n\n《这不是你的摊位》完成 · +35金币 · 获得烤鱼 ×2 · 渔铺西南岸边右键可随时切换。" % s_name
+		"jiu_yuan_ji_lu":
+			match step:
+				1: return "去海风诊所找医师苏芩聊聊晴天岸边备勤常漏掉的小事吧 · 陆舟好感+15。"
+				2: return "带上绳子 ×2 和植物纤维 ×2 去广场或林地口找护林员森柯扎分段报位绳吧 · 苏芩好感+15。"
+				3: return "分段报位绳与活扣抛绳已在晴天岸边试练！过一夜再回岸边渔铺找陆舟看新记录吧 · 森柯好感+15。"
+				4: return "渔铺东侧港道口已立起『%s』！\n\n《一份用不上的救援记录》完成 · +40金币 · 获得海港热汤料理 ×2 · 港道口备勤架右键可随时切换。" % s_name
+		"ming_zi_bu_tong":
+			match step:
+				1: return "去潮芽镇公所找教师温知聊聊把不同俗名并排收入图鉴的事吧 · 沐桐好感+15。"
+				2: return "理解潮声后，带上植物纤维 ×2 和林菇 ×1 航行前往风栖岛找林地精灵苔露吧 · 温知好感+15。"
+				3: return "四季干果穗与『听风耳』的来历已捎回潮芽岛！过一夜再去苔瓦民居找沐桐看四时图谱吧 · 苔露好感+15。"
+				4: return "苔瓦民居草圃已设为『%s』！\n\n《名字各不相同的草》完成 · +40金币 · 获得鲜蔬沙拉 ×2 · 草圃旁右键可随时切换陈列。" % s_name
+		"wu_cha_biao":
+			match step:
+				1: return "带上木板 ×2 和废金属 ×2 航行前往雾岬岛找海商白帆实测外岬水道换流时刻吧 · 顾星好感+15。"
+				2: return "外海横风换流差已记清！回潮芽镇公所找退休领航员岑婆核定余量区间吧 · 白帆好感+15。"
+				3: return "岑婆已添上适用水域与正负一刻钟风向余量！过一夜等早潮验证后再去木匠工坊找顾星吧 · 岑婆好感+15。"
+				4: return "木匠工坊已摆起『%s』！\n\n《一张能用的误差表》完成 · +45金币 · 获得烤鱼 ×2 · 工坊实验台旁右键可随时切换。" % s_name
+		"feng_ren_chu_de_qi":
+			match step:
+				1: return "航行前往雾岬岛找海商白帆请教海上耐风旗型与活环挂法吧 · 许棉好感+15。"
+				2: return "带上木板 ×2、植物纤维 ×3 和绳子 ×1 回去找木匠贺木（工坊或船屋均可）车一套防缠转环旗杆吧 · 白帆好感+15。"
+				3: return "防缠转环旗杆与沐桐调好的草木染膏已送去试挂！过一夜再去潮芽超市找许棉选定纹样吧 · 贺木好感+15。"
+				4: return "木筏与海图已挂起『%s』！\n\n《被风认出来的旗》完成 · +40金币 · 获得海苔鱼卷 ×2 · 超市布架或木筏挂旗角右键均可随时切换。" % s_name
 	return ""
 
 static func summary(data: Dictionary) -> String:
@@ -925,6 +1188,38 @@ static func summary(data: Dictionary) -> String:
 		3: lines.append("• 《这不是你的摊位》 3/5：带海苔 ×2 找周潮抹海草气味引三斤去安全处。")
 		4: lines.append("• 《这不是你的摊位》 4/5：" + ("三斤顺潮游向珊湾，过一夜再去珊湾潮岸看看它。" if waiting_overnight(data, "bu_shi_tan_wei") else "三斤正在珊湾暖石晒背！预留1格背包去珊湾潮岸和它定下约定。"))
 		5: lines.append("• 《这不是你的摊位》已完成：渔铺西南岸现留『%s』（海岸木坪右键可切换）。" % style_name(str(bstw.get("style", "plank"))))
+	var jyjl := record(data, "jiu_yuan_ji_lu")
+	match int(jyjl.get("step", 0)):
+		0: lines.append("• 《一份用不上的救援记录》：" + ("岸边渔铺东侧港道口备勤架挂着巡海簿，走近右键查看。" if pilot_ready(data) else "承租荒院或点亮引航灯后，可留意渔铺东侧港道口的巡海记录夹。"))
+		1: lines.append("• 《一份用不上的救援记录》 1/5：进岸边渔铺找救援员陆舟聊聊只记险情的巡海簿。")
+		2: lines.append("• 《一份用不上的救援记录》 2/5：去海风诊所找苏芩商量晴天岸边备勤细节。")
+		3: lines.append("• 《一份用不上的救援记录》 3/5：带绳子 ×2、植物纤维 ×2 找护林员森柯扎分段报位绳。")
+		4: lines.append("• 《一份用不上的救援记录》 4/5：" + ("晴天岸边演练进行中，过一夜再回渔铺找陆舟看新记录。" if waiting_overnight(data, "jiu_yuan_ji_lu") else "『今日无事』已签好！预留1格背包找陆舟选定港道口备勤布置。"))
+		5: lines.append("• 《一份用不上的救援记录》已完成：港道口现立『%s』（右键可切换）。" % style_name(str(jyjl.get("style", "board"))))
+	var mzbt := record(data, "ming_zi_bu_tong")
+	match int(mzbt.get("step", 0)):
+		0: lines.append("• 《名字各不相同的草》：" + ("苔瓦民居西南草圃夹着三张名签的写生板，走近右键查看。" if data.get("island", {}).get("homestead", {}).get("rented", false) else "承租荒院后，可留意苔瓦民居西南侧草圃的写生夹板。"))
+		1: lines.append("• 《名字各不相同的草》 1/5：找植物画师沐桐聊聊同株野草的三种叫法。")
+		2: lines.append("• 《名字各不相同的草》 2/5：去潮芽镇公所找温知老师核对书名与农谚俗名。")
+		3: lines.append("• 《名字各不相同的草》 3/5：" + ("带植物纤维 ×2、林菇 ×1 前往风栖岛找苔露收集四季干果穗。" if data.get("journal", {}).get("tide_speech", false) else "理解潮语后，带植物纤维 ×2、林菇 ×1 去风栖岛找苔露。"))
+		4: lines.append("• 《名字各不相同的草》 4/5：" + ("沐桐正在绘制四时生长全图，过一夜再去找她。" if waiting_overnight(data, "ming_zi_bu_tong") else "三名并列的四时图谱已完成！预留1格背包找沐桐选定陈列。"))
+		5: lines.append("• 《名字各不相同的草》已完成：草圃现设『%s』（草圃右键可切换）。" % style_name(str(mzbt.get("style", "stakes"))))
+	var wcb := record(data, "wu_cha_biao")
+	match int(wcb.get("step", 0)):
+		0: lines.append("• 《一张能用的误差表》：" + ("木匠工坊内顾星东侧桌架压着两份对不上的潮表，进屋右键查看。" if int(data.get("journal", {}).get("story_step", 0)) >= 1 else "修亮西岸引航灯后，可进木匠工坊查看顾星桌边的测潮记录。"))
+		1: lines.append("• 《一张能用的误差表》 1/5：在木匠工坊找顾星聊聊内湾浮筒与外海经验的温差。")
+		2: lines.append("• 《一张能用的误差表》 2/5：带木板 ×2、废金属 ×2 前往雾岬岛与白帆实测外岬换流。")
+		3: lines.append("• 《一张能用的误差表》 3/5：回镇公所请退休领航员岑婆添注适用范围与风向余量。")
+		4: lines.append("• 《一张能用的误差表》 4/5：" + ("早潮余量正在实测核对，过一夜再去木匠工坊找顾星。" if waiting_overnight(data, "wu_cha_biao") else "早潮余量验证通过！预留1格背包找顾星选定测潮陈列。"))
+		5: lines.append("• 《一张能用的误差表》已完成：工坊现设『%s』（实验台旁右键可切换）。" % style_name(str(wcb.get("style", "brass"))))
+	var frcdq := record(data, "feng_ren_chu_de_qi")
+	match int(frcdq.get("step", 0)):
+		0: lines.append("• 《被风认出来的旗》：" + ("潮芽超市内许棉东侧放着旧帆布旗篮，进店右键查看。" if bool(data.get("chart", {}).get("visited", false)) else "登上潮芽岛后，可进潮芽超市查看许棉身边的旧帆布旗篮。"))
+		1: lines.append("• 《被风认出来的旗》 1/5：在潮芽超市找裁缝许棉聊聊为木筏缝一面认路风旗。")
+		2: lines.append("• 《被风认出来的旗》 2/5：前往雾岬岛向海商白帆请教燕尾泄风与防缠挂法。")
+		3: lines.append("• 《被风认出来的旗》 3/5：带木板 ×2、植物纤维 ×3、绳子 ×1 找木匠贺木车活环旗杆。")
+		4: lines.append("• 《被风认出来的旗》 4/5：" + ("许棉正在西岸风口试挂锁边，过一夜再去超市找她挑纹样。" if waiting_overnight(data, "feng_ren_chu_de_qi") else "试风顺畅！预留1格背包去超市找许棉选定木筏风旗纹样。"))
+		5: lines.append("• 《被风认出来的旗》已完成：木筏与海图现挂『%s』（超市或筏角右键可切换）。" % style_name(str(frcdq.get("style", "tide"))))
 	return "\n".join(lines) + "\n"
 
 static func _restore_one(arc: String, raw: Variant, day: int) -> Dictionary:
@@ -957,7 +1252,7 @@ static func _restore_one(arc: String, raw: Variant, day: int) -> Dictionary:
 		"style": str(raw.style),
 	}
 
-static func restore(value: Variant, day: int, saved_version: int = 20) -> Dictionary:
+static func restore(value: Variant, day: int, saved_version: int = 21) -> Dictionary:
 	if not value is Dictionary:
 		return {}
 	if saved_version == 17:
@@ -989,6 +1284,16 @@ static func restore(value: Variant, day: int, saved_version: int = 20) -> Dictio
 				return {}
 			migrated_19[arc_19] = parsed_19
 		return migrated_19
+	if saved_version == 20:
+		if value.size() != V20_ARCS.size() or not value.has_all(V20_ARCS):
+			return {}
+		var migrated_20 := create()
+		for arc_20: String in V20_ARCS:
+			var parsed_20 := _restore_one(arc_20, value[arc_20], day)
+			if parsed_20.is_empty():
+				return {}
+			migrated_20[arc_20] = parsed_20
+		return migrated_20
 	if value.size() != ARCS.size() or not value.has_all(ARCS):
 		return {}
 	var out := {}

@@ -142,7 +142,7 @@ static func action(data: Dictionary, player: Dictionary, verb: String, args: Dic
 	if verb in ["town_chronicle_open","town_chronicle_reply"]:
 		if player.get("resting",false) or player.get("sleep_ready",false):return "先起身再聊吧。"
 		if not player.get("activity",{}).is_empty() or not player.get("hook",{}).is_empty() or not player.get("fishing",{}).is_empty():return "先完成手上的动作，或右键取消。"
-		return str(npc.name)+"："+(LongStories.open(data,str(npc.name),args) if verb=="town_chronicle_open" else LongStories.action(data,player,slot,args))
+		return str(npc.name)+"："+(LongStories.open(data,str(npc.name),args,slot) if verb=="town_chronicle_open" else LongStories.action(data,player,slot,args))
 	if verb in ["town_rent", "town_claim"]:
 		return _homestead(data, player, slot, npc_id, verb)
 	if verb == "town_talk":

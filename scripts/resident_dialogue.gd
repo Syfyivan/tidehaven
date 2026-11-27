@@ -70,6 +70,32 @@ static func line(data:Dictionary, slot:String, id:String) -> String:
 
 static func chronicle_line(data:Dictionary, id:String) -> String:
 	var chron:Dictionary = data.get("chronicles", {})
+	var jyjl:Dictionary = chron.get("jiu_yuan_ji_lu", {})
+	if int(jyjl.get("step", 0)) == 5:
+		var rack:bool = str(jyjl.get("style", "")) == "rack"
+		match id:
+			"lu_zhou": return "港道口那副『岸边救生圈绳架』每天早晚我都顺手理一遍，巡海簿上连着好几页都是『今日无事』！" if rack else "『平潮备航公告栏』挂出来后，连路过的小孩都会背浮标方位口诀，巡海簿空着险情栏真舒心。"
+			"su_qin": return "晴天演练过后，因为麻绳缠手来诊所涂药的人真少了一大半。"
+			"sen_ke": return "现在大家报位置都晓得说『灯柱往南几船身』，再也没人光喊『大石头旁边』啦！"
+	var mzbt:Dictionary = chron.get("ming_zi_bu_tong", {})
+	if int(mzbt.get("step", 0)) == 5:
+		var folio:bool = str(mzbt.get("style", "")) == "folio"
+		match id:
+			"mu_tong": return "『茶匙草 · 海风车前 · 听风耳』并排写在四时生长图谱顶上，每次翻开都觉得热闹极了！" if folio else "草圃边那三块俗名木签立在一起，田青大姐路过瞧见总会笑一笑。"
+			"wen_zhi": return "我把『茶匙草』和『听风耳』都收进镇公所图鉴页了，孩子们记得比单背书名快得多！"
+	var wcb:Dictionary = chron.get("wu_cha_biao", {})
+	if int(wcb.get("step", 0)) == 5:
+		var slate_t:bool = str(wcb.get("style", "")) == "slate_tide"
+		match id:
+			"gu_xing": return "『双栏潮汐余量板』把内湾基准和外岬横风提前量并排写清，再也不用死磕唯一数字了！" if slate_t else "『黄铜浮筒测潮仪』加上岑婆的横风余量游标后，跑船人和我都看得顺眼！"
+			"lu_yao": return "我已经把内湾平水和雾岬急流的分界线补画在西岸指路图边啦。"
+	var frcdq:Dictionary = chron.get("feng_ren_chu_de_qi", {})
+	if int(frcdq.get("step", 0)) == 5:
+		var f_style := str(frcdq.get("style", "tide"))
+		var f_label := "潮青双燕尾旗" if f_style == "tide" else ("暖赭归航三角旗" if f_style == "sun" else "林翠风语长旒")
+		match id:
+			"xu_mian": return "你们木筏挂上『%s』以后，林穗说站在西街坡顶都能一眼认出你们回港！" % f_label
+			"bai_fan": return "哈哈，你们那面『%s』在海雾里精神得很，老远我就知道是熟人靠过来啦！" % f_label
 	var bgc:Dictionary = chron.get("bu_gan_chao", {})
 	if int(bgc.get("step", 0)) == 5:
 		var chair:bool = str(bgc.get("style", "")) == "chair"
